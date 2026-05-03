@@ -1,0 +1,2492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#0d0d1f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="EOS XE"/>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="icon" type="image/svg+xml" href="./icon.svg"/>
+<link rel="apple-touch-icon" href="./icon-192.png"/>
+<title>EOS XE Dashboard</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  html,body,#root{margin:0;padding:0;height:100%;background:#f5f6fa;font-family:'Segoe UI',system-ui,sans-serif;}
+  *{box-sizing:border-box;}
+  input,textarea,select,button{font-family:inherit;}
+  /* iOS safe areas */
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+  // PWA service worker registration
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW failed', err));
+    });
+  }
+</script>
+
+<script type="text/babel" data-presets="env,react">
+const {useState, useEffect, useRef, useCallback} = React;
+
+// =====================================================================
+// Constants & helpers
+// =====================================================================
+const STORE_KEY = "eos-xe-cfg-v1";   // stores supabase URL + anon key + PIN
+const ROW_ID = "main";
+const uid = () => Math.random().toString(36).slice(2, 8);
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const SLOTS = Array.from({length:34}, (_,i) => ({
+  h: Math.floor(i/2)+6,
+  m: i%2===0 ? 0 : 30,
+  lbl: `${Math.floor(i/2)+6}:${i%2===0 ? '00' : '30'}`
+}));
+const MONTHS_F = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const SI = {
+  'on-track': ['#d4edda','#155724','🟢 On Track'],
+  'at-risk':  ['#fff3cd','#856404','🟡 At Risk'],
+  'not-done': ['#fdecea','#b71c1c','🔴 Not Done'],
+  'done':     ['#d1ecf1','#0c5460','✅ Done']
+};
+const YEAR = 2026;
+const QS = ['Q1','Q2','Q3','Q4'];
+const qWeeks = q => Array.from({length:13}, (_,i) => (q-1)*13 + 1 + i);
+const FIRST_MON = new Date(Date.UTC(2025, 11, 29));
+
+const dayDate = (wn, di) => new Date(FIRST_MON.getTime() + ((wn-1)*7 + di) * 864e5);
+const dayStr = (wn, di) => {
+  const d = dayDate(wn, di);
+  return [d.getUTCFullYear(),
+          String(d.getUTCMonth()+1).padStart(2,'0'),
+          String(d.getUTCDate()).padStart(2,'0')].join('-');
+};
+const dayShort = (wn, di) =>
+  dayDate(wn, di).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+const wDates = wn => dayShort(wn,0) + ' - ' + dayShort(wn,6);
+const getCurQ = () => {
+  const n = new Date();
+  return n.getFullYear() + '-Q' + Math.floor(n.getMonth()/3 + 1);
+};
+const getCurWn = () =>
+  Math.max(1, Math.floor((Date.now() - FIRST_MON.getTime()) / 864e5 / 7) + 1);
+const wKey = wn => YEAR + '-' + wn;
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const dateToWn = ds =>
+  Math.max(1, Math.floor((new Date(ds + 'T00:00:00Z').getTime() - FIRST_MON.getTime()) / 864e5 / 7) + 1);
+const sWks = s => {
+  const a = s.startWeek || s.weekNum || 1;
+  const b = s.endWeek || s.weekNum || a;
+  return Array.from({length: b-a+1}, (_,i) => a+i);
+};
+const isWkDone = (s, wn) => !!(s.weeklyDone && s.weeklyDone[wn]);
+const stepDone = s => sWks(s).every(wn => isWkDone(s, wn));
+const getDayOfWeek = ds => {
+  const d = new Date(ds + 'T12:00:00Z');
+  return ['S','M','T','W','T','F','S'][d.getUTCDay()];
+};
+
+const INIT_V = {values:[], ltView:'', threeYearView:'', oneYearView:''};
+const INIT = {
+  vision: JSON.parse(JSON.stringify(INIT_V)),
+  processes: [],
+  quarters: {},
+  todos: [],
+  weeklyCalendar: {},
+  stdWeeklyEvents: [],
+  monthNotes: {},
+  weeklyProjects: {}
+};
+
+const ensureQ = (d, qk) => {
+  if (!d.quarters[qk]) d.quarters[qk] = {rocks:[], weeks:{}, weeklyRocks:{}, qReview:{}, scorecard:[], idsIssues:[]};
+  if (!d.quarters[qk].rocks)      d.quarters[qk].rocks = [];
+  if (!d.quarters[qk].scorecard)  d.quarters[qk].scorecard = [];
+  if (!d.quarters[qk].idsIssues)  d.quarters[qk].idsIssues = [];
+  ['weeks','weeklyRocks','qReview'].forEach(k => { if (!d.quarters[qk][k]) d.quarters[qk][k] = {}; });
+};
+
+const normalizeData = p => ({
+  ...INIT, ...p,
+  monthNotes: p.monthNotes || {},
+  stdWeeklyEvents: p.stdWeeklyEvents || [],
+  weeklyProjects: p.weeklyProjects || {}
+});
+
+// =====================================================================
+// Crypto helpers (PIN -> AES-GCM)
+// =====================================================================
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+async function deriveKey(pin) {
+  const baseKey = await crypto.subtle.importKey(
+    'raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']
+  );
+  return await crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt: enc.encode('eos-xe-static-salt-v1'), iterations: 100000, hash:'SHA-256'},
+    baseKey,
+    {name:'AES-GCM', length:256},
+    false, ['encrypt','decrypt']
+  );
+}
+
+const buf2b64 = b => btoa(String.fromCharCode(...new Uint8Array(b)));
+const b642buf = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function encryptJSON(obj, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc.encode(JSON.stringify(obj)));
+  return {ciphertext: buf2b64(ct), iv: buf2b64(iv)};
+}
+
+async function decryptJSON(ciphertextB64, ivB64, key) {
+  const pt = await crypto.subtle.decrypt(
+    {name:'AES-GCM', iv: b642buf(ivB64)}, key, b642buf(ciphertextB64)
+  );
+  return JSON.parse(dec.decode(pt));
+}
+
+// =====================================================================
+// Supabase store
+// =====================================================================
+const DEVICE_ID = (() => {
+  try {
+    let id = localStorage.getItem('eos-xe-device-id');
+    if (!id) { id = uid() + uid(); localStorage.setItem('eos-xe-device-id', id); }
+    return id;
+  } catch (e) { return uid() + uid(); }
+})();
+
+function getCfg() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); }
+  catch (e) { return null; }
+}
+function setCfg(cfg) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(cfg));
+}
+function clearCfg() {
+  localStorage.removeItem(STORE_KEY);
+}
+
+// =====================================================================
+// Style tokens
+// =====================================================================
+const S = {
+  card: {background:'white', borderRadius:12, padding:20, marginBottom:12, boxShadow:'0 2px 8px rgba(0,0,0,0.06)'},
+  h2:   {fontSize:24, fontWeight:800, color:'#1a1a2e', marginBottom:20, marginTop:0},
+  h3:   {fontSize:11, fontWeight:700, color:'#888', marginBottom:10, marginTop:0, textTransform:'uppercase', letterSpacing:0.6},
+  lbl:  {fontSize:11, color:'#999', display:'block', marginBottom:4, fontWeight:700, textTransform:'uppercase'},
+  inp:  {width:'100%', padding:'9px 12px', border:'1px solid #e8e8e8', borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none', fontFamily:'inherit', color:'#1a1a2e'},
+  ta:   {width:'100%', padding:'9px 12px', border:'1px solid #e8e8e8', borderRadius:8, fontSize:14, boxSizing:'border-box', minHeight:80, resize:'vertical', outline:'none', fontFamily:'inherit', color:'#1a1a2e'},
+  g2:   {display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}
+};
+
+// =====================================================================
+// Reusable components
+// =====================================================================
+function Fld({label, value, onChange, placeholder, multi, type}) {
+  type = type || 'text';
+  return (
+    <div style={{marginBottom:11}}>
+      {label && <label style={S.lbl}>{label}</label>}
+      {multi
+        ? <textarea style={S.ta} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}/>
+        : <input type={type} style={S.inp} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}/>
+      }
+    </div>
+  );
+}
+
+function Btn({onClick, children, v, style: sx, disabled}) {
+  v = v || 'pri'; sx = sx || {};
+  const C = {
+    pri: {background:'#f0a500', color:'white'},
+    sec: {background:'#f0f0f0', color:'#555'},
+    red: {background:'#e74c3c', color:'white'},
+    grn: {background:'#27ae60', color:'white'}
+  };
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{padding:'8px 16px', borderRadius:8, border:'none', cursor: disabled ? 'not-allowed' : 'pointer',
+              fontSize:13, fontWeight:600, opacity: disabled ? 0.5 : 1, ...(C[v] || C.pri), ...sx}}>
+      {children}
+    </button>
+  );
+}
+
+function NB({active, onClick, children}) {
+  return (
+    <button onClick={onClick}
+      style={{display:'flex', alignItems:'center', gap:8, width:'100%',
+              padding:'9px 14px', border:'none', cursor:'pointer', textAlign:'left',
+              background: active ? 'rgba(240,165,0,0.1)' : 'transparent',
+              borderLeft: active ? '3px solid #f0a500' : '3px solid transparent',
+              color: active ? '#f0a500' : 'rgba(255,255,255,0.55)',
+              fontSize:13, fontWeight: active ? 700 : 400}}>
+      {children}
+    </button>
+  );
+}
+
+function Modal({onClose, children}) {
+  return (
+    <div onClick={onClose}
+      style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.45)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              zIndex:1000, padding:16}}>
+      <div onClick={e => e.stopPropagation()}
+        style={{background:'white', borderRadius:16, padding:24, width:440,
+                maxWidth:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.2)',
+                maxHeight:'90vh', overflowY:'auto'}}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function QBtns({selQ, onSelect}) {
+  return (
+    <div style={{display:'flex', gap:8, marginBottom:18, flexWrap:'wrap'}}>
+      {QS.map(q => {
+        const qk = YEAR + '-' + q;
+        const isAct = qk === selQ;
+        const isCur = qk === getCurQ();
+        return (
+          <button key={q} onClick={() => onSelect(qk)}
+            style={{padding:'10px 20px', borderRadius:9,
+                    border:'2px solid ' + (isAct ? '#f0a500' : isCur ? 'rgba(240,165,0,0.4)' : '#e0e0e0'),
+                    cursor:'pointer',
+                    background: isAct ? '#f0a500' : 'white',
+                    color: isAct ? 'white' : isCur ? '#f0a500' : '#555',
+                    fontWeight:700, fontSize:14, position:'relative'}}>
+            {q} {YEAR}
+            {isCur && <span style={{position:'absolute', top:-7, right:-7, fontSize:8,
+                                    background:'#0d0d1f', color:'white', borderRadius:4,
+                                    padding:'2px 5px', fontWeight:700}}>NOW</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function WkBtns({selQ, selWn, onSelect}) {
+  const qn = parseInt(selQ.split('-Q')[1]);
+  const qw = qWeeks(qn);
+  const curWn = getCurWn();
+  return (
+    <div style={{display:'flex', gap:4, flexWrap:'wrap', marginBottom:16}}>
+      {qw.map(wn => {
+        const isSel = wn === selWn;
+        const isCur = wn === curWn;
+        return (
+          <button key={wn} onClick={() => onSelect(wn)} title={wDates(wn)}
+            style={{padding:'6px 8px', borderRadius:7,
+                    border:'1px solid ' + (isSel ? '#f0a500' : isCur ? 'rgba(240,165,0,0.5)' : '#e8e8e8'),
+                    cursor:'pointer',
+                    background: isSel ? '#f0a500' : isCur ? 'rgba(240,165,0,0.08)' : 'white',
+                    color: isSel ? 'white' : isCur ? '#f0a500' : '#666',
+                    fontWeight: (isSel || isCur) ? 700 : 400,
+                    fontSize:11, textAlign:'center', minWidth:44}}>
+            <div style={{fontWeight:700, fontSize:12}}>W{wn - qw[0] + 1}</div>
+            <div style={{fontSize:9, opacity:0.8}}>{dayShort(wn, 0)}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatusPill({status, onChange}) {
+  const keys = Object.keys(SI);
+  const cycle = () => onChange(keys[(keys.indexOf(status || 'on-track') + 1) % keys.length]);
+  const info = SI[status] || SI['on-track'];
+  return (
+    <button onClick={cycle}
+      style={{padding:'3px 10px', borderRadius:20, border:'none', cursor:'pointer',
+              fontSize:11, fontWeight:700, background:info[0], color:info[1],
+              whiteSpace:'nowrap', flexShrink:0}}>
+      {info[2]}
+    </button>
+  );
+}
+
+function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
+  const active = (idsIssues || []).some(i => i.sourceId === sourceId && !i.solved);
+  const toggle = () => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.sourceId === sourceId && !i.solved);
+    if (idx >= 0) {
+      d.quarters[qKey].idsIssues[idx].solved = true;
+      d.quarters[qKey].idsIssues[idx].solvedWeek = weekNum;
+    } else {
+      d.quarters[qKey].idsIssues.push({
+        id: uid(), sourceId, sourceName,
+        action:'', solved:false, solvedWeek:null, weekAdded: weekNum
+      });
+    }
+  });
+  return (
+    <button onClick={toggle}
+      style={{padding:'2px 8px', borderRadius:10,
+              border:'1px solid ' + (active ? '#e74c3c' : '#e0e0e0'),
+              cursor:'pointer', fontSize:10, fontWeight:700, flexShrink:0,
+              background: active ? '#fdecea' : 'white',
+              color: active ? '#b71c1c' : '#bbb', whiteSpace:'nowrap'}}>
+      {active ? 'Issue' : '+ Issue'}
+    </button>
+  );
+}
+
+// =====================================================================
+// Calendar
+// =====================================================================
+function CalTable({events, onCellClick, onDelete, dayLabels, compact}) {
+  compact = compact || false;
+  const occupied = {};
+  events.forEach(e => {
+    const slots = Math.max(1, Math.round((e.duration || 1) * 2));
+    for (let s = 1; s < slots; s++) {
+      const tm = e.h * 60 + (e.m || 0) + s * 30;
+      const h = Math.floor(tm / 60); const m = tm % 60;
+      if (h <= 22) occupied[e.day + '-' + h + '-' + m] = true;
+    }
+  });
+  return (
+    <div style={{overflowX:'auto'}}>
+      <table style={{tableLayout:'fixed', borderCollapse:'collapse', background:'white',
+                     borderRadius:10, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
+                     width:'100%', minWidth: compact ? 500 : 680}}>
+        <colgroup>
+          <col style={{width:44}}/>
+          {DAYS.map((_, i) => <col key={i}/>)}
+        </colgroup>
+        <thead>
+          <tr style={{background:'#0d0d1f'}}>
+            <th style={{padding:'5px 6px', color:'rgba(255,255,255,0.4)', fontSize:9, textAlign:'right'}}>h</th>
+            {DAYS.map((day, di) => (
+              <th key={di}
+                onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
+                style={{padding: compact ? '5px 3px' : '7px 4px', color:'white',
+                        fontSize: compact ? 10 : 12, fontWeight:600, textAlign:'center',
+                        cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
+                <div>{day.slice(0, 3)}</div>
+                {dayLabels && dayLabels[di] && dayLabels[di].sub &&
+                  <div style={{fontSize:9, opacity:0.65, fontWeight:400}}>{dayLabels[di].sub}</div>}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {SLOTS.map(slot => (
+            <tr key={slot.h + '-' + slot.m} style={{borderTop:'1px solid #f5f5f5'}}>
+              <td style={{padding:'1px 6px', fontSize:8, color:'#aaa', fontWeight:700,
+                          background:'#fafafa', textAlign:'right', whiteSpace:'nowrap'}}>{slot.lbl}</td>
+              {DAYS.map((_, di) => {
+                const ck = di + '-' + slot.h + '-' + slot.m;
+                if (occupied[ck]) return null;
+                const ev = events.find(e => e.day === di && e.h === slot.h && (e.m || 0) === slot.m);
+                if (ev) {
+                  const rSpan = Math.max(1, Math.round((ev.duration || 1) * 2));
+                  const isStd = !!ev.isStdWeek;
+                  return (
+                    <td key={di} rowSpan={rSpan}
+                      style={{padding:2, verticalAlign:'top',
+                              background: isStd ? '#f5f5f5' : '#e8f4fd',
+                              borderLeft:'3px solid ' + (isStd ? '#bbb' : '#3498db'),
+                              borderTop:'1px solid #f5f5f5', position:'relative'}}>
+                      <div style={{padding:'2px 18px 2px 5px', boxSizing:'border-box'}}>
+                        <div style={{fontWeight:700, color: isStd ? '#888' : '#1a1a2e',
+                                     fontSize:10, overflow:'hidden', textOverflow:'ellipsis',
+                                     whiteSpace:'nowrap'}}>{ev.title}</div>
+                        <div style={{color:'#888', fontSize:9}}>
+                          {ev.h}:{String(ev.m || 0).padStart(2,'0')} {ev.duration}h
+                        </div>
+                      </div>
+                      <button onClick={() => onDelete(ev.id)}
+                        style={{position:'absolute', top:2, right:3, border:'none',
+                                background:'none', cursor:'pointer', color:'rgba(0,0,0,0.2)',
+                                fontSize:11, padding:0, lineHeight:1}}>x</button>
+                    </td>
+                  );
+                }
+                return (
+                  <td key={di} onClick={() => onCellClick(di, slot.h, slot.m)}
+                    style={{padding:0, cursor:'pointer', borderTop:'1px solid #f5f5f5'}}>
+                    <div style={{height: compact ? 18 : 22}}/>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EventModal({form, setForm, onSave, onClose, dayLabels}) {
+  return (
+    <Modal onClose={onClose}>
+      <h3 style={{...S.h3, marginBottom:16}}>
+        New Event - {DAYS[form.day]} at {form.h}:{String(form.m).padStart(2, '0')}
+      </h3>
+      <Fld label="Title" value={form.title} onChange={v => setForm(f => ({...f, title:v}))} placeholder="Event name"/>
+      <div style={S.g2}>
+        <div>
+          <label style={S.lbl}>Day</label>
+          <select value={form.day} onChange={e => setForm(f => ({...f, day: parseInt(e.target.value)}))} style={S.inp}>
+            {DAYS.map((d, i) => (
+              <option key={i} value={i}>
+                {d}{dayLabels && dayLabels[i] && dayLabels[i].sub ? ' - ' + dayLabels[i].sub : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={S.lbl}>Time</label>
+          <select value={form.h + '-' + form.m}
+            onChange={e => { const p = e.target.value.split('-'); setForm(f => ({...f, h: parseInt(p[0]), m: parseInt(p[1])})); }}
+            style={S.inp}>
+            {SLOTS.map(sl => <option key={sl.h + '-' + sl.m} value={sl.h + '-' + sl.m}>{sl.lbl}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={S.lbl}>Duration (h)</label>
+          <input type="number" min={0.5} max={8} step={0.5} value={form.duration}
+            onChange={e => setForm(f => ({...f, duration: parseFloat(e.target.value) || 1}))} style={S.inp}/>
+        </div>
+        <Fld label="Notes" value={form.notes} onChange={v => setForm(f => ({...f, notes:v}))} placeholder="Optional"/>
+      </div>
+      <div style={{display:'flex', gap:8}}>
+        <Btn onClick={onSave}>Save</Btn>
+        <Btn v="sec" onClick={onClose}>Cancel</Btn>
+      </div>
+    </Modal>
+  );
+}
+
+function CalendarWidget({selWn, data, upd, goToDay, compact}) {
+  compact = compact || false;
+  const [form, setForm] = useState(null);
+  const wk = wKey(selWn);
+  const events = data.weeklyCalendar && data.weeklyCalendar[wk] ? data.weeklyCalendar[wk] : [];
+  const dayLabels = DAYS.map((d, di) => ({
+    sub: dayShort(selWn, di),
+    onClick: goToDay ? () => goToDay(dayStr(selWn, di)) : null
+  }));
+  const save = () => {
+    if (!form || !form.title) return;
+    upd(d => {
+      if (!d.weeklyCalendar) d.weeklyCalendar = {};
+      if (!d.weeklyCalendar[wk]) d.weeklyCalendar[wk] = [];
+      d.weeklyCalendar[wk].push({id: uid(), ...form});
+    });
+    setForm(null);
+  };
+  return (
+    <div>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+        <div style={{fontSize:13, color:'#888'}}>Week {selWn} - {wDates(selWn)}</div>
+        <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
+          style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
+      </div>
+      <CalTable events={events}
+        onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
+        onDelete={id => upd(d => {
+          const idx = (d.weeklyCalendar[wk] || []).findIndex(x => x.id === id);
+          if (idx >= 0) d.weeklyCalendar[wk].splice(idx, 1);
+        })}
+        dayLabels={dayLabels} compact={compact}/>
+      {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)} dayLabels={dayLabels}/>}
+    </div>
+  );
+}
+
+function StdWeekCalendar({data, upd}) {
+  const [form, setForm] = useState(null);
+  const events = data.stdWeeklyEvents || [];
+  const save = () => {
+    if (!form || !form.title) return;
+    upd(d => { if (!d.stdWeeklyEvents) d.stdWeeklyEvents = []; d.stdWeeklyEvents.push({id: uid(), ...form}); });
+    setForm(null);
+  };
+  return (
+    <div>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+        <div style={{fontSize:13, color:'#888'}}>Template - click any slot to add</div>
+        <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
+          style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
+      </div>
+      <CalTable events={events}
+        onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
+        onDelete={id => upd(d => {
+          const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
+          if (idx >= 0) d.stdWeeklyEvents.splice(idx, 1);
+        })}/>
+      {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)}/>}
+    </div>
+  );
+}
+
+// =====================================================================
+// Gantt
+// =====================================================================
+function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
+  const fw = qw[0];
+  const toggle = (rid, sid, wn) => {
+    if (!upd || !qKey) return;
+    upd(d => {
+      ensureQ(d, qKey);
+      const idx = (d.quarters[qKey].weeklyRocks[rid] || []).findIndex(x => x.id === sid);
+      if (idx >= 0) {
+        if (!d.quarters[qKey].weeklyRocks[rid][idx].weeklyDone)
+          d.quarters[qKey].weeklyRocks[rid][idx].weeklyDone = {};
+        d.quarters[qKey].weeklyRocks[rid][idx].weeklyDone[wn] =
+          !isWkDone(d.quarters[qKey].weeklyRocks[rid][idx], wn);
+      }
+    });
+  };
+  return (
+    <div>
+      <div style={{overflowX:'auto'}}>
+        <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:400}}>
+          <colgroup>
+            <col style={{width:200}}/>
+            {qw.map((_, i) => <col key={i}/>)}
+          </colgroup>
+          <thead>
+            <tr style={{background:'#0d0d1f'}}>
+              <th style={{padding:'7px 14px', textAlign:'left', color:'rgba(255,255,255,0.6)', fontSize:13}}>Rock / Step</th>
+              {qw.map(wn => {
+                const isCur = highlightWn && wn === highlightWn;
+                return (
+                  <th key={wn}
+                    style={{padding:'5px 1px', textAlign:'center', fontSize:9,
+                            fontWeight: isCur ? 900 : 400,
+                            color: isCur ? '#f0a500' : 'rgba(255,255,255,0.35)',
+                            background: isCur ? 'rgba(240,165,0,0.18)' : 'transparent'}}>
+                    W{wn - fw + 1}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {rocks.map(rock => {
+              const steps = wr[rock.id] || [];
+              const info = SI[rock.status] || SI['on-track'];
+              const bg = info[0];
+              const rockRow = (
+                <tr key={'r' + rock.id} style={{background:'#f5f5f5', borderTop:'2px solid #e0e0e0'}}>
+                  <td style={{padding:'6px 14px', fontSize:13, fontWeight:700, color:'#1a1a2e',
+                              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                      title={rock.title}>🪨 {rock.title}</td>
+                  {qw.map(wn => {
+                    const isCur = highlightWn && wn === highlightWn;
+                    return (
+                      <td key={wn} style={{padding:'2px 1px',
+                                           background: isCur ? 'rgba(240,165,0,0.08)' : 'transparent'}}>
+                        <div style={{height:12, background:bg, borderRadius:2, margin:'0 1px', opacity:0.55}}/>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+              const stepRows = steps.map(step => {
+                const sw = step.startWeek || step.weekNum || fw;
+                const ew = step.endWeek || step.weekNum || fw;
+                return (
+                  <tr key={'s' + step.id} style={{borderTop:'1px solid #f0f0f0'}}>
+                    <td style={{padding:'3px 14px 3px 24px', fontSize:12, color:'#666',
+                                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                        title={step.text}>- {step.text}</td>
+                    {qw.map(wn => {
+                      const inR = wn >= sw && wn <= ew;
+                      const chk = isWkDone(step, wn) || step.done;
+                      const isCur = highlightWn && wn === highlightWn;
+                      return (
+                        <td key={wn} style={{padding:'2px 1px',
+                                             background: isCur ? 'rgba(240,165,0,0.08)' : 'transparent'}}>
+                          {inR && (
+                            <div onClick={() => toggle(rock.id, step.id, wn)}
+                              style={{height:10, background: chk ? '#27ae60' : '#f0a500',
+                                      borderRadius:2, margin:'0 1px',
+                                      opacity: chk ? 1 : 0.5,
+                                      cursor: upd ? 'pointer' : 'default',
+                                      transition:'background .15s'}}/>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              });
+              return [rockRow, ...stepRows];
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{display:'flex', gap:14, marginTop:10, fontSize:12, color:'#888'}}>
+        <span><span style={{display:'inline-block', width:14, height:10, background:'#f0a500',
+                            borderRadius:2, marginRight:5, opacity:0.6, verticalAlign:'middle'}}/>Pending</span>
+        <span><span style={{display:'inline-block', width:12, height:10, background:'#27ae60',
+                            borderRadius:2, marginRight:5, verticalAlign:'middle'}}/>Done</span>
+        {highlightWn && (
+          <span style={{marginLeft:'auto', color:'#f0a500', fontWeight:700, fontSize:10}}>
+            W{highlightWn - fw + 1} = current week
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// Setup gate (Supabase URL + anon key + PIN)
+// =====================================================================
+function SetupGate({onReady}) {
+  const cfg = getCfg();
+  const [step, setStep] = useState(cfg ? 'pin' : 'config');
+  const [supabaseUrl, setSupabaseUrl] = useState(cfg && cfg.url ? cfg.url : '');
+  const [anonKey, setAnonKey] = useState(cfg && cfg.key ? cfg.key : '');
+  const [pin, setPin] = useState('');
+  const [pin2, setPin2] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const saveConfig = () => {
+    setErr('');
+    if (!supabaseUrl.trim() || !anonKey.trim()) { setErr('Pega ambos valores.'); return; }
+    if (!/^https:\/\/.+\.supabase\.co\/?$/.test(supabaseUrl.trim())) {
+      setErr('URL inválida. Debe ser https://XXXX.supabase.co'); return;
+    }
+    setCfg({url: supabaseUrl.trim().replace(/\/$/,''), key: anonKey.trim()});
+    setStep('pin');
+  };
+
+  const tryUnlock = async () => {
+    setErr('');
+    if (!pin || pin.length < 4) { setErr('Mínimo 4 caracteres.'); return; }
+    setBusy(true);
+    try {
+      const cfg2 = getCfg();
+      const client = window.supabase.createClient(cfg2.url, cfg2.key);
+      const {data, error} = await client.from('eos_data').select('*').eq('id', ROW_ID).maybeSingle();
+      if (error) throw new Error('Error de conexión: ' + error.message);
+      const key = await deriveKey(pin);
+      let initialState;
+      if (!data) {
+        // First time ever - this PIN becomes "the" PIN
+        if (pin2 !== pin) { setErr('Confirma el PIN para crear la cuenta.'); setBusy(false); return; }
+        initialState = INIT;
+        const {ciphertext, iv} = await encryptJSON(initialState, key);
+        const {error: insErr} = await client.from('eos_data').insert({
+          id: ROW_ID, encrypted_data: ciphertext, iv, device_id: DEVICE_ID
+        });
+        if (insErr) throw new Error('No se pudo crear: ' + insErr.message);
+      } else {
+        try {
+          initialState = await decryptJSON(data.encrypted_data, data.iv, key);
+        } catch (e) {
+          throw new Error('PIN incorrecto.');
+        }
+      }
+      onReady({client, key, state: normalizeData(initialState)});
+    } catch (e) {
+      setErr(e.message || 'Error desconocido');
+      setBusy(false);
+    }
+  };
+
+  const reset = () => {
+    if (confirm('Esto borra la URL y la clave guardadas (NO borra tus datos en Supabase). ¿Continuar?')) {
+      clearCfg(); setStep('config'); setSupabaseUrl(''); setAnonKey(''); setPin(''); setErr('');
+    }
+  };
+
+  // Detect if first-time PIN (no row in db)
+  const [needsPin2, setNeedsPin2] = useState(false);
+  useEffect(() => {
+    if (step !== 'pin') return;
+    const cfg2 = getCfg();
+    if (!cfg2) return;
+    const client = window.supabase.createClient(cfg2.url, cfg2.key);
+    client.from('eos_data').select('id').eq('id', ROW_ID).maybeSingle()
+      .then(({data}) => setNeedsPin2(!data))
+      .catch(() => {});
+  }, [step]);
+
+  return (
+    <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center',
+                 background:'linear-gradient(135deg,#0d0d1f,#1a1a3e)', padding:16}}>
+      <div style={{background:'white', borderRadius:16, padding:'28px 26px', maxWidth:460, width:'100%',
+                   boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+        <div style={{textAlign:'center', marginBottom:18}}>
+          <div style={{display:'inline-block', width:56, height:56, borderRadius:14,
+                       background:'#f0a500', color:'#0d0d1f', fontWeight:900, fontSize:24,
+                       lineHeight:'56px', marginBottom:10}}>XE</div>
+          <div style={{fontSize:20, fontWeight:800, color:'#1a1a2e'}}>EOS XE</div>
+          <div style={{fontSize:12, color:'#888'}}>{step === 'config' ? 'Configura tu Supabase' : 'Desbloquea tu dashboard'}</div>
+        </div>
+
+        {step === 'config' && (
+          <div>
+            <Fld label="Supabase URL" value={supabaseUrl} onChange={setSupabaseUrl}
+              placeholder="https://XXXX.supabase.co"/>
+            <Fld label="Anon Key (publishable)" value={anonKey} onChange={setAnonKey}
+              placeholder="eyJhbGciOiJIUzI1Ni..."/>
+            <div style={{fontSize:11, color:'#888', marginBottom:14, lineHeight:1.5}}>
+              Encuéntralos en supabase.com → tu proyecto → Settings → API.
+              Estos valores se guardan en el navegador, no se envían a ningún lado.
+            </div>
+            {err && <div style={{color:'#e74c3c', fontSize:13, marginBottom:10}}>{err}</div>}
+            <Btn onClick={saveConfig} style={{width:'100%'}}>Continuar</Btn>
+          </div>
+        )}
+
+        {step === 'pin' && (
+          <div>
+            <Fld label={needsPin2 ? "Crea tu PIN (mínimo 4 caracteres)" : "Tu PIN"}
+              value={pin} onChange={setPin} type="password" placeholder="****"/>
+            {needsPin2 && (
+              <Fld label="Confirma el PIN" value={pin2} onChange={setPin2} type="password" placeholder="****"/>
+            )}
+            <div style={{fontSize:11, color:'#888', marginBottom:14, lineHeight:1.5}}>
+              {needsPin2
+                ? 'Este PIN cifra tus datos. Si lo pierdes, los datos se vuelven irrecuperables.'
+                : 'Introduce el mismo PIN que usaste al configurar la app.'}
+            </div>
+            {err && <div style={{color:'#e74c3c', fontSize:13, marginBottom:10}}>{err}</div>}
+            <Btn onClick={tryUnlock} disabled={busy} style={{width:'100%'}}>
+              {busy ? 'Verificando...' : (needsPin2 ? 'Crear y entrar' : 'Desbloquear')}
+            </Btn>
+            <button onClick={reset}
+              style={{width:'100%', marginTop:10, background:'none', border:'none',
+                      color:'#aaa', fontSize:11, cursor:'pointer', padding:6}}>
+              Cambiar configuración de Supabase
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// Sync indicator
+// =====================================================================
+function SyncBadge({status, lastSavedAt}) {
+  const colors = {idle:'#27ae60', saving:'#f0a500', error:'#e74c3c', loading:'#3498db'};
+  const labels = {idle:'Sincronizado', saving:'Guardando...', error:'Error', loading:'Cargando...'};
+  const c = colors[status] || colors.idle;
+  return (
+    <div style={{padding:'4px 10px', display:'flex', alignItems:'center', gap:6,
+                 fontSize:10, color:'rgba(255,255,255,0.55)'}}>
+      <span style={{width:8, height:8, borderRadius:'50%', background:c, flexShrink:0}}/>
+      {labels[status] || status}
+    </div>
+  );
+}
+
+// =====================================================================
+// Main App (gated by SetupGate)
+// =====================================================================
+function Root() {
+  const [bundle, setBundle] = useState(null);
+  if (!bundle) return <SetupGate onReady={setBundle}/>;
+  return <App bundle={bundle} onLogout={() => { setBundle(null); }}/>;
+}
+
+function App({bundle, onLogout}) {
+  const {client, key, state: initial} = bundle;
+  const [d, setD] = useState(initial);
+  const [tab, setTab] = useState('diario');
+  const [selDay, setSelDay] = useState(todayStr());
+  const [navOpen, setNavOpen] = useState(window.innerWidth > 700);
+  const [syncStatus, setSyncStatus] = useState('idle');
+  const importRef = useRef();
+  const saveTimer = useRef(null);
+  const skipNextSave = useRef(false);
+  const lastSavedSerial = useRef(JSON.stringify(initial));
+
+  // Save (debounced 800ms)
+  useEffect(() => {
+    if (skipNextSave.current) { skipNextSave.current = false; return; }
+    const serial = JSON.stringify(d);
+    if (serial === lastSavedSerial.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSyncStatus('saving');
+    saveTimer.current = setTimeout(async () => {
+      try {
+        const {ciphertext, iv} = await encryptJSON(d, key);
+        const {error} = await client.from('eos_data').upsert({
+          id: ROW_ID, encrypted_data: ciphertext, iv, device_id: DEVICE_ID
+        }, {onConflict:'id'});
+        if (error) throw error;
+        lastSavedSerial.current = serial;
+        setSyncStatus('idle');
+      } catch (e) {
+        console.error('Save failed', e);
+        setSyncStatus('error');
+      }
+    }, 800);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [d, client, key]);
+
+  // Realtime subscription
+  useEffect(() => {
+    const channel = client
+      .channel('eos_data_changes')
+      .on('postgres_changes',
+        {event:'*', schema:'public', table:'eos_data', filter:'id=eq.' + ROW_ID},
+        async payload => {
+          const row = payload.new;
+          if (!row || row.device_id === DEVICE_ID) return;
+          try {
+            const remote = await decryptJSON(row.encrypted_data, row.iv, key);
+            const serial = JSON.stringify(remote);
+            if (serial === lastSavedSerial.current) return;
+            skipNextSave.current = true;
+            lastSavedSerial.current = serial;
+            setD(normalizeData(remote));
+          } catch (e) {
+            console.warn('Remote decrypt failed', e);
+          }
+        })
+      .subscribe();
+    return () => { client.removeChannel(channel); };
+  }, [client, key]);
+
+  // Re-fetch on visibility change (tab focus)
+  useEffect(() => {
+    const onVis = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const {data: row} = await client.from('eos_data').select('*').eq('id', ROW_ID).maybeSingle();
+        if (!row || row.device_id === DEVICE_ID) return;
+        const remote = await decryptJSON(row.encrypted_data, row.iv, key);
+        const serial = JSON.stringify(remote);
+        if (serial === lastSavedSerial.current) return;
+        skipNextSave.current = true;
+        lastSavedSerial.current = serial;
+        setD(normalizeData(remote));
+      } catch (e) {}
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [client, key]);
+
+  const upd = fn => setD(prev => {
+    const next = JSON.parse(JSON.stringify(prev));
+    fn(next);
+    return next;
+  });
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify(d, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'eos-xe-backup-' + todayStr() + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importJSON = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const p = JSON.parse(ev.target.result);
+        const next = normalizeData(p);
+        setD(next);
+      } catch (err) { alert('Invalid JSON'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const goToDay = day => { setSelDay(day); setTab('diario'); if (window.innerWidth <= 700) setNavOpen(false); };
+
+  const GNAV = [
+    ['diario','📆','Daily Summary'],
+    ['vision','🧭','Vision'],
+    ['month','🗓️','Month'],
+    ['rocks_all','🪨','Rocks'],
+    ['projects','📁','Projects'],
+    ['scorecard','📊','Scorecard'],
+    ['todos','✅','To-dos'],
+    ['procesos','⚙️','Processes'],
+    ['l10_main','📋','L10 Meetings'],
+    ['qreview_main','🔍','Q Review']
+  ];
+
+  const isMobile = window.innerWidth <= 700;
+
+  return (
+    <div style={{display:'flex', fontFamily:"'Segoe UI',system-ui,sans-serif",
+                 minHeight:'100vh', background:'#f5f6fa', position:'relative'}}>
+      {isMobile && navOpen && (
+        <div onClick={() => setNavOpen(false)}
+          style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:99}}/>
+      )}
+      <nav style={{width: navOpen ? 210 : (isMobile ? 0 : 48),
+                   background:'#0d0d1f', flexShrink:0,
+                   display:'flex', flexDirection:'column',
+                   position: isMobile ? 'fixed' : 'sticky', top:0, left:0,
+                   height:'100vh', overflowY:'auto',
+                   transition:'width 0.15s', zIndex:100,
+                   transform: (isMobile && !navOpen) ? 'translateX(-100%)' : 'translateX(0)'}}>
+        <div style={{padding:'12px 8px', borderBottom:'1px solid rgba(255,255,255,0.07)',
+                     display:'flex', alignItems:'center',
+                     justifyContent: navOpen ? 'space-between' : 'center'}}>
+          {navOpen && <div style={{fontSize:17, fontWeight:800, color:'#f0a500'}}>EOS XE</div>}
+          <button onClick={() => setNavOpen(o => !o)}
+            style={{background:'none', border:'none', color:'rgba(255,255,255,0.5)',
+                    cursor:'pointer', fontSize:16, padding:4, borderRadius:6, lineHeight:1}}>
+            {navOpen ? '<' : '>'}
+          </button>
+        </div>
+        <SyncBadge status={syncStatus}/>
+        <div style={{padding:'4px 0', flex:1}}>
+          {GNAV.map(([id, ic, l]) => navOpen
+            ? <NB key={id} active={tab === id} onClick={() => { setTab(id); if (isMobile) setNavOpen(false); }}><span>{ic}</span>{l}</NB>
+            : <button key={id} onClick={() => { setTab(id); setNavOpen(true); }} title={l}
+                style={{display:'flex', alignItems:'center', justifyContent:'center',
+                        width:'100%', padding:'11px 0', border:'none',
+                        background: tab === id ? 'rgba(240,165,0,0.1)' : 'transparent',
+                        color: tab === id ? '#f0a500' : 'rgba(255,255,255,0.55)',
+                        cursor:'pointer', fontSize:16,
+                        borderLeft: tab === id ? '3px solid #f0a500' : '3px solid transparent'}}>
+                {ic}
+              </button>
+          )}
+        </div>
+        {navOpen && (
+          <div style={{padding:'10px 14px', borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+            <div style={{fontSize:10, color:'rgba(255,255,255,0.28)', marginBottom:6,
+                         textTransform:'uppercase', letterSpacing:1}}>Backup</div>
+            <div style={{display:'flex', gap:5}}>
+              <button onClick={exportJSON}
+                style={{flex:1, padding:'5px 0', borderRadius:6,
+                        border:'1px solid rgba(255,255,255,0.1)',
+                        background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.55)',
+                        cursor:'pointer', fontSize:11}}>Export</button>
+              <button onClick={() => importRef.current && importRef.current.click()}
+                style={{flex:1, padding:'5px 0', borderRadius:6,
+                        border:'1px solid rgba(255,255,255,0.1)',
+                        background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.55)',
+                        cursor:'pointer', fontSize:11}}>Import</button>
+              <input ref={importRef} type="file" accept=".json" style={{display:'none'}} onChange={importJSON}/>
+            </div>
+            <button onClick={onLogout}
+              style={{width:'100%', marginTop:8, padding:'5px 0', borderRadius:6,
+                      border:'1px solid rgba(255,255,255,0.1)',
+                      background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.55)',
+                      cursor:'pointer', fontSize:11}}>Bloquear (logout)</button>
+          </div>
+        )}
+      </nav>
+      <main style={{flex:1, padding: isMobile ? '14px 14px 60px' : 26, overflowY:'auto', maxHeight:'100vh', minWidth:0}}>
+        {isMobile && (
+          <button onClick={() => setNavOpen(true)}
+            style={{position:'fixed', top:10, left:10, zIndex:50,
+                    width:42, height:42, borderRadius:10, border:'none',
+                    background:'#0d0d1f', color:'#f0a500', fontSize:20,
+                    boxShadow:'0 4px 12px rgba(0,0,0,0.2)', cursor:'pointer'}}>☰</button>
+        )}
+        <div style={{paddingTop: isMobile ? 36 : 0}}>
+          {tab === 'diario' && <DailyTab data={d} upd={upd} selDay={selDay} setSelDay={setSelDay} goToDay={goToDay}/>}
+          {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
+          {tab === 'month' && <MonthTab data={d} upd={upd} goToDay={goToDay}/>}
+          {tab === 'rocks_all' && <RocksTab data={d} upd={upd}/>}
+          {tab === 'projects' && <ProjectsTab data={d} upd={upd}/>}
+          {tab === 'scorecard' && <ScorecardTab data={d} upd={upd}/>}
+          {tab === 'todos' && <TodosTab data={d} upd={upd}/>}
+          {tab === 'procesos' && <ProcessesTab data={d} upd={upd}/>}
+          {tab === 'l10_main' && <L10MainTab data={d} upd={upd}/>}
+          {tab === 'qreview_main' && <QReviewMainTab data={d} upd={upd}/>}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function VisionTab({data, upd}) {
+  const v = data.vision || INIT_V;
+  const sv = (key, val) => upd(d => { d.vision[key] = val; });
+  const [nv, setNv] = useState('');
+  const [vTab, setVTab] = useState('values');
+  const VTABS = [['values','Core Values'], ['lt','Long Term'], ['3y','3 Year View'], ['1y','1 Year View']];
+  return (
+    <div>
+      <h2 style={S.h2}>Vision {YEAR}</h2>
+      <div style={{display:'flex', gap:6, marginBottom:18, flexWrap:'wrap'}}>
+        {VTABS.map(([id, lbl]) => (
+          <button key={id} onClick={() => setVTab(id)}
+            style={{padding:'9px 16px', borderRadius:9,
+                    border:'2px solid ' + (vTab === id ? '#f0a500' : '#e0e0e0'), cursor:'pointer',
+                    background: vTab === id ? '#f0a500' : 'white',
+                    color: vTab === id ? 'white' : '#555', fontWeight:700, fontSize:13}}>{lbl}</button>
+        ))}
+      </div>
+      {vTab === 'values' && (
+        <div style={S.card}>
+          <h3 style={S.h3}>Core Values</h3>
+          <div style={{marginBottom:10}}>
+            {(v.values || []).map((val, i) => (
+              <span key={i} style={{display:'inline-flex', alignItems:'center', gap:5,
+                                    background:'#fff3cd', color:'#856404', borderRadius:20,
+                                    padding:'4px 12px', marginRight:5, marginBottom:5,
+                                    fontSize:13, fontWeight:600}}>
+                {val}
+                <button onClick={() => upd(d => { d.vision.values.splice(i, 1); })}
+                  style={{border:'none', background:'none', cursor:'pointer',
+                          color:'#856404', fontSize:14, padding:0}}>x</button>
+              </span>
+            ))}
+          </div>
+          <div style={{display:'flex', gap:8}}>
+            <input style={{...S.inp, flex:1}} value={nv} onChange={e => setNv(e.target.value)}
+              placeholder="Add value..."
+              onKeyDown={e => { if (e.key === 'Enter' && nv.trim()) { upd(d => { d.vision.values.push(nv.trim()); }); setNv(''); }}}/>
+            <Btn onClick={() => { if (nv.trim()) { upd(d => { d.vision.values.push(nv.trim()); }); setNv(''); }}}>+</Btn>
+          </div>
+        </div>
+      )}
+      {vTab === 'lt' && (
+        <div style={S.card}>
+          <h3 style={S.h3}>Long Term View</h3>
+          <textarea style={{...S.ta, minHeight:320}} value={v.ltView || ''}
+            onChange={e => sv('ltView', e.target.value)} placeholder="Where do you want to be long term?"/>
+        </div>
+      )}
+      {vTab === '3y' && (
+        <div style={S.card}>
+          <h3 style={S.h3}>3 Year View</h3>
+          <textarea style={{...S.ta, minHeight:320}} value={v.threeYearView || ''}
+            onChange={e => sv('threeYearView', e.target.value)} placeholder="What does success look like in 3 years?"/>
+        </div>
+      )}
+      {vTab === '1y' && (
+        <div style={S.card}>
+          <h3 style={S.h3}>1 Year View</h3>
+          <textarea style={{...S.ta, minHeight:320}} value={v.oneYearView || ''}
+            onChange={e => sv('oneYearView', e.target.value)} placeholder="What must be accomplished this year?"/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MonthTab({data, upd, goToDay}) {
+  const [selM, setSelM] = useState(new Date().getMonth());
+  const daysInMonth = new Date(YEAR, selM + 1, 0).getDate();
+  const days = Array.from({length: daysInMonth}, (_, i) => {
+    const n = i + 1;
+    const ds = YEAR + '-' + String(selM + 1).padStart(2, '0') + '-' + String(n).padStart(2, '0');
+    return {n, ds};
+  });
+  const setNote = (ds, val) => upd(d => { if (!d.monthNotes) d.monthNotes = {}; d.monthNotes[ds] = val; });
+  return (
+    <div>
+      <h2 style={S.h2}>Month View - {YEAR}</h2>
+      <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:20}}>
+        {MONTHS_F.map((m, i) => (
+          <button key={i} onClick={() => setSelM(i)}
+            style={{padding:'8px 14px', borderRadius:8,
+                    border:'2px solid ' + (i === selM ? '#f0a500' : '#e0e0e0'), cursor:'pointer',
+                    background: i === selM ? '#f0a500' : 'white',
+                    color: i === selM ? 'white' : i === new Date().getMonth() ? '#f0a500' : '#555',
+                    fontWeight: i === selM ? 700 : 400, fontSize:13}}>
+            {m.slice(0, 3)}
+          </button>
+        ))}
+      </div>
+      <div style={S.card}>
+        <h3 style={S.h3}>{MONTHS_F[selM]} {YEAR}</h3>
+        {days.map(({n, ds}) => {
+          const dow = getDayOfWeek(ds);
+          const we = dow === 'S';
+          return (
+            <div key={ds} style={{display:'flex', alignItems:'center', gap:12,
+                                  padding:'5px 0', borderBottom:'1px solid #f8f8f8',
+                                  background: we ? 'rgba(0,0,0,0.02)' : 'transparent'}}>
+              <div onClick={() => goToDay(ds)}
+                style={{display:'flex', alignItems:'center', gap:6, cursor:'pointer', flexShrink:0, width:50}}>
+                <span style={{fontSize:11, fontWeight:700, color: we ? '#bbb' : '#f0a500', width:14}}>{dow}</span>
+                <span style={{fontSize:14, fontWeight:700, color: we ? '#aaa' : '#1a1a2e'}}>{n}</span>
+              </div>
+              <input value={(data.monthNotes && data.monthNotes[ds]) || ''}
+                onChange={e => setNote(ds, e.target.value)} placeholder="Add highlight..."
+                style={{flex:1, border:'none', borderBottom:'1px solid #f0f0f0',
+                        outline:'none', fontSize:13, padding:'3px 4px',
+                        background:'transparent', color: we ? '#bbb' : '#1a1a2e', fontFamily:'inherit'}}/>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RocksTab({data, upd}) {
+  const [selQ, setSelQ] = useState(getCurQ());
+  const [rockTab, setRockTab] = useState('gantt');
+  const [editStep, setEditStep] = useState(null);
+  const [addRock, setAddRock] = useState(false);
+  const [rockForm, setRockForm] = useState({title:''});
+  const [stepForms, setStepForms] = useState({});
+  const [copyRock, setCopyRock] = useState({});
+  const qn = parseInt(selQ.split('-Q')[1]);
+  const qw = qWeeks(qn);
+  const qData = data.quarters[selQ] || {rocks:[], weeklyRocks:{}};
+  const rocks = qData.rocks || [];
+  const wr = qData.weeklyRocks || {};
+
+  const toggleWk = (rid, sid, wn) => upd(d => {
+    ensureQ(d, selQ);
+    const idx = (d.quarters[selQ].weeklyRocks[rid] || []).findIndex(x => x.id === sid);
+    if (idx >= 0) {
+      if (!d.quarters[selQ].weeklyRocks[rid][idx].weeklyDone)
+        d.quarters[selQ].weeklyRocks[rid][idx].weeklyDone = {};
+      d.quarters[selQ].weeklyRocks[rid][idx].weeklyDone[wn] = !isWkDone(d.quarters[selQ].weeklyRocks[rid][idx], wn);
+    }
+  });
+  const updRange = (rid, sid, sw, ew) => upd(d => {
+    ensureQ(d, selQ);
+    const idx = (d.quarters[selQ].weeklyRocks[rid] || []).findIndex(x => x.id === sid);
+    if (idx >= 0) {
+      d.quarters[selQ].weeklyRocks[rid][idx].startWeek = sw;
+      d.quarters[selQ].weeklyRocks[rid][idx].endWeek = ew;
+    }
+  });
+  const doCopyRock = (rock, tq) => {
+    const tqk = YEAR + '-' + tq;
+    const tqw = qWeeks(parseInt(tq[1]));
+    const steps = wr[rock.id] || [];
+    upd(d => {
+      ensureQ(d, tqk);
+      const nid = uid();
+      d.quarters[tqk].rocks.push({...rock, id:nid, status:'on-track'});
+      if (steps.length)
+        d.quarters[tqk].weeklyRocks[nid] = steps.map(s => ({
+          ...s, id: uid(), done:false, weeklyDone:{},
+          startWeek: tqw[0] + (s.startWeek || s.weekNum || qw[0]) - qw[0],
+          endWeek: tqw[0] + (s.endWeek || s.weekNum || qw[0]) - qw[0]
+        }));
+    });
+    setCopyRock(s => { const n = {...s}; delete n[rock.id]; return n; });
+  };
+
+  return (
+    <div>
+      <h2 style={S.h2}>Rocks</h2>
+      <QBtns selQ={selQ} onSelect={qk => { setSelQ(qk); setAddRock(false); }}/>
+      <div style={{display:'flex', gap:8, marginBottom:16}}>
+        <Btn onClick={() => setRockTab('gantt')} v={rockTab === 'gantt' ? 'pri' : 'sec'}>Gantt</Btn>
+        <Btn onClick={() => setRockTab('rocks')} v={rockTab === 'rocks' ? 'pri' : 'sec'}>Rocks</Btn>
+      </div>
+      {rockTab === 'gantt' && (
+        rocks.length === 0
+          ? <div style={{...S.card, textAlign:'center', color:'#aaa', padding:28}}>No rocks for {selQ.split('-')[1]}.</div>
+          : <GanttChart rocks={rocks} wr={wr} qw={qw} upd={upd} qKey={selQ} highlightWn={getCurWn()}/>
+      )}
+      {rockTab === 'rocks' && (
+        <div>
+          {rocks.length === 0 && !addRock &&
+            <div style={{...S.card, textAlign:'center', color:'#aaa', padding:36, fontSize:15}}>
+              No rocks for {selQ.split('-')[1]}.
+            </div>}
+          {rocks.map((rock, ri) => {
+            const steps = wr[rock.id] || [];
+            const sf = stepForms[rock.id] || {text:'', sw: qw[0], ew: qw[0]};
+            const cr = copyRock[rock.id];
+            return (
+              <div key={rock.id} style={{...S.card, padding:0, overflow:'hidden', marginBottom:14}}>
+                <div style={{padding:'12px 16px', background:'#fafafa', display:'flex',
+                             alignItems:'center', gap:10, flexWrap:'wrap'}}>
+                  <input value={rock.title}
+                    onChange={e => upd(d => {
+                      ensureQ(d, selQ);
+                      const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
+                      if (idx >= 0) d.quarters[selQ].rocks[idx].title = e.target.value;
+                    })}
+                    style={{flex:1, minWidth:130, fontWeight:700, color:'#1a1a2e', fontSize:15,
+                            border:'none', outline:'none', fontFamily:'inherit',
+                            background:'transparent', padding:0}} placeholder="Rock title..."/>
+                  <span style={{fontSize:12, color:'#bbb'}}>
+                    {steps.filter(s => stepDone(s)).length}/{steps.length} steps
+                  </span>
+                  {!cr
+                    ? <Btn v="sec"
+                        onClick={() => setCopyRock(s => ({...s, [rock.id]: QS.find(q => YEAR + '-' + q !== selQ) || 'Q1'}))}
+                        style={{fontSize:11, padding:'5px 10px'}}>Copy</Btn>
+                    : <div style={{display:'flex', gap:4, alignItems:'center', flexWrap:'wrap'}}>
+                        <span style={{fontSize:12, color:'#888'}}>To:</span>
+                        {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
+                          <button key={q} onClick={() => setCopyRock(s => ({...s, [rock.id]: q}))}
+                            style={{padding:'4px 10px', borderRadius:6, border:'1px solid',
+                                    borderColor: cr === q ? '#f0a500' : '#eee',
+                                    background: cr === q ? '#f0a500' : 'white',
+                                    color: cr === q ? 'white' : '#555',
+                                    cursor:'pointer', fontSize:12, fontWeight: cr === q ? 700 : 400}}>{q}</button>
+                        ))}
+                        <Btn onClick={() => doCopyRock(rock, cr)} style={{fontSize:11, padding:'5px 10px'}}>Copy</Btn>
+                        <Btn v="sec" onClick={() => setCopyRock(s => { const n = {...s}; delete n[rock.id]; return n; })}
+                          style={{fontSize:11, padding:'5px 10px'}}>X</Btn>
+                      </div>
+                  }
+                  <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.splice(ri, 1); })}
+                    style={{border:'none', background:'none', cursor:'pointer', color:'#ddd', fontSize:18, padding:0}}>x</button>
+                </div>
+                <div style={{padding:'12px 18px 16px'}}>
+                  {steps.length === 0 && <div style={{color:'#bbb', fontSize:13, marginBottom:10}}>No weekly steps yet.</div>}
+                  {steps.map((step, si) => {
+                    const sw2 = step.startWeek || step.weekNum || qw[0];
+                    const ew2 = step.endWeek || step.weekNum || qw[0];
+                    const d2 = stepDone(step);
+                    const isEd = editStep === rock.id + '-' + step.id;
+                    return (
+                      <div key={step.id} style={{marginBottom:10, padding:'10px 12px',
+                                                 background: d2 ? '#f0f9f0' : '#f8f9fa',
+                                                 borderRadius:8, opacity: d2 ? 0.65 : 1}}>
+                        <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap'}}>
+                          <input value={step.text}
+                            onChange={e => upd(d => {
+                              ensureQ(d, selQ);
+                              const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
+                              if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
+                            })}
+                            style={{flex:1, minWidth:120, fontSize:14, fontWeight:600, color:'#1a1a2e',
+                                    textDecoration: d2 ? 'line-through' : 'none',
+                                    border:'none', outline:'none', fontFamily:'inherit',
+                                    background:'transparent', padding:0}}/>
+                          <span style={{fontSize:11, color:'#f0a500', fontWeight:700}}>
+                            W{sw2 - qw[0] + 1}{sw2 !== ew2 ? '-' + String(ew2 - qw[0] + 1) : ''}
+                          </span>
+                          <button onClick={() => setEditStep(isEd ? null : rock.id + '-' + step.id)}
+                            style={{border:'1px solid #ddd', background:'white', cursor:'pointer',
+                                    color:'#888', fontSize:11, padding:'3px 10px', borderRadius:6}}>
+                            {isEd ? 'Close' : 'Edit'}
+                          </button>
+                          <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].weeklyRocks[rock.id].splice(si, 1); })}
+                            style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:15, padding:0}}>x</button>
+                        </div>
+                        {isEd && (
+                          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8,
+                                       padding:'7px 10px', background:'white', borderRadius:6,
+                                       border:'1px solid #e8e8e8', flexWrap:'wrap'}}>
+                            <span style={{fontSize:12, color:'#888'}}>From Wk</span>
+                            <select value={sw2}
+                              onChange={e => { const v = parseInt(e.target.value); updRange(rock.id, step.id, v, Math.max(v, ew2)); }}
+                              style={{...S.inp, width:60, padding:'4px 6px', fontSize:12}}>
+                              {qw.map(wn => <option key={wn} value={wn}>{wn - qw[0] + 1}</option>)}
+                            </select>
+                            <span style={{fontSize:12, color:'#888'}}>to Wk</span>
+                            <select value={ew2}
+                              onChange={e => updRange(rock.id, step.id, sw2, parseInt(e.target.value))}
+                              style={{...S.inp, width:60, padding:'4px 6px', fontSize:12}}>
+                              {qw.filter(wn => wn >= sw2).map(wn => <option key={wn} value={wn}>{wn - qw[0] + 1}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+                          {qw.map(wn => {
+                            const inR = wn >= sw2 && wn <= ew2;
+                            const chk = isWkDone(step, wn);
+                            return (
+                              <div key={wn} onClick={() => inR && toggleWk(rock.id, step.id, wn)}
+                                style={{width:26, height:26, borderRadius:5, border:'1px solid',
+                                        display:'flex', alignItems:'center', justifyContent:'center',
+                                        fontSize:10, fontWeight:700, cursor: inR ? 'pointer' : 'default',
+                                        borderColor: !inR ? '#f0f0f0' : chk ? '#27ae60' : '#f0a500',
+                                        background: !inR ? '#fafafa' : chk ? '#d4edda' : 'rgba(240,165,0,0.12)',
+                                        color: !inR ? '#ddd' : chk ? '#155724' : '#f0a500'}}>
+                                {wn - qw[0] + 1}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{display:'flex', gap:7, flexWrap:'wrap', alignItems:'center',
+                               paddingTop:10, borderTop:'1px solid #f0f0f0'}}>
+                    <input value={sf.text}
+                      onChange={e => setStepForms(f => ({...f, [rock.id]: {...(f[rock.id] || {}), text: e.target.value}}))}
+                      style={{...S.inp, flex:1, minWidth:130}} placeholder="Add step..."/>
+                    <span style={{fontSize:12, color:'#888'}}>Wk</span>
+                    <select value={sf.sw || qw[0]}
+                      onChange={e => setStepForms(f => ({...f, [rock.id]: {...(f[rock.id] || {}), sw: parseInt(e.target.value), ew: Math.max(parseInt(e.target.value), sf.ew || qw[0])}}))}
+                      style={{...S.inp, width:58, padding:'6px 4px', fontSize:12}}>
+                      {qw.map(wn => <option key={wn} value={wn}>{wn - qw[0] + 1}</option>)}
+                    </select>
+                    <span style={{fontSize:12, color:'#888'}}>&gt;</span>
+                    <select value={sf.ew || sf.sw || qw[0]}
+                      onChange={e => setStepForms(f => ({...f, [rock.id]: {...(f[rock.id] || {}), ew: parseInt(e.target.value)}}))}
+                      style={{...S.inp, width:58, padding:'6px 4px', fontSize:12}}>
+                      {qw.filter(wn => wn >= (sf.sw || qw[0])).map(wn => <option key={wn} value={wn}>{wn - qw[0] + 1}</option>)}
+                    </select>
+                    <Btn onClick={() => {
+                      if (!sf.text || !sf.text.trim()) return;
+                      upd(d => {
+                        ensureQ(d, selQ);
+                        if (!d.quarters[selQ].weeklyRocks[rock.id]) d.quarters[selQ].weeklyRocks[rock.id] = [];
+                        d.quarters[selQ].weeklyRocks[rock.id].push({
+                          id: uid(), text: sf.text.trim(),
+                          startWeek: sf.sw || qw[0], endWeek: sf.ew || sf.sw || qw[0],
+                          weeklyDone: {}, done: false
+                        });
+                      });
+                      setStepForms(f => ({...f, [rock.id]: {text:'', sw: qw[0], ew: qw[0]}}));
+                    }}>+ Step</Btn>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {addRock
+            ? (
+              <div style={{...S.card, border:'2px solid #f0a500'}}>
+                <h3 style={S.h3}>New Rock - {selQ.split('-')[1]}</h3>
+                <Fld label="Title" value={rockForm.title}
+                  onChange={v => setRockForm(f => ({...f, title:v}))}
+                  placeholder="What must be achieved this quarter?"/>
+                <div style={{display:'flex', gap:8}}>
+                  <Btn onClick={() => {
+                    if (!rockForm.title.trim()) return;
+                    upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.push({id: uid(), title: rockForm.title, status:'on-track'}); });
+                    setRockForm({title:''}); setAddRock(false);
+                  }}>Save</Btn>
+                  <Btn v="sec" onClick={() => setAddRock(false)}>Cancel</Btn>
+                </div>
+              </div>
+            )
+            : <Btn onClick={() => setAddRock(true)} style={{marginTop:4}}>+ Rock</Btn>
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScorecardTab({data, upd}) {
+  const curWn = getCurWn();
+  const [selQ, setSelQ] = useState(getCurQ());
+  const [selWn, setSelWn] = useState(curWn);
+  const [showF, setShowF] = useState(false);
+  const [form, setForm] = useState({metric:'', goal:''});
+  const [showCopyQ, setShowCopyQ] = useState(false);
+  const qn = parseInt(selQ.split('-Q')[1]);
+  const qw = qWeeks(qn);
+  const handleSetQ = qk => {
+    setSelQ(qk);
+    const qw2 = qWeeks(parseInt(qk.split('-Q')[1]));
+    setSelWn(qw2.includes(curWn) ? curWn : qw2[0]);
+  };
+  const scorecard = (data.quarters[selQ] && data.quarters[selQ].scorecard) || [];
+  const setDay = (mi, date, st) => upd(d => {
+    ensureQ(d, selQ);
+    if (!d.quarters[selQ].scorecard[mi].dayData) d.quarters[selQ].scorecard[mi].dayData = {};
+    const cur = d.quarters[selQ].scorecard[mi].dayData[date];
+    d.quarters[selQ].scorecard[mi].dayData[date] = cur === st ? null : st;
+  });
+  const move = (mi, dir) => upd(d => {
+    ensureQ(d, selQ);
+    const j = mi + dir;
+    if (j < 0 || j >= d.quarters[selQ].scorecard.length) return;
+    const tmp = d.quarters[selQ].scorecard[mi];
+    d.quarters[selQ].scorecard[mi] = d.quarters[selQ].scorecard[j];
+    d.quarters[selQ].scorecard[j] = tmp;
+  });
+  const addM = () => {
+    if (!form.metric) return;
+    upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard.push({id: uid(), ...form, dayData:{}}); });
+    setForm({metric:'', goal:''}); setShowF(false);
+  };
+  const copyToQ = tqk => {
+    upd(d => {
+      ensureQ(d, tqk);
+      scorecard.forEach(m => {
+        if (!d.quarters[tqk].scorecard.find(x => x.metric === m.metric))
+          d.quarters[tqk].scorecard.push({id: uid(), metric: m.metric, goal: m.goal, dayData:{}});
+      });
+    });
+    setShowCopyQ(false);
+  };
+  const DST = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','X']};
+  const getDST = st => DST[st] || ['#f0f0f0','#ccc','.'];
+
+  return (
+    <div>
+      <h2 style={S.h2}>Scorecard</h2>
+      <QBtns selQ={selQ} onSelect={handleSetQ}/>
+      <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
+      <div style={S.card}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                     marginBottom:10, flexWrap:'wrap', gap:8}}>
+          <h3 style={{...S.h3, marginBottom:0}}>W{selWn - qw[0] + 1} - {wDates(selWn)}</h3>
+          {!showCopyQ
+            ? <Btn v="sec" onClick={() => setShowCopyQ(true)} style={{fontSize:11, padding:'4px 10px'}}>Copy to Q...</Btn>
+            : <div style={{display:'flex', gap:4, alignItems:'center', flexWrap:'wrap'}}>
+                <span style={{fontSize:12, color:'#888'}}>Copy to:</span>
+                {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
+                  <button key={q} onClick={() => copyToQ(YEAR + '-' + q)}
+                    style={{padding:'4px 10px', borderRadius:6, border:'1px solid #f0a500',
+                            background:'#f0a500', color:'white', cursor:'pointer', fontSize:12, fontWeight:700}}>{q}</button>
+                ))}
+                <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:11, padding:'4px 8px'}}>X</Btn>
+              </div>
+          }
+        </div>
+        {scorecard.length === 0
+          ? <div style={{color:'#aaa', fontSize:14}}>No metrics for {selQ.split('-')[1]}.</div>
+          : (
+            <div style={{overflowX:'auto'}}>
+              <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:560}}>
+                <colgroup>
+                  <col style={{width:150}}/><col style={{width:55}}/>
+                  {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
+                </colgroup>
+                <thead>
+                  <tr style={{background:'#0d0d1f'}}>
+                    <th style={{padding:'6px 12px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Metric</th>
+                    <th style={{padding:'6px 4px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Goal</th>
+                    {DAYS.map((day, di) => (
+                      <th key={di} style={{padding:'6px 4px', textAlign:'center',
+                                           color:'rgba(255,255,255,0.7)', fontSize:11, fontWeight:600}}>
+                        <div>{day.slice(0, 3)}</div>
+                        <div style={{fontSize:9, opacity:0.6, fontWeight:400}}>{dayShort(selWn, di)}</div>
+                      </th>
+                    ))}
+                    <th/>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scorecard.map((m, mi) => (
+                    <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
+                      <td style={{padding:'6px 12px'}}>
+                        <input value={m.metric}
+                          onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].metric = e.target.value; })}
+                          style={{width:'100%', border:'none', outline:'none', fontWeight:600,
+                                  fontSize:14, fontFamily:'inherit', color:'#1a1a2e',
+                                  background:'transparent', padding:0}} placeholder="Metric..."/>
+                      </td>
+                      <td style={{padding:'6px 4px'}}>
+                        <input value={m.goal || ''}
+                          onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].goal = e.target.value; })}
+                          style={{width:'100%', border:'none', outline:'none', fontSize:13,
+                                  fontFamily:'inherit', color:'#f0a500', fontWeight:600,
+                                  background:'transparent', padding:0}} placeholder="Goal..."/>
+                      </td>
+                      {DAYS.map((_, di) => {
+                        const date = dayStr(selWn, di);
+                        const st = m.dayData && m.dayData[date];
+                        const info = getDST(st);
+                        return (
+                          <td key={di} style={{padding:4, textAlign:'center'}}>
+                            <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
+                              style={{width:'100%', height:40, borderRadius:7,
+                                      border:'2px solid ' + info[0], background:info[0],
+                                      color:info[1], cursor:'pointer', fontSize:16, fontWeight:800}}>{info[2]}</button>
+                          </td>
+                        );
+                      })}
+                      <td style={{padding:'4px 6px', textAlign:'center'}}>
+                        <div style={{display:'flex', flexDirection:'column', gap:3, alignItems:'center'}}>
+                          <button onClick={() => move(mi, -1)} disabled={mi === 0}
+                            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                                    borderRadius:3, padding:'1px 6px', fontSize:11, opacity: mi === 0 ? 0.3 : 1}}>↑</button>
+                          <button onClick={() => move(mi, +1)} disabled={mi === scorecard.length - 1}
+                            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                                    borderRadius:3, padding:'1px 6px', fontSize:11,
+                                    opacity: mi === scorecard.length - 1 ? 0.3 : 1}}>↓</button>
+                          <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard.splice(mi, 1); })}
+                            style={{border:'none', background:'none', cursor:'pointer',
+                                    color:'#ddd', fontSize:15, lineHeight:1}}>x</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </div>
+      <ScorecardSummary scorecard={scorecard} qw={qw} selWn={selWn} onSelectWn={setSelWn}/>
+      {!showF
+        ? <Btn onClick={() => setShowF(true)}>+ Metric</Btn>
+        : (
+          <div style={S.card}>
+            <h3 style={S.h3}>New Metric - {selQ.split('-')[1]}</h3>
+            <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
+            <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
+            <div style={{display:'flex', gap:8}}>
+              <Btn onClick={addM}>Save</Btn>
+              <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
+            </div>
+          </div>
+        )
+      }
+    </div>
+  );
+}
+
+function ScorecardSummary({scorecard, qw, selWn, onSelectWn}) {
+  const weekCount = (m, wn) => DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
+  if (!scorecard || !scorecard.length) return null;
+  return (
+    <div style={S.card}>
+      <h3 style={S.h3}>13-Week Summary</h3>
+      <div style={{overflowX:'auto'}}>
+        <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:500}}>
+          <colgroup><col style={{width:170}}/>{qw.map((_, i) => <col key={i}/>)}</colgroup>
+          <thead>
+            <tr style={{background:'#0d0d1f'}}>
+              <th style={{padding:'7px 12px', textAlign:'left', color:'white', fontSize:13}}>Metric</th>
+              {qw.map((wn, i) => (
+                <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
+                  style={{padding:'6px 2px', textAlign:'center',
+                          color: wn === selWn ? '#f0a500' : 'rgba(255,255,255,0.4)',
+                          fontSize:10, cursor: onSelectWn ? 'pointer' : 'default',
+                          fontWeight: wn === selWn ? 700 : 400}}>W{i + 1}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {scorecard.map(m => (
+              <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
+                <td style={{padding:'7px 12px', fontSize:14, fontWeight:600, color:'#1a1a2e'}}>
+                  {m.metric}
+                  {m.goal && <span style={{fontSize:11, color:'#aaa', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
+                </td>
+                {qw.map(wn => {
+                  const cnt = weekCount(m, wn);
+                  const goal = parseInt(m.goal || 0);
+                  const hasGoal = !isNaN(goal) && goal > 0;
+                  const isSel = wn === selWn;
+                  const bg = cnt === 0 ? 'transparent' : hasGoal ? (cnt >= goal ? '#d4edda' : '#fdecea') : '#e8f4fd';
+                  const col = cnt === 0 ? '#ddd' : hasGoal ? (cnt >= goal ? '#155724' : '#b71c1c') : '#3498db';
+                  return (
+                    <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
+                      style={{padding:2, textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
+                              background: isSel ? 'rgba(240,165,0,0.1)' : 'transparent',
+                              outline: isSel ? '2px solid rgba(240,165,0,0.5)' : 'none', outlineOffset:-1}}>
+                      <div style={{width:30, height:28, background:bg, borderRadius:4,
+                                   display:'flex', alignItems:'center', justifyContent:'center',
+                                   fontSize:13, color:col, fontWeight:800, margin:'0 auto'}}>
+                        {cnt > 0 ? cnt : '.'}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ProjectsTab({data, upd}) {
+  const curWn = getCurWn();
+  const [selQ, setSelQ] = useState(getCurQ());
+  const [selWn, setSelWn] = useState(curWn);
+  const wk = wKey(selWn);
+  const projects = (data.weeklyProjects && data.weeklyProjects[wk]) || [];
+  const addProject = () => upd(d => {
+    if (!d.weeklyProjects) d.weeklyProjects = {};
+    if (!d.weeklyProjects[wk]) d.weeklyProjects[wk] = [];
+    d.weeklyProjects[wk].push({id: uid(), name:'', textStatus:''});
+  });
+  const copyToNext = () => {
+    const nwk = wKey(selWn + 1);
+    upd(d => {
+      if (!d.weeklyProjects) d.weeklyProjects = {};
+      if (!d.weeklyProjects[nwk]) d.weeklyProjects[nwk] = [];
+      projects.forEach(p => { d.weeklyProjects[nwk].push({...p, id: uid()}); });
+    });
+  };
+  return (
+    <div>
+      <h2 style={S.h2}>Projects</h2>
+      <QBtns selQ={selQ} onSelect={q => {
+        setSelQ(q);
+        const qw2 = qWeeks(parseInt(q.split('-Q')[1]));
+        setSelWn(qw2.includes(curWn) ? curWn : qw2[0]);
+      }}/>
+      <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
+      <div style={{display:'flex', gap:8, marginBottom:14}}>
+        <Btn onClick={addProject} style={{fontSize:12}}>+ Project</Btn>
+        <Btn v="sec" onClick={copyToNext} style={{fontSize:12}}>Copy to Next Week</Btn>
+      </div>
+      {projects.length === 0 &&
+        <div style={{...S.card, textAlign:'center', color:'#aaa', padding:28, fontSize:14}}>
+          No projects for week {selWn}.
+        </div>}
+      {projects.length > 0 && (
+        <div style={S.card}>
+          <table style={{width:'100%', borderCollapse:'collapse'}}>
+            <thead>
+              <tr style={{borderBottom:'2px solid #f0f0f0'}}>
+                <th style={{fontSize:10, fontWeight:700, color:'#aaa', textTransform:'uppercase',
+                            letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width:'45%'}}>Project</th>
+                <th style={{fontSize:10, fontWeight:700, color:'#aaa', textTransform:'uppercase',
+                            letterSpacing:0.5, padding:'0 0 8px', textAlign:'left'}}>Status</th>
+                <th style={{width:20}}/>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((proj, pi) => (
+                <tr key={proj.id} style={{borderBottom:'1px solid #f5f5f5'}}>
+                  <td style={{padding:'7px 12px 7px 0', verticalAlign:'middle'}}>
+                    <input value={proj.name || ''}
+                      onChange={e => upd(d => { d.weeklyProjects[wk][pi].name = e.target.value; })}
+                      placeholder="Project name..."
+                      style={{width:'100%', border:'none', outline:'none', fontSize:14,
+                              fontWeight:700, fontFamily:'inherit', color:'#1a1a2e',
+                              background:'transparent', padding:0}}/>
+                  </td>
+                  <td style={{padding:'7px 0', verticalAlign:'middle'}}>
+                    <input value={proj.textStatus || ''}
+                      onChange={e => upd(d => { d.weeklyProjects[wk][pi].textStatus = e.target.value; })}
+                      placeholder="Status..."
+                      style={{width:'100%', border:'none', outline:'none', fontSize:12,
+                              fontFamily:'inherit', color:'#888',
+                              background:'transparent', padding:0}}/>
+                  </td>
+                  <td style={{textAlign:'right', verticalAlign:'middle'}}>
+                    <button onClick={() => upd(d => { d.weeklyProjects[wk].splice(pi, 1); })}
+                      style={{border:'none', background:'none', cursor:'pointer',
+                              color:'#ccc', fontSize:15, padding:0, lineHeight:1}}>x</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TodosTab({data, upd}) {
+  const [showF, setShowF] = useState(false);
+  const [showDone, setShowDone] = useState(false);
+  const [form, setForm] = useState({task:'', due:'', startDate: todayStr()});
+  const today = todayStr();
+  const add = () => {
+    if (!form.task) return;
+    upd(d => { d.todos.push({id: uid(), ...form, done:false, completedDate:null}); });
+    setForm({task:'', due:'', startDate: todayStr()}); setShowF(false);
+  };
+  const overdue = data.todos.filter(t => !t.done && t.due && t.due < today);
+  const pending = data.todos.filter(t => !t.done && !(t.due && t.due < today));
+  const done = data.todos.filter(t => t.done);
+  const TRow = ({t}) => {
+    const ri = data.todos.indexOf(t);
+    const late = !t.done && t.due && t.due < today;
+    return (
+      <div style={{...S.card, padding:'11px 16px', display:'flex',
+                   alignItems:'flex-start', gap:10, marginBottom:7, opacity: t.done ? 0.6 : 1}}>
+        <input type="checkbox" checked={t.done}
+          onChange={e => upd(d => { d.todos[ri].done = e.target.checked; d.todos[ri].completedDate = e.target.checked ? todayStr() : null; })}
+          style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:500, color:'#1a1a2e', textDecoration: t.done ? 'line-through' : 'none', fontSize:14, marginBottom:4}}>{t.task}</div>
+          <div style={{fontSize:12, color:'#bbb', display:'flex', gap:12, flexWrap:'wrap'}}>
+            {t.due && <span style={{color: late ? '#e74c3c' : 'inherit'}}>Due: {t.due}{late ? ' !!' : ''}</span>}
+            {t.done && t.completedDate
+              ? <span style={{color:'#27ae60', fontWeight:600}}>Done {t.completedDate}</span>
+              : <span style={{color:'#f0a500', fontWeight:600}}>In progress</span>}
+          </div>
+        </div>
+        <button onClick={() => upd(d => { d.todos.splice(ri, 1); })}
+          style={{border:'none', background:'none', cursor:'pointer', color:'#e0e0e0', fontSize:18}}>x</button>
+      </div>
+    );
+  };
+  return (
+    <div>
+      <h2 style={S.h2}>To-dos</h2>
+      {overdue.length > 0 &&
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:13, fontWeight:700, color:'#e74c3c', marginBottom:6}}>Overdue ({overdue.length})</div>
+          {overdue.map(t => <TRow key={t.id} t={t}/>)}
+        </div>}
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:13, fontWeight:700, color:'#555', marginBottom:6}}>In Progress ({pending.length})</div>
+        {pending.length === 0 && <div style={{...S.card, textAlign:'center', color:'#aaa', padding:20, fontSize:14}}>No pending tasks</div>}
+        {pending.map(t => <TRow key={t.id} t={t}/>)}
+      </div>
+      {done.length > 0 && (
+        <div style={{marginBottom:12}}>
+          <button onClick={() => setShowDone(s => !s)}
+            style={{display:'flex', alignItems:'center', gap:8, fontSize:13,
+                    fontWeight:700, color:'#27ae60', background:'none', border:'none',
+                    cursor:'pointer', marginBottom:6, padding:0}}>
+            Completed ({done.length}) {showDone ? '^' : 'v'}
+          </button>
+          {showDone && done.map(t => <TRow key={t.id} t={t}/>)}
+        </div>
+      )}
+      {!showF
+        ? <Btn onClick={() => setShowF(true)}>+ To-do</Btn>
+        : (
+          <div style={S.card}>
+            <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
+            <div style={S.g2}>
+              <Fld label="Start date" value={form.startDate} onChange={v => setForm(f => ({...f, startDate:v}))} type="date"/>
+              <Fld label="Due date (optional)" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
+            </div>
+            <div style={{display:'flex', gap:8}}>
+              <Btn onClick={add}>Save</Btn>
+              <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
+            </div>
+          </div>
+        )
+      }
+    </div>
+  );
+}
+
+function ProcessesTab({data, upd}) {
+  const [exp, setExp] = useState(null);
+  const [procTab, setProcTab] = useState('processes');
+  const [copyQ, setCopyQ] = useState(getCurQ());
+  const [copyWn, setCopyWn] = useState(getCurWn());
+  const ps = data.processes || [];
+  const copyStdToCalendar = () => {
+    const evts = data.stdWeeklyEvents || [];
+    if (!evts.length) return;
+    const wk2 = wKey(copyWn);
+    upd(d => {
+      if (!d.weeklyCalendar) d.weeklyCalendar = {};
+      if (!d.weeklyCalendar[wk2]) d.weeklyCalendar[wk2] = [];
+      d.weeklyCalendar[wk2] = d.weeklyCalendar[wk2].filter(e => !e.isStdWeek);
+      evts.forEach(e => { d.weeklyCalendar[wk2].push({...e, id: uid(), isStdWeek:true}); });
+    });
+  };
+  return (
+    <div>
+      <h2 style={S.h2}>Processes</h2>
+      <div style={{display:'flex', gap:8, marginBottom:18}}>
+        <Btn onClick={() => setProcTab('processes')} v={procTab === 'processes' ? 'pri' : 'sec'}>Processes</Btn>
+        <Btn onClick={() => setProcTab('stdweek')} v={procTab === 'stdweek' ? 'pri' : 'sec'}>Std Week</Btn>
+      </div>
+      {procTab === 'processes' && (
+        <div>
+          {ps.length === 0 && <div style={{...S.card, textAlign:'center', color:'#aaa', padding:32, fontSize:15}}>Define your core processes.</div>}
+          {ps.map((p, i) => (
+            <div key={p.id || i} style={{...S.card, padding:0, overflow:'hidden'}}>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                           padding:'13px 18px', cursor:'pointer'}}
+                onClick={() => setExp(exp === i ? null : i)}>
+                <div style={{flex:1, marginRight:12}}>
+                  <input value={p.name || ''}
+                    onChange={e => { e.stopPropagation(); upd(d => { d.processes[i].name = e.target.value; }); }}
+                    onClick={e => e.stopPropagation()} placeholder="Process name..."
+                    style={{width:'100%', border:'none', outline:'none', fontWeight:600,
+                            fontSize:14, fontFamily:'inherit', color:'#1a1a2e',
+                            background:'transparent', cursor:'text', padding:0}}/>
+                </div>
+                <span style={{display:'inline-block', padding:'3px 10px', borderRadius:10,
+                              fontSize:12, fontWeight:700,
+                              background: p.documented ? '#d4edda' : '#fdecea',
+                              color: p.documented ? '#155724' : '#b71c1c'}}>
+                  {p.documented ? 'Documented' : 'Undocumented'}
+                </span>
+              </div>
+              {exp === i && (
+                <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
+                  <Fld label="Steps" value={p.steps}
+                    onChange={v => upd(d => { d.processes[i].steps = v; })} placeholder="Step 1..." multi/>
+                  <div style={{display:'flex', alignItems:'center', gap:14}}>
+                    <label style={{display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:14}}>
+                      <input type="checkbox" checked={p.documented || false}
+                        onChange={e => upd(d => { d.processes[i].documented = e.target.checked; })}/>
+                      Documented
+                    </label>
+                    <Btn v="red" style={{marginLeft:'auto', fontSize:12}}
+                      onClick={() => upd(d => { d.processes.splice(i, 1); setExp(null); })}>Delete</Btn>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          <Btn onClick={() => upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); })}
+            style={{marginTop:4}}>+ Process</Btn>
+        </div>
+      )}
+      {procTab === 'stdweek' && (
+        <div>
+          <StdWeekCalendar data={data} upd={upd}/>
+          <div style={{...S.card, marginTop:16}}>
+            <h3 style={S.h3}>Copy to Calendar week</h3>
+            <QBtns selQ={copyQ} onSelect={q => {
+              setCopyQ(q);
+              const qw2 = qWeeks(parseInt(q.split('-Q')[1]));
+              setCopyWn(qw2.includes(getCurWn()) ? getCurWn() : qw2[0]);
+            }}/>
+            <WkBtns selQ={copyQ} selWn={copyWn} onSelect={setCopyWn}/>
+            <Btn onClick={copyStdToCalendar}>
+              Copy {(data.stdWeeklyEvents || []).length} events to Week {copyWn} - {wDates(copyWn)}
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
+  const wn = dateToWn(selDay);
+  const dayOfWeek = ((new Date(selDay + 'T12:00:00').getDay() + 6) % 7);
+  const q = Math.floor((wn - 1) / 13) + 1;
+  const curQ = YEAR + '-Q' + q;
+  const qData = data.quarters[curQ] || {rocks:[], weeklyRocks:{}, scorecard:[]};
+  const wr = qData.weeklyRocks || {};
+  const rocks = qData.rocks || [];
+  const today = todayStr();
+  const [dispWn, setDispWn] = useState(() => getCurWn());
+  const [showCal, setShowCal] = useState(false);
+  const calEvents = ((data.weeklyCalendar && data.weeklyCalendar[wKey(wn)]) || [])
+    .filter(e => e.day === dayOfWeek)
+    .sort((a, b) => a.h * 60 + (a.m || 0) - (b.h * 60 + (b.m || 0)));
+  const dayTodos = data.todos
+    .map((t, ri) => ({...t, ri}))
+    .filter(t => (!t.startDate || t.startDate <= selDay) && (!t.completedDate || t.completedDate >= selDay));
+  const wrThisWeek = rocks.map(rock => {
+    const steps = (wr[rock.id] || []).filter(s => sWks(s).includes(wn));
+    return steps.length ? {rock, steps} : null;
+  }).filter(Boolean);
+  const monthNote = (data.monthNotes && data.monthNotes[selDay]) || '';
+  const setMonthNote = val => upd(d => { if (!d.monthNotes) d.monthNotes = {}; d.monthNotes[selDay] = val; });
+  const setDayScore = (mi, st) => upd(d => {
+    ensureQ(d, curQ);
+    if (!d.quarters[curQ].scorecard[mi].dayData) d.quarters[curQ].scorecard[mi].dayData = {};
+    const cur = d.quarters[curQ].scorecard[mi].dayData[selDay];
+    d.quarters[curQ].scorecard[mi].dayData[selDay] = cur === st ? null : st;
+  });
+  const handleDayClick = ds => { setSelDay(ds); setDispWn(dateToWn(ds)); setShowCal(false); };
+  const scorecard = qData.scorecard || [];
+  const isMobile = window.innerWidth <= 700;
+
+  return (
+    <div>
+      <h2 style={S.h2}>Daily Summary</h2>
+      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14, flexWrap:'wrap'}}>
+        <input type="date" value={selDay}
+          onChange={e => { const ds = e.target.value; setSelDay(ds); setDispWn(dateToWn(ds)); }}
+          style={{...S.inp, width:185}}/>
+        <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec">Today</Btn>
+        <div style={{fontSize:14, color:'#888'}}>{DAYS[dayOfWeek]} - Week {wn} - Q{q}</div>
+      </div>
+      <div style={{display:'flex', gap:6, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
+        {DAYS.map((day, di) => {
+          const ds = dayStr(dispWn, di);
+          const isActive = ds === selDay;
+          const isToday = ds === today;
+          return (
+            <button key={di} onClick={() => handleDayClick(ds)}
+              style={{padding:'8px 12px', borderRadius:8, border:'none', cursor:'pointer',
+                      background: isActive ? '#f0a500' : isToday ? 'rgba(240,165,0,0.15)' : '#f0f0f0',
+                      color: isActive ? 'white' : isToday ? '#f0a500' : '#555',
+                      fontWeight: (isActive || isToday) ? 700 : 400,
+                      fontSize:12, lineHeight:1.4, textAlign:'center'}}>
+              <div>{day.slice(0, 3)}</div>
+              <div style={{fontSize:11, opacity:0.85}}>{dayShort(dispWn, di)}</div>
+            </button>
+          );
+        })}
+        <div style={{display:'flex', gap:4, marginLeft:'auto', flexShrink:0}}>
+          <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
+            style={{padding:'8px 12px', borderRadius:8, border:'1px solid #e0e0e0',
+                    background:'white', cursor:'pointer', fontSize:14, color:'#555'}}>&lt;</button>
+          <button onClick={() => setShowCal(s => !s)}
+            style={{padding:'8px 14px', borderRadius:8,
+                    border:'2px solid ' + (showCal ? '#f0a500' : '#e0e0e0'),
+                    background: showCal ? '#f0a500' : 'white',
+                    cursor:'pointer', fontSize:12, fontWeight:700,
+                    color: showCal ? 'white' : '#555'}}>Calendar</button>
+          <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
+            style={{padding:'8px 12px', borderRadius:8, border:'1px solid #e0e0e0',
+                    background:'white', cursor:'pointer', fontSize:14, color:'#555'}}>&gt;</button>
+        </div>
+      </div>
+      {showCal && <div style={{marginBottom:16}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true}/></div>}
+      <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
+        <span style={{fontSize:12, color:'#aaa', flexShrink:0}}>Note</span>
+        <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
+          placeholder="Add today's highlight..."
+          style={{flex:1, border:'none', borderBottom:'2px solid #f0e0b0',
+                  outline:'none', fontSize:14, padding:'4px 6px',
+                  background:'transparent', color:'#1a1a2e', fontFamily:'inherit'}}/>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:16}}>
+        <div>
+          <div style={S.card}>
+            <h3 style={S.h3}>Weekly Rocks this week</h3>
+            {wrThisWeek.length === 0
+              ? <div style={{color:'#aaa', fontSize:14}}>No steps this week.</div>
+              : wrThisWeek.map(({rock, steps}) => (
+                <div key={rock.id} style={{marginBottom:10}}>
+                  <div style={{fontSize:13, fontWeight:700, color:'#1a1a2e', marginBottom:4}}>{rock.title}</div>
+                  {steps.map(step => {
+                    const done = isWkDone(step, wn);
+                    return (
+                      <div key={step.id} style={{display:'flex', alignItems:'center', gap:8, padding:'4px 0', opacity: done ? 0.5 : 1}}>
+                        <input type="checkbox" checked={done}
+                          onChange={() => upd(d => {
+                            ensureQ(d, curQ);
+                            const idx = (d.quarters[curQ].weeklyRocks[rock.id] || []).findIndex(s => s.id === step.id);
+                            if (idx >= 0) {
+                              if (!d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone)
+                                d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone = {};
+                              d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone[wn] = !done;
+                            }
+                          })}
+                          style={{width:15, height:15, cursor:'pointer'}}/>
+                        <span style={{fontSize:14, textDecoration: done ? 'line-through' : 'none', color:'#1a1a2e'}}>{step.text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            }
+          </div>
+          <div style={S.card}>
+            <h3 style={S.h3}>Scorecard today</h3>
+            {scorecard.length === 0
+              ? <div style={{color:'#aaa', fontSize:14}}>No metrics for Q{q}.</div>
+              : scorecard.map((m, mi) => {
+                const st = m.dayData && m.dayData[selDay];
+                const DST2 = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','✗']};
+                const info = DST2[st] || ['#f0f0f0','#ccc','.'];
+                return (
+                  <div key={m.id} style={{display:'flex', alignItems:'center', gap:10,
+                                          padding:'5px 0', borderBottom:'1px solid #f5f5f5'}}>
+                    <div style={{flex:1, fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
+                    <button onClick={() => setDayScore(mi, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
+                      style={{width:36, height:36, borderRadius:7,
+                              border:'2px solid ' + info[0], background:info[0],
+                              color:info[1], cursor:'pointer', fontSize:16, fontWeight:800}}>{info[2]}</button>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </div>
+        <div>
+          <div style={S.card}>
+            <h3 style={S.h3}>Meetings</h3>
+            {calEvents.length === 0
+              ? <div style={{color:'#aaa', fontSize:14}}>No events today.</div>
+              : calEvents.map(e => (
+                <div key={e.id} style={{display:'flex', gap:12, padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
+                  <div style={{fontSize:13, fontWeight:700, color:'#3498db', flexShrink:0, minWidth:45}}>
+                    {e.h}:{String(e.m || 0).padStart(2, '0')}
+                  </div>
+                  <div>
+                    <div style={{fontSize:14, fontWeight:600, color:'#1a1a2e'}}>{e.title}</div>
+                    {e.duration > 1 && <div style={{fontSize:11, color:'#aaa'}}>{e.duration}h</div>}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+          <div style={S.card}>
+            <h3 style={S.h3}>To-dos</h3>
+            {dayTodos.length === 0
+              ? <div style={{color:'#aaa', fontSize:14}}>No to-dos today</div>
+              : dayTodos.map(t => {
+                const donOnDay = t.completedDate && t.completedDate <= selDay;
+                return (
+                  <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
+                                          padding:'6px 0', borderBottom:'1px solid #f5f5f5',
+                                          opacity: donOnDay ? 0.5 : 1}}>
+                    <input type="checkbox" checked={!!donOnDay}
+                      onChange={() => upd(d => {
+                        const ri = d.todos.findIndex(x => x.id === t.id);
+                        if (ri >= 0) {
+                          d.todos[ri].done = !donOnDay;
+                          d.todos[ri].completedDate = !donOnDay ? todayStr() : null;
+                        }
+                      })}
+                      style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14, fontWeight:500, color:'#1a1a2e',
+                                   textDecoration: donOnDay ? 'line-through' : 'none'}}>{t.task}</div>
+                    </div>
+                    {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa'}}>{t.due}</span>}
+                  </div>
+                );
+              })
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function L10MainTab({data, upd}) {
+  const curWn = getCurWn();
+  const [selQ, setSelQ] = useState(getCurQ());
+  const [selWn, setSelWn] = useState(curWn);
+  const handleSetQ = qk => {
+    setSelQ(qk);
+    const qw2 = qWeeks(parseInt(qk.split('-Q')[1]));
+    setSelWn(qw2.includes(curWn) ? curWn : qw2[0]);
+  };
+  return (
+    <div>
+      <h2 style={S.h2}>L10 Meetings</h2>
+      <QBtns selQ={selQ} onSelect={handleSetQ}/>
+      <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
+      <WeekL10 data={data} upd={upd} qKey={selQ} weekNum={selWn} embedded={true}/>
+    </div>
+  );
+}
+
+function WeekL10({data, upd, qKey, weekNum, embedded}) {
+  const q = parseInt(qKey.split('-Q')[1]);
+  const weeks = qWeeks(q);
+  const localWn = weekNum - weeks[0] + 1;
+  const qData = data.quarters[qKey] || {rocks:[], weeks:{}, weeklyRocks:{}, scorecard:[], idsIssues:[]};
+  const wData = (qData.weeks && qData.weeks[weekNum]) || {headlines:'', conclusionNotes:'', rating:null};
+  const setWD = (key, val) => upd(d => {
+    ensureQ(d, qKey);
+    if (!d.quarters[qKey].weeks[weekNum]) d.quarters[qKey].weeks[weekNum] = {};
+    d.quarters[qKey].weeks[weekNum][key] = val;
+  });
+  const idsIssues = qData.idsIssues || [];
+  const [open, setOpen] = useState({todos:false, scorecard:false, rocks:false, projects:false, ids:false, conclude:false});
+  const AGENDA = [
+    {k:'todos', icon:'✅', label:'To-dos', min:5},
+    {k:'scorecard', icon:'📊', label:'Scorecard', min:5},
+    {k:'rocks', icon:'🪨', label:'Rocks', min:15},
+    {k:'projects', icon:'📁', label:'Projects', min:10},
+    {k:'ids', icon:'⚡', label:'IDS', min:60},
+    {k:'conclude', icon:'🏁', label:'Conclude', min:5}
+  ];
+  return (
+    <div>
+      {embedded && (
+        <div style={{...S.card, display:'flex', alignItems:'center', justifyContent:'space-between',
+                     padding:'10px 16px', marginBottom:12, background:'#f8f9fa'}}>
+          <div style={{fontSize:13, color:'#888'}}>Week {localWn} of {qKey.split('-')[1]} - {wDates(weekNum)}</div>
+          {wData.rating && <div style={{background:'#f0a500', color:'white', borderRadius:8,
+                                        padding:'6px 14px', fontWeight:800, fontSize:16}}>{wData.rating}/10</div>}
+        </div>
+      )}
+      <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
+        <span style={{fontSize:16, flexShrink:0}}>📰</span>
+        <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
+          placeholder="Headlines this week..."
+          style={{flex:1, border:'none', borderBottom:'2px solid #f0e0b0',
+                  outline:'none', fontSize:14, padding:'4px 6px',
+                  background:'transparent', color:'#1a1a2e', fontFamily:'inherit'}}/>
+      </div>
+      {AGENDA.map(seg => (
+        <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                       padding:'13px 18px', cursor:'pointer'}}
+            onClick={() => setOpen(o => ({...o, [seg.k]: !o[seg.k]}))}>
+            <div style={{display:'flex', alignItems:'center', gap:12}}>
+              <span style={{fontSize:18}}>{seg.icon}</span>
+              <div>
+                <div style={{fontWeight:600, color:'#1a1a2e', fontSize:14}}>{seg.label}</div>
+                <div style={{fontSize:11, color:'#bbb'}}>{seg.min} min</div>
+              </div>
+            </div>
+            <span style={{color:'#bbb', fontSize:11}}>{open[seg.k] ? '^' : 'v'}</span>
+          </div>
+          {open[seg.k] && (
+            <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
+              {seg.k === 'todos' && <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues}/>}
+              {seg.k === 'scorecard' && <L10Scorecard scorecard={qData.scorecard || []} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues}/>}
+              {seg.k === 'rocks' && <L10Rocks rocks={qData.rocks || []} wr={qData.weeklyRocks || {}} qw={weeks} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} upd={upd}/>}
+              {seg.k === 'projects' && <L10Projects data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues}/>}
+              {seg.k === 'ids' && <L10Issues upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum}/>}
+              {seg.k === 'conclude' && (
+                <div>
+                  <Fld label="Notes" value={wData.conclusionNotes || ''} onChange={v => setWD('conclusionNotes', v)} placeholder="Agreements and next steps..." multi/>
+                  <label style={S.lbl}>Meeting rating (1-10)</label>
+                  <div style={{display:'flex', gap:6, marginTop:6, flexWrap:'wrap'}}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                      <button key={n} onClick={() => setWD('rating', wData.rating === n ? null : n)}
+                        style={{width:36, height:36, borderRadius:7, border:'1px solid #eee',
+                                cursor:'pointer', fontWeight:700, fontSize:14,
+                                background: wData.rating === n ? '#f0a500' : 'white',
+                                color: wData.rating === n ? 'white' : '#555'}}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd}) {
+  if (!rocks.length) return <div style={{color:'#aaa', fontSize:14}}>No Rocks this quarter.</div>;
+  return (
+    <div>
+      <div style={{marginBottom:12}}>
+        {rocks.map(r => (
+          <div key={r.id} style={{display:'flex', alignItems:'center', gap:8,
+                                  padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
+            <StatusPill status={r.status}
+              onChange={v => upd(d => {
+                ensureQ(d, qKey);
+                const idx = d.quarters[qKey].rocks.findIndex(x => x.id === r.id);
+                if (idx >= 0) d.quarters[qKey].rocks[idx].status = v;
+              })}/>
+            <div style={{flex:1, fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{r.title}</div>
+            <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
+              weekNum={weekNum} upd={upd} qKey={qKey}/>
+          </div>
+        ))}
+      </div>
+      <GanttChart rocks={rocks} wr={wr} qw={qw} upd={upd} qKey={qKey} highlightWn={weekNum}/>
+    </div>
+  );
+}
+
+function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
+  if (!scorecard.length) return <div style={{color:'#aaa', fontSize:14}}>No metrics for this quarter.</div>;
+  const setDay = (mi, date, st) => upd(d => {
+    ensureQ(d, qKey);
+    if (!d.quarters[qKey].scorecard[mi].dayData) d.quarters[qKey].scorecard[mi].dayData = {};
+    const cur = d.quarters[qKey].scorecard[mi].dayData[date];
+    d.quarters[qKey].scorecard[mi].dayData[date] = cur === st ? null : st;
+  });
+  const DST = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','X']};
+  const getDST = st => DST[st] || ['#f0f0f0','#ccc','.'];
+  return (
+    <div style={{overflowX:'auto'}}>
+      <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:560}}>
+        <colgroup>
+          <col style={{width:150}}/><col style={{width:55}}/>
+          {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
+        </colgroup>
+        <thead>
+          <tr style={{background:'#0d0d1f'}}>
+            <th style={{padding:'6px 12px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Metric</th>
+            <th style={{padding:'6px 4px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Goal</th>
+            {DAYS.map((day, di) => (
+              <th key={di} style={{padding:'6px 4px', textAlign:'center', color:'rgba(255,255,255,0.7)', fontSize:11, fontWeight:600}}>
+                <div>{day.slice(0, 3)}</div>
+                <div style={{fontSize:9, opacity:0.6, fontWeight:400}}>{dayShort(weekNum, di)}</div>
+              </th>
+            ))}
+            <th/>
+          </tr>
+        </thead>
+        <tbody>
+          {scorecard.map((m, mi) => (
+            <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
+              <td style={{padding:'8px 12px'}}><div style={{fontSize:14, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div></td>
+              <td style={{padding:'8px 4px'}}><div style={{fontSize:13, fontWeight:600, color:'#f0a500'}}>{m.goal || ''}</div></td>
+              {DAYS.map((_, di) => {
+                const date = dayStr(weekNum, di);
+                const st = m.dayData && m.dayData[date];
+                const info = getDST(st);
+                return (
+                  <td key={di} style={{padding:4, textAlign:'center'}}>
+                    <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
+                      style={{width:'100%', height:40, borderRadius:7,
+                              border:'2px solid ' + info[0], background:info[0],
+                              color:info[1], cursor:'pointer', fontSize:16, fontWeight:800}}>{info[2]}</button>
+                  </td>
+                );
+              })}
+              <td style={{padding:'4px 6px', textAlign:'center', verticalAlign:'middle'}}>
+                <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
+                  weekNum={weekNum} upd={upd} qKey={qKey}/>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
+  const today = todayStr();
+  const [showF, setShowF] = useState(false);
+  const [form, setForm] = useState({task:'', due:''});
+  const add = () => {
+    if (!form.task) return;
+    upd(d => { d.todos.push({id: uid(), ...form, startDate: todayStr(), done:false, completedDate:null}); });
+    setForm({task:'', due:''}); setShowF(false);
+  };
+  return (
+    <div>
+      <div style={{fontSize:12, color:'#888', marginBottom:8}}>{data.todos.filter(t => t.done).length}/{data.todos.length} completed</div>
+      {data.todos.map((t, ri) => {
+        const late = !t.done && t.due && t.due < today;
+        return (
+          <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
+                                  padding:'6px 0', borderBottom:'1px solid #f5f5f5', opacity: t.done ? 0.45 : 1}}>
+            <input type="checkbox" checked={t.done}
+              onChange={e => upd(d => { d.todos[ri].done = e.target.checked; d.todos[ri].completedDate = e.target.checked ? todayStr() : null; })}
+              style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+            <div style={{flex:1, fontSize:14, fontWeight:500, textDecoration: t.done ? 'line-through' : 'none', color:'#1a1a2e'}}>{t.task}</div>
+            {t.due && <span style={{fontSize:11, color: late ? '#e74c3c' : '#aaa'}}>{t.due}</span>}
+            <IssueBtn idsIssues={idsIssues} sourceId={t.id} sourceName={'Todo: ' + t.task}
+              weekNum={weekNum} upd={upd} qKey={qKey}/>
+          </div>
+        );
+      })}
+      {!data.todos.length && <div style={{fontSize:13, color:'#aaa', padding:'4px 0'}}>No to-dos yet.</div>}
+      {!showF
+        ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:12, padding:'6px 12px'}}>+ Task</Btn>
+        : (
+          <div style={{marginTop:10, padding:12, background:'#f9f9f9', borderRadius:9}}>
+            <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
+            <Fld label="Due date" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
+            <div style={{display:'flex', gap:7}}>
+              <Btn onClick={add} style={{fontSize:12}}>Save</Btn>
+              <Btn v="sec" onClick={() => setShowF(false)} style={{fontSize:12}}>Cancel</Btn>
+            </div>
+          </div>
+        )
+      }
+    </div>
+  );
+}
+
+function L10Projects({data, upd, qKey, weekNum, idsIssues}) {
+  const wk = wKey(weekNum);
+  const projects = (data.weeklyProjects && data.weeklyProjects[wk]) || [];
+  if (!projects.length) return <div style={{color:'#aaa', fontSize:14}}>No projects this week. Add them in the Projects tab.</div>;
+  return (
+    <div>
+      {projects.map(proj => (
+        <div key={proj.id} style={{display:'flex', alignItems:'center', gap:10,
+                                   padding:'8px 0', borderBottom:'1px solid #f5f5f5'}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{proj.name || '(unnamed)'}</div>
+            {proj.textStatus && <div style={{fontSize:12, color:'#888', marginTop:2}}>{proj.textStatus}</div>}
+          </div>
+          <IssueBtn idsIssues={idsIssues} sourceId={proj.id} sourceName={'Project: ' + (proj.name || '(unnamed)')}
+            weekNum={weekNum} upd={upd} qKey={qKey}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function L10Issues({upd, qKey, idsIssues, weekNum}) {
+  const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum && (!i.solved || i.solvedWeek === weekNum));
+  const [form, setForm] = useState(null);
+  const toggleSolved = id => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) {
+      const iss = d.quarters[qKey].idsIssues[idx];
+      if (!iss.solved) { iss.solved = true; iss.solvedWeek = weekNum; }
+      else { iss.solved = false; iss.solvedWeek = null; }
+    }
+  });
+  const setAction = (id, val) => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) d.quarters[qKey].idsIssues[idx].action = val;
+  });
+  const deleteIssue = id => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) d.quarters[qKey].idsIssues.splice(idx, 1);
+  });
+  const addIssue = () => {
+    if (!form || !form.name) return;
+    upd(d => {
+      ensureQ(d, qKey);
+      d.quarters[qKey].idsIssues.push({
+        id: uid(), sourceId:null, sourceName: form.name,
+        action: form.action || '', solved:false, solvedWeek:null, weekAdded: weekNum
+      });
+    });
+    setForm(null);
+  };
+  return (
+    <div>
+      {active.length === 0 && !form &&
+        <div style={{color:'#aaa', fontSize:14, marginBottom:10}}>
+          No issues. Use "+ Issue" buttons above or add manually.
+        </div>}
+      {active.map(issue => (
+        <div key={issue.id}
+          style={{padding:'9px 12px', marginBottom:6,
+                  background: issue.solved ? '#f0f9f0' : '#fff8f0',
+                  borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? '#27ae60' : '#f0a500')}}>
+          <div style={{display:'flex', alignItems:'flex-start', gap:10}}>
+            <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
+              style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e',
+                           textDecoration: issue.solved ? 'line-through' : 'none', marginBottom:5}}>
+                {issue.sourceName}
+              </div>
+              <input value={issue.action || ''} onChange={e => setAction(issue.id, e.target.value)}
+                placeholder="Action to take..."
+                style={{...S.inp, fontSize:12, padding:'5px 10px'}}/>
+              {issue.weekAdded < weekNum && !issue.solved &&
+                <span style={{fontSize:10, color:'#e74c3c', marginTop:3, display:'block'}}>
+                  Carried from week {issue.weekAdded}
+                </span>}
+              {issue.solved && <span style={{fontSize:10, color:'#27ae60', marginTop:3, display:'block'}}>Solved this week</span>}
+            </div>
+            <button onClick={() => deleteIssue(issue.id)}
+              style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:14, padding:0, flexShrink:0, marginTop:2}}>x</button>
+          </div>
+        </div>
+      ))}
+      {form
+        ? (
+          <div style={{padding:12, background:'#f9f9f9', borderRadius:9, marginTop:8}}>
+            <Fld label="Issue" value={form.name} onChange={v => setForm(f => ({...f, name:v}))} placeholder="Describe the issue..."/>
+            <Fld label="Action" value={form.action} onChange={v => setForm(f => ({...f, action:v}))} placeholder="What action will be taken?"/>
+            <div style={{display:'flex', gap:7}}>
+              <Btn onClick={addIssue} style={{fontSize:12}}>Save</Btn>
+              <Btn v="sec" onClick={() => setForm(null)} style={{fontSize:12}}>Cancel</Btn>
+            </div>
+          </div>
+        )
+        : <Btn onClick={() => setForm({name:'', action:''})} style={{marginTop:8, fontSize:12, padding:'6px 12px'}}>+ Issue manual</Btn>
+      }
+    </div>
+  );
+}
+
+function QReviewMainTab({data, upd}) {
+  const [selQ, setSelQ] = useState(getCurQ());
+  const qData = data.quarters[selQ] || {rocks:[], weeks:{}, weeklyRocks:{}, qReview:{}, scorecard:[], idsIssues:[]};
+  return (
+    <div>
+      <h2 style={S.h2}>Q Review</h2>
+      <QBtns selQ={selQ} onSelect={setSelQ}/>
+      <QReview data={data} upd={upd} qKey={selQ} qData={qData}/>
+    </div>
+  );
+}
+
+function QReview({data, upd, qKey, qData}) {
+  const rev = qData.qReview || {};
+  const setR = (key, val) => upd(d => { ensureQ(d, qKey); d.quarters[qKey].qReview[key] = val; });
+  const rocks = qData.rocks || [];
+  const qn = parseInt(qKey.split('-Q')[1]);
+  const qw = qWeeks(qn);
+  const AGENDA = [
+    {k:'todos', icon:'✅', label:'To-do Review'},
+    {k:'scorecard', icon:'📊', label:'Scorecard'},
+    {k:'rocks', icon:'🪨', label:'Rock Review'},
+    {k:'issues', icon:'⚡', label:'Issues & Learnings'},
+    {k:'vision', icon:'🧭', label:'Vision Alignment'},
+    {k:'nextrocks', icon:'🎯', label:'Next Quarter Rocks'},
+    {k:'conclude', icon:'🏁', label:'Conclusion'}
+  ];
+  const [open, setOpen] = useState({todos:true, scorecard:false, rocks:false, issues:false, vision:false, nextrocks:false, conclude:false});
+  return (
+    <div>
+      <div style={{...S.card, background:'linear-gradient(135deg,#0d0d1f,#1a1a3e)', padding:'16px 20px', marginBottom:16}}>
+        <div style={{fontSize:14, fontWeight:700, color:'#f0a500', marginBottom:2}}>
+          Q Review - {qKey.split('-')[1]} {YEAR}
+        </div>
+        <div style={{fontSize:12, color:'rgba(255,255,255,0.5)'}}>
+          {rocks.length} rocks - {rocks.filter(r => r.status === 'done').length} completed
+        </div>
+      </div>
+      {AGENDA.map(seg => (
+        <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                       padding:'12px 18px', cursor:'pointer'}}
+            onClick={() => setOpen(o => ({...o, [seg.k]: !o[seg.k]}))}>
+            <div style={{display:'flex', alignItems:'center', gap:12}}>
+              <span style={{fontSize:18}}>{seg.icon}</span>
+              <div style={{fontWeight:600, color:'#1a1a2e', fontSize:14}}>{seg.label}</div>
+            </div>
+            <span style={{color:'#bbb', fontSize:11}}>{open[seg.k] ? '^' : 'v'}</span>
+          </div>
+          {open[seg.k] && (
+            <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
+              {seg.k === 'todos' && (
+                <div>
+                  {data.todos.length === 0
+                    ? <div style={{color:'#aaa', fontSize:14}}>No to-dos.</div>
+                    : data.todos.map(t => (
+                      <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
+                                              padding:'6px 0', borderBottom:'1px solid #f5f5f5',
+                                              opacity: t.done ? 0.5 : 1}}>
+                        <input type="checkbox" checked={t.done}
+                          onChange={e => upd(d => {
+                            const ri = d.todos.findIndex(x => x.id === t.id);
+                            d.todos[ri].done = e.target.checked;
+                            d.todos[ri].completedDate = e.target.checked ? todayStr() : null;
+                          })}
+                          style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+                        <div style={{fontSize:14, fontWeight:500, color:'#1a1a2e',
+                                     textDecoration: t.done ? 'line-through' : 'none', flex:1}}>{t.task}</div>
+                        {t.done && t.completedDate && <span style={{fontSize:11, color:'#27ae60'}}>Done {t.completedDate}</span>}
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+              {seg.k === 'scorecard' && <ScorecardSummary scorecard={qData.scorecard || []} qw={qw}/>}
+              {seg.k === 'rocks' && (
+                rocks.length === 0
+                  ? <div style={{color:'#aaa', fontSize:14}}>No rocks.</div>
+                  : <GanttChart rocks={rocks} wr={qData.weeklyRocks || {}} qw={qw} upd={upd} qKey={qKey}/>
+              )}
+              {(seg.k === 'issues' || seg.k === 'vision' || seg.k === 'nextrocks') && (
+                <textarea style={S.ta} value={rev[seg.k] || ''}
+                  onChange={e => setR(seg.k, e.target.value)}
+                  placeholder={seg.k === 'issues' ? 'Issues and learnings...' : seg.k === 'vision' ? 'Aligned with Vision?' : 'Proposed Rocks for next quarter...'}/>
+              )}
+              {seg.k === 'conclude' && (
+                <div>
+                  <Fld label="Closing notes" value={rev.notes || ''} onChange={v => setR('notes', v)} placeholder="Decisions..." multi/>
+                  <label style={S.lbl}>Quarter rating (1-10)</label>
+                  <div style={{display:'flex', gap:6, marginTop:6, flexWrap:'wrap'}}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                      <button key={n} onClick={() => setR('rating', rev.rating === n ? null : n)}
+                        style={{width:36, height:36, borderRadius:7, border:'1px solid #eee', cursor:'pointer',
+                                fontWeight:700, fontSize:14,
+                                background: rev.rating === n ? '#f0a500' : 'white',
+                                color: rev.rating === n ? 'white' : '#555'}}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+</script>
+</body>
+</html>
