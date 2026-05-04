@@ -1833,10 +1833,10 @@ function TodosTab({data, upd}) {
                     fontSize:14, marginBottom:4, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'#bbb', display:'flex', gap:12, flexWrap:'wrap'}}>
-            {t.due && <span style={{color: late ? '#e74c3c' : 'inherit'}}>Due: {t.due}{late ? ' !!' : ''}</span>}
-            {t.done && t.completedDate
-              ? <span style={{color:'#27ae60', fontWeight:600}}>Done {t.completedDate}</span>
-              : <span style={{color:'#f0a500', fontWeight:600}}>In progress</span>}
+            {t.startDate && <span>Inicio: {t.startDate}</span>}
+            {t.due && <span style={{color: late ? '#e74c3c' : 'inherit'}}>Vence: {t.due}{late ? ' !!' : ''}</span>}
+            {t.done && t.completedDate &&
+              <span style={{color:'#27ae60', fontWeight:600}}>Hecha: {t.completedDate}</span>}
           </div>
         </div>
         <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
@@ -2410,28 +2410,58 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
   const [form, setForm] = useState({task:'', due:''});
   const add = () => {
     if (!form.task) return;
-    upd(d => { d.todos.push({id: uid(), ...form, startDate: todayStr(), done:false, completedDate:null}); });
+    // Use the viewing L10 week's Monday as start date so the new todo
+    // appears in this week's L10 (and onwards) regardless of which
+    // calendar week you're really in.
+    const startDate = dayStr(weekNum, 0);
+    upd(d => { d.todos.push({id: uid(), ...form, startDate, done:false, completedDate:null}); });
     setForm({task:'', due:''}); setShowF(false);
   };
+  // Visibility rules:
+  // - Show only todos created in week <= weekNum (not in weeks before they exist)
+  // - Hide completed todos starting from the week they were completed (inclusive)
+  const visibleTodos = data.todos.filter(t => {
+    const createdWeek = t.startDate ? dateToWn(t.startDate) : 1;
+    if (createdWeek > weekNum) return false;
+    if (t.done && t.completedDate) {
+      const completionWeek = dateToWn(t.completedDate);
+      if (completionWeek <= weekNum) return false;
+    }
+    return true;
+  });
+  const completedCount = visibleTodos.filter(t => t.done).length;
   return (
     <div>
-      <div style={{fontSize:12, color:'#888', marginBottom:8}}>{data.todos.filter(t => t.done).length}/{data.todos.length} completed</div>
-      {data.todos.map((t, ri) => {
+      <div style={{fontSize:12, color:'#888', marginBottom:8}}>{completedCount}/{visibleTodos.length} completed</div>
+      {visibleTodos.map(t => {
         const late = !t.done && t.due && t.due < today;
         return (
           <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
                                   padding:'6px 0', borderBottom:'1px solid #f5f5f5', opacity: t.done ? 0.45 : 1}}>
             <input type="checkbox" checked={t.done}
-              onChange={e => upd(d => { d.todos[ri].done = e.target.checked; d.todos[ri].completedDate = e.target.checked ? todayStr() : null; })}
+              onChange={e => upd(d => {
+                const idx = d.todos.findIndex(x => x.id === t.id);
+                if (idx >= 0) {
+                  d.todos[idx].done = e.target.checked;
+                  d.todos[idx].completedDate = e.target.checked ? todayStr() : null;
+                }
+              })}
               style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
-            <div style={{flex:1, fontSize:14, fontWeight:500, textDecoration: t.done ? 'line-through' : 'none', color:'#1a1a2e'}}>{t.task}</div>
+            <input value={t.task}
+              onChange={ev => upd(d => {
+                const idx = d.todos.findIndex(x => x.id === t.id);
+                if (idx >= 0) d.todos[idx].task = ev.target.value;
+              })}
+              style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
+                      textDecoration: t.done ? 'line-through' : 'none', color:'#1a1a2e',
+                      background:'transparent', fontFamily:'inherit', padding:0}}/>
             {t.due && <span style={{fontSize:11, color: late ? '#e74c3c' : '#aaa'}}>{t.due}</span>}
             <IssueBtn idsIssues={idsIssues} sourceId={t.id} sourceName={'Todo: ' + t.task}
               weekNum={weekNum} upd={upd} qKey={qKey}/>
           </div>
         );
       })}
-      {!data.todos.length && <div style={{fontSize:13, color:'#aaa', padding:'4px 0'}}>No to-dos yet.</div>}
+      {!visibleTodos.length && <div style={{fontSize:13, color:'#aaa', padding:'4px 0'}}>No to-dos yet.</div>}
       {!showF
         ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:12, padding:'6px 12px'}}>+ Task</Btn>
         : (
