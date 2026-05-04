@@ -241,6 +241,108 @@ const S = {
 // =====================================================================
 // Reusable components
 // =====================================================================
+// Monday-first DatePicker (replaces native <input type="date"> everywhere
+// in the app so the calendar dropdown always starts the week on Monday).
+function DatePicker({value, onChange, placeholder, style}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  const initial = () => {
+    if (value) {
+      const parts = value.split('-');
+      if (parts.length === 3) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+    }
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  };
+  const [viewMonth, setViewMonth] = useState(initial);
+
+  useEffect(() => {
+    const onClick = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    if (open) document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  // Keep the visible month synced when the value changes externally
+  useEffect(() => {
+    if (open && value) {
+      const parts = value.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0]), m = parseInt(parts[1]) - 1;
+        if (y !== viewMonth.getFullYear() || m !== viewMonth.getMonth()) {
+          setViewMonth(new Date(y, m, 1));
+        }
+      }
+    }
+  }, [open]);
+
+  const fmt = (y, m, d) => y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  const todayDS = (() => { const n = new Date(); return fmt(n.getFullYear(), n.getMonth(), n.getDate()); })();
+
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  // JS getDay: 0=Sunday..6=Saturday. Convert to Monday-first: 0=Mon..6=Sun
+  const startCol = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startCol; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const dayLabels = ['L','M','X','J','V','S','D'];
+
+  const select = d => { onChange(fmt(year, month, d)); setOpen(false); };
+  const prevMonth = e => { e.stopPropagation(); setViewMonth(new Date(year, month - 1, 1)); };
+  const nextMonth = e => { e.stopPropagation(); setViewMonth(new Date(year, month + 1, 1)); };
+
+  const navBtn = {width:26, height:26, border:'1px solid #eee', background:'white',
+                  cursor:'pointer', borderRadius:5, fontSize:14, color:'#555', lineHeight:1};
+
+  return (
+    <div ref={ref} style={{position:'relative', ...(style || {})}}>
+      <input value={value || ''} readOnly placeholder={placeholder || 'YYYY-MM-DD'}
+        onClick={() => setOpen(o => !o)}
+        style={{...S.inp, cursor:'pointer', backgroundImage:'none'}}/>
+      {open && (
+        <div style={{position:'absolute', top:'calc(100% + 4px)', left:0, background:'white',
+                     borderRadius:10, boxShadow:'0 8px 28px rgba(0,0,0,0.18)', padding:10,
+                     zIndex:200, width:248, border:'1px solid #eee'}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+            <button onClick={prevMonth} style={navBtn}>‹</button>
+            <div style={{fontWeight:700, fontSize:13, color:'#1a1a2e'}}>{monthNames[month]} {year}</div>
+            <button onClick={nextMonth} style={navBtn}>›</button>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:2}}>
+            {dayLabels.map(d => (
+              <div key={d} style={{textAlign:'center', fontSize:10, fontWeight:700, color:'#888', padding:'3px 0'}}>{d}</div>
+            ))}
+            {cells.map((d, i) => {
+              if (d === null) return <div key={i}/>;
+              const ds = fmt(year, month, d);
+              const isSel = ds === value;
+              const isToday = ds === todayDS;
+              return (
+                <button key={i} onClick={() => select(d)}
+                  style={{height:30, border:'none', cursor:'pointer', borderRadius:5,
+                          background: isSel ? '#f0a500' : (isToday ? 'rgba(240,165,0,0.15)' : 'transparent'),
+                          color: isSel ? 'white' : (isToday ? '#f0a500' : '#1a1a2e'),
+                          fontWeight: (isSel || isToday) ? 700 : 400, fontSize:13}}>{d}</button>
+              );
+            })}
+          </div>
+          <div style={{display:'flex', gap:5, marginTop:8, justifyContent:'space-between'}}>
+            <button onClick={() => { onChange(todayDS); setOpen(false); }}
+              style={{padding:'4px 12px', fontSize:11, background:'#f0f0f0', border:'none', borderRadius:5, cursor:'pointer', color:'#555'}}>Hoy</button>
+            <button onClick={() => { onChange(''); setOpen(false); }}
+              style={{padding:'4px 12px', fontSize:11, background:'#f0f0f0', border:'none', borderRadius:5, cursor:'pointer', color:'#555'}}>Borrar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Fld({label, value, onChange, placeholder, multi, type}) {
   type = type || 'text';
   return (
@@ -248,7 +350,9 @@ function Fld({label, value, onChange, placeholder, multi, type}) {
       {label && <label style={S.lbl}>{label}</label>}
       {multi
         ? <textarea style={S.ta} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}/>
-        : <input type={type} style={S.inp} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}/>
+        : type === 'date'
+          ? <DatePicker value={value} onChange={onChange} placeholder={placeholder}/>
+          : <input type={type} style={S.inp} value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}/>
       }
     </div>
   );
@@ -2059,13 +2163,30 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
     if (idx >= 0) d.todos[idx].task = val;
   });
 
+  // Quick-add to-do from Daily Summary - startDate defaults to the viewed day
+  const [todoForm, setTodoForm] = useState(null);
+  const saveTodo = () => {
+    if (!todoForm || !todoForm.task) return;
+    upd(d => {
+      d.todos.push({
+        id: uid(),
+        task: todoForm.task,
+        startDate: selDay,
+        due: todoForm.due || '',
+        done: false,
+        completedDate: null
+      });
+    });
+    setTodoForm(null);
+  };
+
   return (
     <div>
       <h2 style={S.h2}>Daily Summary</h2>
       <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14, flexWrap:'wrap'}}>
-        <input type="date" value={selDay}
-          onChange={e => { const ds = e.target.value; setSelDay(ds); setDispWn(dateToWn(ds)); }}
-          style={{...S.inp, width:185}}/>
+        <DatePicker value={selDay}
+          onChange={ds => { if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
+          style={{width:185}}/>
         <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec">Today</Btn>
         <div style={{fontSize:14, color:'#888'}}>{DAYS[dayOfWeek]} - Week {wn} - Q{q}</div>
       </div>
@@ -2149,7 +2270,11 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
 
       {/* To-Dos */}
       <div style={S.card}>
-        <h3 style={S.h3}>To-dos</h3>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+          <h3 style={{...S.h3, marginBottom:0}}>To-dos</h3>
+          <Btn onClick={() => setTodoForm({task:'', due:''})}
+            style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
+        </div>
         {dayTodos.length === 0
           ? <div style={{color:'#aaa', fontSize:14}}>No to-dos today</div>
           : dayTodos.map(t => {
@@ -2172,15 +2297,32 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                           color:'#1a1a2e', textDecoration: donOnDay ? 'line-through' : 'none',
                           background:'transparent', fontFamily:'inherit', padding:0}}/>
                 {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa', flexShrink:0}}>{t.due}</span>}
+                <button onClick={() => upd(d => {
+                    const ri = d.todos.findIndex(x => x.id === t.id);
+                    if (ri >= 0) d.todos.splice(ri, 1);
+                  })}
+                  style={{border:'none', background:'none', cursor:'pointer',
+                          color:'#ccc', fontSize:16, padding:'0 4px', lineHeight:1, flexShrink:0}}>x</button>
               </div>
             );
           })
         }
+        {todoForm && (
+          <div style={{marginTop:10, padding:12, background:'#f9f9f9', borderRadius:9}}>
+            <Fld label="Task" value={todoForm.task} onChange={v => setTodoForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
+            <Fld label="Due date (optional)" value={todoForm.due} onChange={v => setTodoForm(f => ({...f, due:v}))} type="date"/>
+            <div style={{fontSize:11, color:'#888', marginBottom:8}}>Inicio: {selDay}</div>
+            <div style={{display:'flex', gap:7}}>
+              <Btn onClick={saveTodo} style={{fontSize:12}}>Save</Btn>
+              <Btn v="sec" onClick={() => setTodoForm(null)} style={{fontSize:12}}>Cancel</Btn>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Weekly Rocks */}
+      {/* Rocks */}
       <div style={S.card}>
-        <h3 style={S.h3}>Weekly Rocks this week</h3>
+        <h3 style={S.h3}>Rocks</h3>
         {wrThisWeek.length === 0
           ? <div style={{color:'#aaa', fontSize:14}}>No steps this week.</div>
           : wrThisWeek.map(({rock, steps}) => (
@@ -2600,18 +2742,54 @@ function QReview({data, upd, qKey, qData}) {
   const rev = qData.qReview || {};
   const setR = (key, val) => upd(d => { ensureQ(d, qKey); d.quarters[qKey].qReview[key] = val; });
   const rocks = qData.rocks || [];
+  const sc = qData.scorecard || [];
+  const idsIssues = qData.idsIssues || [];
   const qn = parseInt(qKey.split('-Q')[1]);
   const qw = qWeeks(qn);
+  const lastWk = qw[qw.length - 1]; // Last week of the quarter (used as the "review week" anchor)
   const AGENDA = [
-    {k:'todos', icon:'✅', label:'To-do Review'},
     {k:'scorecard', icon:'📊', label:'Scorecard'},
     {k:'rocks', icon:'🪨', label:'Rock Review'},
     {k:'issues', icon:'⚡', label:'Issues & Learnings'},
     {k:'vision', icon:'🧭', label:'Vision Alignment'},
     {k:'nextrocks', icon:'🎯', label:'Next Quarter Rocks'},
-    {k:'conclude', icon:'🏁', label:'Conclusion'}
+    {k:'conclude', icon:'🏁', label:'Conclude'}
   ];
-  const [open, setOpen] = useState({todos:true, scorecard:false, rocks:false, issues:false, vision:false, nextrocks:false, conclude:false});
+  const [open, setOpen] = useState({scorecard:true, rocks:false, issues:false, vision:false, nextrocks:false, conclude:false});
+
+  // Issue list management for Q Review (operates on whole quarter)
+  const [issueForm, setIssueForm] = useState(null);
+  const toggleSolved = id => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) {
+      const iss = d.quarters[qKey].idsIssues[idx];
+      if (!iss.solved) { iss.solved = true; iss.solvedWeek = lastWk; }
+      else { iss.solved = false; iss.solvedWeek = null; }
+    }
+  });
+  const setAction = (id, val) => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) d.quarters[qKey].idsIssues[idx].action = val;
+  });
+  const deleteIssue = id => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) d.quarters[qKey].idsIssues.splice(idx, 1);
+  });
+  const addManualIssue = () => {
+    if (!issueForm || !issueForm.name) return;
+    upd(d => {
+      ensureQ(d, qKey);
+      d.quarters[qKey].idsIssues.push({
+        id: uid(), sourceId:null, sourceName: issueForm.name,
+        action: issueForm.action || '', solved:false, solvedWeek:null, weekAdded: lastWk
+      });
+    });
+    setIssueForm(null);
+  };
+
   return (
     <div>
       <div style={{...S.card, background:'linear-gradient(135deg,#0d0d1f,#1a1a3e)', padding:'16px 20px', marginBottom:16}}>
@@ -2635,39 +2813,100 @@ function QReview({data, upd, qKey, qData}) {
           </div>
           {open[seg.k] && (
             <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
-              {seg.k === 'todos' && (
+              {seg.k === 'scorecard' && (
                 <div>
-                  {data.todos.length === 0
-                    ? <div style={{color:'#aaa', fontSize:14}}>No to-dos.</div>
-                    : data.todos.map(t => (
-                      <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
-                                              padding:'6px 0', borderBottom:'1px solid #f5f5f5',
-                                              opacity: t.done ? 0.5 : 1}}>
-                        <input type="checkbox" checked={t.done}
-                          onChange={e => upd(d => {
-                            const ri = d.todos.findIndex(x => x.id === t.id);
-                            d.todos[ri].done = e.target.checked;
-                            d.todos[ri].completedDate = e.target.checked ? todayStr() : null;
-                          })}
-                          style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
-                        <div style={{fontSize:14, fontWeight:500, color:'#1a1a2e',
-                                     textDecoration: t.done ? 'line-through' : 'none', flex:1}}>{t.task}</div>
-                        {t.done && t.completedDate && <span style={{fontSize:11, color:'#27ae60'}}>Done {t.completedDate}</span>}
-                      </div>
-                    ))
-                  }
+                  <ScorecardSummary scorecard={sc} qw={qw}/>
+                  {sc.length > 0 && (
+                    <div style={{marginTop:6}}>
+                      {sc.map(m => (
+                        <div key={m.id} style={{display:'flex', alignItems:'center', gap:10,
+                                                padding:'6px 0', borderBottom:'1px solid #f5f5f5'}}>
+                          <div style={{flex:1, fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
+                          <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
+                            weekNum={lastWk} upd={upd} qKey={qKey}/>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
-              {seg.k === 'scorecard' && <ScorecardSummary scorecard={qData.scorecard || []} qw={qw}/>}
               {seg.k === 'rocks' && (
                 rocks.length === 0
                   ? <div style={{color:'#aaa', fontSize:14}}>No rocks.</div>
-                  : <GanttChart rocks={rocks} wr={qData.weeklyRocks || {}} qw={qw} upd={upd} qKey={qKey}/>
+                  : (
+                    <div>
+                      <div style={{marginBottom:12}}>
+                        {rocks.map(r => (
+                          <div key={r.id} style={{display:'flex', alignItems:'center', gap:8,
+                                                  padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
+                            <StatusPill status={r.status}
+                              onChange={v => upd(d => {
+                                ensureQ(d, qKey);
+                                const idx = d.quarters[qKey].rocks.findIndex(x => x.id === r.id);
+                                if (idx >= 0) d.quarters[qKey].rocks[idx].status = v;
+                              })}/>
+                            <div style={{flex:1, fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{r.title}</div>
+                            <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
+                              weekNum={lastWk} upd={upd} qKey={qKey}/>
+                          </div>
+                        ))}
+                      </div>
+                      <GanttChart rocks={rocks} wr={qData.weeklyRocks || {}} qw={qw} upd={upd} qKey={qKey}/>
+                    </div>
+                  )
               )}
-              {(seg.k === 'issues' || seg.k === 'vision' || seg.k === 'nextrocks') && (
+              {seg.k === 'issues' && (
+                <div>
+                  {idsIssues.length === 0 && !issueForm &&
+                    <div style={{color:'#aaa', fontSize:14, marginBottom:10}}>
+                      No issues yet. Use "+ Issue" buttons in Scorecard/Rocks above, or add one manually below.
+                    </div>}
+                  {idsIssues.map(issue => (
+                    <div key={issue.id}
+                      style={{padding:'9px 12px', marginBottom:6,
+                              background: issue.solved ? '#f0f9f0' : '#fff8f0',
+                              borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? '#27ae60' : '#f0a500')}}>
+                      <div style={{display:'flex', alignItems:'flex-start', gap:10}}>
+                        <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
+                          style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e',
+                                       textDecoration: issue.solved ? 'line-through' : 'none', marginBottom:5}}>
+                            {issue.sourceName}
+                          </div>
+                          <input value={issue.action || ''}
+                            onChange={e => setAction(issue.id, e.target.value)}
+                            placeholder="Action to take..."
+                            style={{...S.inp, fontSize:12, padding:'5px 10px'}}/>
+                          <div style={{fontSize:10, color:'#aaa', marginTop:3}}>
+                            Wk {issue.weekAdded}{issue.solved && issue.solvedWeek ? ' → solved Wk ' + issue.solvedWeek : ''}
+                          </div>
+                        </div>
+                        <button onClick={() => deleteIssue(issue.id)}
+                          style={{border:'none', background:'none', cursor:'pointer',
+                                  color:'#ccc', fontSize:14, padding:0, flexShrink:0, marginTop:2}}>x</button>
+                      </div>
+                    </div>
+                  ))}
+                  {issueForm
+                    ? (
+                      <div style={{padding:12, background:'#f9f9f9', borderRadius:9, marginTop:8}}>
+                        <Fld label="Issue" value={issueForm.name} onChange={v => setIssueForm(f => ({...f, name:v}))} placeholder="Describe the issue..."/>
+                        <Fld label="Action" value={issueForm.action} onChange={v => setIssueForm(f => ({...f, action:v}))} placeholder="What action will be taken?"/>
+                        <div style={{display:'flex', gap:7}}>
+                          <Btn onClick={addManualIssue} style={{fontSize:12}}>Save</Btn>
+                          <Btn v="sec" onClick={() => setIssueForm(null)} style={{fontSize:12}}>Cancel</Btn>
+                        </div>
+                      </div>
+                    )
+                    : <Btn onClick={() => setIssueForm({name:'', action:''})} style={{marginTop:8, fontSize:12, padding:'6px 12px'}}>+ Issue manual</Btn>
+                  }
+                </div>
+              )}
+              {(seg.k === 'vision' || seg.k === 'nextrocks') && (
                 <textarea style={S.ta} value={rev[seg.k] || ''}
                   onChange={e => setR(seg.k, e.target.value)}
-                  placeholder={seg.k === 'issues' ? 'Issues and learnings...' : seg.k === 'vision' ? 'Aligned with Vision?' : 'Proposed Rocks for next quarter...'}/>
+                  placeholder={seg.k === 'vision' ? 'Aligned with Vision?' : 'Proposed Rocks for next quarter...'}/>
               )}
               {seg.k === 'conclude' && (
                 <div>
