@@ -134,30 +134,26 @@ const ensureQ = (d, qk) => {
 };
 
 // Event colors (cycled by clicking on an event in Calendar or Daily Summary)
-// 5 states: none -> gray -> blue -> green -> orange -> none
-const EVENT_COLOR_CYCLE = [null, 'gray', 'blue', 'green', 'orange'];
+// 4-state cycle: gray -> blue -> green -> orange -> gray ...
+// Std Week event with no color set displays as gray (next click -> blue)
+// New regular event with no color set displays as blue (next click -> green)
+const EVENT_COLOR_CYCLE = ['gray', 'blue', 'green', 'orange'];
 const EVENT_COLOR_STYLES = {
-  gray:   {bg:'#d6d6d6', text:'#1a1a2e', border:'#888'},
-  blue:   {bg:'#9ec5e8', text:'#0d3a5c', border:'#3071a8'},
-  green:  {bg:'#a3d4ad', text:'#0d3d1a', border:'#27ae60'},
-  orange: {bg:'#ffc985', text:'#5a2e00', border:'#e67e22'}
+  gray:   {bg:'#f5f5f5', text:'#1a1a2e', border:'#bbb'},
+  blue:   {bg:'#e8f4fd', text:'#1a1a2e', border:'#3498db'},
+  green:  {bg:'#d4edda', text:'#155724', border:'#27ae60'},
+  orange: {bg:'#ffe4b5', text:'#7a3a00', border:'#e67e22'}
 };
-const cycleEventColor = c => {
-  const idx = EVENT_COLOR_CYCLE.indexOf(c || null);
+const effectiveEventColor = (ev) => {
+  if (ev.color && EVENT_COLOR_STYLES[ev.color]) return ev.color;
+  return ev.isStdWeek ? 'gray' : 'blue';
+};
+const cycleEventColor = (ev) => {
+  const cur = effectiveEventColor(ev);
+  const idx = EVENT_COLOR_CYCLE.indexOf(cur);
   return EVENT_COLOR_CYCLE[(idx + 1) % EVENT_COLOR_CYCLE.length];
 };
-const eventStyle = (ev) => {
-  if (ev.color && EVENT_COLOR_STYLES[ev.color]) {
-    const c = EVENT_COLOR_STYLES[ev.color];
-    return {bg: c.bg, text: c.text, border: c.border};
-  }
-  // Defaults: std-week events use the SAME gray as the "gray" cycle color
-  if (ev.isStdWeek) {
-    const g = EVENT_COLOR_STYLES.gray;
-    return {bg: g.bg, text: g.text, border: g.border};
-  }
-  return {bg:'#e8f4fd', text:'#1a1a2e', border:'#3498db'};
-};
+const eventStyle = (ev) => EVENT_COLOR_STYLES[effectiveEventColor(ev)];
 const eventEndTime = (ev) => {
   const totalMin = ev.h * 60 + (ev.m || 0) + Math.round((ev.duration || 1) * 60);
   const eh = Math.floor(totalMin / 60);
@@ -563,7 +559,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
         })}
         onCycleColor={id => upd(d => {
           const idx = (d.weeklyCalendar[wk] || []).findIndex(x => x.id === id);
-          if (idx >= 0) d.weeklyCalendar[wk][idx].color = cycleEventColor(d.weeklyCalendar[wk][idx].color);
+          if (idx >= 0) d.weeklyCalendar[wk][idx].color = cycleEventColor(d.weeklyCalendar[wk][idx]);
         })}
         dayLabels={dayLabels} compact={compact}/>
       {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)} dayLabels={dayLabels}/>}
@@ -594,7 +590,7 @@ function StdWeekCalendar({data, upd}) {
         })}
         onCycleColor={id => upd(d => {
           const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
-          if (idx >= 0) d.stdWeeklyEvents[idx].color = cycleEventColor(d.stdWeeklyEvents[idx].color);
+          if (idx >= 0) d.stdWeeklyEvents[idx].color = cycleEventColor(d.stdWeeklyEvents[idx]);
         })}/>
       {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)}/>}
     </div>
@@ -2038,7 +2034,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
     const wkey = wKey(wn);
     if (!d.weeklyCalendar[wkey]) return;
     const idx = d.weeklyCalendar[wkey].findIndex(x => x.id === id);
-    if (idx >= 0) d.weeklyCalendar[wkey][idx].color = cycleEventColor(d.weeklyCalendar[wkey][idx].color);
+    if (idx >= 0) d.weeklyCalendar[wkey][idx].color = cycleEventColor(d.weeklyCalendar[wkey][idx]);
   });
   const saveMeeting = () => {
     if (!meetingForm || !meetingForm.title) return;
