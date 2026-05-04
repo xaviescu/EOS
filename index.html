@@ -21,6 +21,25 @@
   input,textarea,select,button{font-family:inherit;}
   /* iOS safe areas */
   body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+
+  /* Print styles */
+  @media print {
+    body{padding:0;background:white;}
+    .no-print{display:none !important;}
+    .print-page-break{page-break-before:always;}
+    .print-section{page-break-inside:avoid;}
+    .print-area{padding:0 !important;max-height:none !important;overflow:visible !important;}
+    nav.sidebar{display:none !important;}
+    main.main-content{padding:0 !important;max-height:none !important;overflow:visible !important;}
+    .print-view{padding:0 !important;}
+    .print-view h1{font-size:22pt;}
+    .print-view h2{font-size:16pt;page-break-after:avoid;}
+    .print-view h3{font-size:13pt;page-break-after:avoid;}
+    .print-view table{page-break-inside:auto;}
+    .print-view tr{page-break-inside:avoid;page-break-after:auto;}
+    a{color:black !important;text-decoration:none !important;}
+    @page{margin:14mm 12mm;size:A4;}
+  }
 </style>
 </head>
 <body>
@@ -939,7 +958,7 @@ function App({bundle, onLogout}) {
         <div onClick={() => setNavOpen(false)}
           style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:99}}/>
       )}
-      <nav style={{width: navOpen ? 210 : (isMobile ? 0 : 48),
+      <nav className="sidebar no-print" style={{width: navOpen ? 210 : (isMobile ? 0 : 48),
                    background:'#0d0d1f', flexShrink:0,
                    display:'flex', flexDirection:'column',
                    position: isMobile ? 'fixed' : 'sticky', top:0, left:0,
@@ -988,6 +1007,11 @@ function App({bundle, onLogout}) {
                         cursor:'pointer', fontSize:11}}>Import</button>
               <input ref={importRef} type="file" accept=".json" style={{display:'none'}} onChange={importJSON}/>
             </div>
+            <button onClick={() => { setTab('print'); if (isMobile) setNavOpen(false); }}
+              style={{width:'100%', marginTop:6, padding:'6px 0', borderRadius:6,
+                      border:'1px solid rgba(240,165,0,0.3)',
+                      background:'rgba(240,165,0,0.08)', color:'#f0a500',
+                      cursor:'pointer', fontSize:11, fontWeight:600}}>🖨️ Imprimir / PDF</button>
             <button onClick={onLogout}
               style={{width:'100%', marginTop:8, padding:'5px 0', borderRadius:6,
                       border:'1px solid rgba(255,255,255,0.1)',
@@ -996,7 +1020,7 @@ function App({bundle, onLogout}) {
           </div>
         )}
       </nav>
-      <main style={{flex:1, padding: isMobile ? '14px 14px 60px' : 26, overflowY:'auto', maxHeight:'100vh', minWidth:0}}>
+      <main className="main-content print-area" style={{flex:1, padding: isMobile ? '14px 14px 60px' : 26, overflowY:'auto', maxHeight:'100vh', minWidth:0}}>
         {isMobile && (
           <button onClick={() => setNavOpen(true)}
             style={{position:'fixed', top:10, left:10, zIndex:50,
@@ -1015,6 +1039,7 @@ function App({bundle, onLogout}) {
           {tab === 'procesos' && <ProcessesTab data={d} upd={upd}/>}
           {tab === 'l10_main' && <L10MainTab data={d} upd={upd}/>}
           {tab === 'qreview_main' && <QReviewMainTab data={d} upd={upd}/>}
+          {tab === 'print' && <PrintView data={d} onBack={() => setTab('diario')}/>}
         </div>
       </main>
     </div>
@@ -2482,6 +2507,818 @@ function QReview({data, upd, qKey, qData}) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// =====================================================================
+// Print view - renders everything formatted for paper / Save as PDF
+// =====================================================================
+function PrintView({data, onBack}) {
+  const v = data.vision || INIT_V;
+  const today = new Date().toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
+  const triggerPrint = () => { setTimeout(() => window.print(), 100); };
+
+  const sortedQs = Object.keys(data.quarters || {}).sort();
+  const monthNotes = data.monthNotes || {};
+  const monthsByKey = {};
+  Object.keys(monthNotes).forEach(ds => {
+    if (!monthNotes[ds]) return;
+    const mk = ds.slice(0, 7);
+    if (!monthsByKey[mk]) monthsByKey[mk] = [];
+    monthsByKey[mk].push({ds, note: monthNotes[ds]});
+  });
+  const sortedMonths = Object.keys(monthsByKey).sort();
+
+  const todos = data.todos || [];
+  const openTodos = todos.filter(t => !t.done);
+  const doneTodos = todos.filter(t => t.done);
+  const ps = (data.processes || []).filter(p => p.name || p.steps);
+
+  const SH = {
+    page: {background:'white', padding:20, color:'#1a1a2e', fontSize:11, lineHeight:1.45, maxWidth:900, margin:'0 auto'},
+    h1: {fontSize:24, fontWeight:900, color:'#0d0d1f', marginBottom:6, marginTop:0, borderBottom:'3px solid #f0a500', paddingBottom:8},
+    sub: {fontSize:11, color:'#888', marginBottom:24},
+    h2: {fontSize:16, fontWeight:800, color:'#0d0d1f', marginTop:24, marginBottom:10, paddingBottom:4, borderBottom:'2px solid #0d0d1f'},
+    h3: {fontSize:13, fontWeight:700, color:'#0d0d1f', marginTop:14, marginBottom:6},
+    h4: {fontSize:11, fontWeight:700, color:'#555', marginTop:10, marginBottom:4, textTransform:'uppercase', letterSpacing:0.5},
+    p: {fontSize:11, lineHeight:1.5, marginBottom:6, whiteSpace:'pre-wrap'},
+    table: {width:'100%', borderCollapse:'collapse', fontSize:10, marginTop:6, marginBottom:10},
+    th: {background:'#0d0d1f', color:'white', padding:'5px 7px', textAlign:'left', fontWeight:600, fontSize:10},
+    td: {padding:'4px 7px', borderBottom:'1px solid #eee', verticalAlign:'top'},
+    pill: (bg, c) => ({display:'inline-block', padding:'2px 8px', borderRadius:10, fontSize:9, fontWeight:700, background:bg, color:c}),
+    empty: {color:'#aaa', fontStyle:'italic', fontSize:11}
+  };
+
+  return (
+    <div className="print-view" style={SH.page}>
+      <div className="no-print" style={{display:'flex', gap:10, marginBottom:18, padding:'12px 14px', background:'#fff8e1', borderRadius:10, alignItems:'center', flexWrap:'wrap'}}>
+        <span style={{fontSize:13, color:'#856404', flex:1, minWidth:200}}>
+          Vista de impresión. Click en "Imprimir / PDF" y elige "Guardar como PDF" en el diálogo del navegador.
+        </span>
+        <button onClick={triggerPrint}
+          style={{padding:'8px 18px', borderRadius:8, border:'none',
+                  background:'#f0a500', color:'white', fontSize:13, fontWeight:700, cursor:'pointer'}}>🖨️ Imprimir / PDF</button>
+        <button onClick={onBack}
+          style={{padding:'8px 16px', borderRadius:8, border:'1px solid #ddd',
+                  background:'white', color:'#555', fontSize:13, cursor:'pointer'}}>← Volver</button>
+      </div>
+
+      <h1 style={SH.h1}>EOS XE Dashboard</h1>
+      <div style={SH.sub}>Resumen completo · Generado el {today}</div>
+
+      <section className="print-section">
+        <h2 style={SH.h2}>🧭 Vision {YEAR}</h2>
+        <h3 style={SH.h3}>Core Values</h3>
+        {(v.values || []).length === 0
+          ? <div style={SH.empty}>Sin valores definidos.</div>
+          : <div>{v.values.map((val, i) => <span key={i} style={{...SH.pill('#fff3cd','#856404'), marginRight:5, marginBottom:4}}>{val}</span>)}</div>}
+        <h3 style={SH.h3}>Long Term View</h3>
+        <div style={SH.p}>{v.ltView || <span style={SH.empty}>Vacío.</span>}</div>
+        <h3 style={SH.h3}>3 Year View</h3>
+        <div style={SH.p}>{v.threeYearView || <span style={SH.empty}>Vacío.</span>}</div>
+        <h3 style={SH.h3}>1 Year View</h3>
+        <div style={SH.p}>{v.oneYearView || <span style={SH.empty}>Vacío.</span>}</div>
+      </section>
+
+      {sortedMonths.length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>🗓️ Notas mensuales</h2>
+          {sortedMonths.map(mk => {
+            const [y, m] = mk.split('-');
+            return (
+              <div key={mk} className="print-section" style={{marginBottom:14}}>
+                <h3 style={SH.h3}>{MONTHS_F[parseInt(m) - 1]} {y}</h3>
+                {monthsByKey[mk].sort((a, b) => a.ds.localeCompare(b.ds)).map(({ds, note}) => (
+                  <div key={ds} style={{display:'flex', gap:10, padding:'3px 0', borderBottom:'1px solid #f5f5f5'}}>
+                    <span style={{fontWeight:700, color:'#f0a500', minWidth:30}}>{ds.slice(8, 10)}</span>
+                    <span style={{flex:1}}>{note}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </section>
+      )}
+
+      {sortedQs.map(qKey => {
+        const qData = data.quarters[qKey];
+        const rocks = qData.rocks || [];
+        const wr = qData.weeklyRocks || {};
+        const sc = qData.scorecard || [];
+        const idsIssues = qData.idsIssues || [];
+        const weeks = qData.weeks || {};
+        const qReview = qData.qReview || {};
+        const wpByWk = data.weeklyProjects || {};
+        const qNum = parseInt(qKey.split('-Q')[1]);
+        const qw = qWeeks(qNum);
+        const hasContent = rocks.length || sc.length || idsIssues.length ||
+                           Object.keys(weeks).length || Object.keys(qReview).length ||
+                           qw.some(wn => (wpByWk[wKey(wn)] || []).length);
+        if (!hasContent) return null;
+
+        return (
+          <section key={qKey} className="print-page-break">
+            <h2 style={SH.h2}>{qKey.split('-')[1]} {YEAR}</h2>
+
+            {rocks.length > 0 && (
+              <div className="print-section">
+                <h3 style={SH.h3}>🪨 Rocks</h3>
+                <table style={SH.table}>
+                  <thead>
+                    <tr>
+                      <th style={SH.th}>Rock</th>
+                      <th style={{...SH.th, width:90}}>Status</th>
+                      <th style={{...SH.th, width:60, textAlign:'center'}}>Steps</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rocks.map(r => {
+                      const steps = wr[r.id] || [];
+                      const doneCount = steps.filter(s => stepDone(s)).length;
+                      const info = SI[r.status] || SI['on-track'];
+                      return (
+                        <tr key={r.id}>
+                          <td style={SH.td}>
+                            <div style={{fontWeight:700, marginBottom: steps.length ? 4 : 0}}>{r.title}</div>
+                            {steps.map(s => {
+                              const sw = s.startWeek || qw[0];
+                              const ew = s.endWeek || sw;
+                              const dn = stepDone(s);
+                              return (
+                                <div key={s.id} style={{fontSize:9, color:'#555', paddingLeft:10, lineHeight:1.6, textDecoration: dn ? 'line-through' : 'none'}}>
+                                  {dn ? '☑' : '☐'} {s.text} <span style={{color:'#aaa'}}>(W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''})</span>
+                                </div>
+                              );
+                            })}
+                          </td>
+                          <td style={SH.td}><span style={SH.pill(info[0], info[1])}>{info[2]}</span></td>
+                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>{doneCount}/{steps.length}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {sc.length > 0 && (
+              <div className="print-section">
+                <h3 style={SH.h3}>📊 Scorecard 13 semanas</h3>
+                <table style={SH.table}>
+                  <thead>
+                    <tr>
+                      <th style={SH.th}>Metric</th>
+                      <th style={{...SH.th, width:40}}>Goal</th>
+                      {qw.map((_, i) => <th key={i} style={{...SH.th, width:22, textAlign:'center', padding:'5px 1px', fontSize:9}}>W{i + 1}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sc.map(m => {
+                      const goal = parseInt(m.goal || 0);
+                      const hasGoal = !isNaN(goal) && goal > 0;
+                      return (
+                        <tr key={m.id}>
+                          <td style={SH.td}>{m.metric}</td>
+                          <td style={{...SH.td, fontWeight:700, color:'#f0a500'}}>{m.goal || ''}</td>
+                          {qw.map(wn => {
+                            const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
+                            const ok = hasGoal && cnt >= goal;
+                            return (
+                              <td key={wn} style={{...SH.td, textAlign:'center', fontWeight:700,
+                                                   color: cnt === 0 ? '#ddd' : (hasGoal ? (ok ? '#155724' : '#b71c1c') : '#3498db'),
+                                                   background: cnt === 0 ? 'transparent' : (hasGoal ? (ok ? '#eaf6ec' : '#fdecea') : '#e8f4fd')}}>
+                                {cnt > 0 ? cnt : '·'}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {qw.some(wn => (wpByWk[wKey(wn)] || []).length) && (
+              <div className="print-section">
+                <h3 style={SH.h3}>📁 Projects por semana</h3>
+                {qw.map(wn => {
+                  const projects = wpByWk[wKey(wn)] || [];
+                  if (!projects.length) return null;
+                  return (
+                    <div key={wn} style={{marginBottom:8}}>
+                      <h4 style={SH.h4}>W{wn - qw[0] + 1} · {wDates(wn)}</h4>
+                      {projects.map(p => (
+                        <div key={p.id} style={{paddingLeft:10, fontSize:11, marginBottom:3}}>
+                          <strong>{p.name || '(sin nombre)'}</strong>
+                          {p.textStatus && <span style={{color:'#888', marginLeft:8}}>· {p.textStatus}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {Object.keys(weeks).some(wn => weeks[wn].headlines || weeks[wn].conclusionNotes || weeks[wn].rating) && (
+              <div className="print-section">
+                <h3 style={SH.h3}>📋 L10 Meetings - Resumen</h3>
+                <table style={SH.table}>
+                  <thead>
+                    <tr>
+                      <th style={{...SH.th, width:60}}>Semana</th>
+                      <th style={SH.th}>Headlines</th>
+                      <th style={SH.th}>Conclusión</th>
+                      <th style={{...SH.th, width:50, textAlign:'center'}}>Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.keys(weeks).sort((a, b) => parseInt(a) - parseInt(b)).map(wn => {
+                      const w = weeks[wn];
+                      if (!w.headlines && !w.conclusionNotes && !w.rating) return null;
+                      return (
+                        <tr key={wn}>
+                          <td style={{...SH.td, fontWeight:700}}>W{parseInt(wn) - qw[0] + 1}</td>
+                          <td style={SH.td}>{w.headlines || '—'}</td>
+                          <td style={SH.td}>{w.conclusionNotes || '—'}</td>
+                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>
+                            {w.rating ? w.rating + '/10' : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {idsIssues.length > 0 && (
+              <div className="print-section">
+                <h3 style={SH.h3}>⚡ IDS Issues</h3>
+                {idsIssues.map(iss => (
+                  <div key={iss.id} style={{paddingLeft:10, marginBottom:5, fontSize:11, opacity: iss.solved ? 0.6 : 1}}>
+                    {iss.solved ? '☑' : '☐'} <strong>{iss.sourceName}</strong>
+                    {iss.action && <div style={{paddingLeft:18, color:'#555', fontSize:10}}>→ {iss.action}</div>}
+                    <div style={{paddingLeft:18, color:'#aaa', fontSize:9}}>
+                      Wk {iss.weekAdded}{iss.solved && iss.solvedWeek ? ' → resuelta Wk ' + iss.solvedWeek : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(qReview.issues || qReview.vision || qReview.nextrocks || qReview.notes || qReview.rating) && (
+              <div className="print-section">
+                <h3 style={SH.h3}>🔍 Q Review</h3>
+                {qReview.issues && (<><h4 style={SH.h4}>Issues & Learnings</h4><div style={SH.p}>{qReview.issues}</div></>)}
+                {qReview.vision && (<><h4 style={SH.h4}>Vision Alignment</h4><div style={SH.p}>{qReview.vision}</div></>)}
+                {qReview.nextrocks && (<><h4 style={SH.h4}>Next Quarter Rocks</h4><div style={SH.p}>{qReview.nextrocks}</div></>)}
+                {qReview.notes && (<><h4 style={SH.h4}>Closing Notes</h4><div style={SH.p}>{qReview.notes}</div></>)}
+                {qReview.rating && (<div style={{marginTop:6, fontWeight:700, color:'#f0a500'}}>Quarter rating: {qReview.rating}/10</div>)}
+              </div>
+            )}
+          </section>
+        );
+      })}
+
+      {todos.length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>✅ To-dos</h2>
+          {openTodos.length > 0 && (
+            <div className="print-section">
+              <h3 style={SH.h3}>Pendientes ({openTodos.length})</h3>
+              <table style={SH.table}>
+                <thead>
+                  <tr>
+                    <th style={SH.th}>Tarea</th>
+                    <th style={{...SH.th, width:90}}>Vence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {openTodos.map(t => {
+                    const today2 = todayStr();
+                    const late = t.due && t.due < today2;
+                    return (
+                      <tr key={t.id}>
+                        <td style={SH.td}>☐ {t.task}</td>
+                        <td style={{...SH.td, color: late ? '#b71c1c' : '#555'}}>{t.due || '—'}{late ? ' ⚠' : ''}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {doneTodos.length > 0 && (
+            <div className="print-section">
+              <h3 style={SH.h3}>Completadas ({doneTodos.length})</h3>
+              <table style={SH.table}>
+                <thead>
+                  <tr>
+                    <th style={SH.th}>Tarea</th>
+                    <th style={{...SH.th, width:90}}>Hecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {doneTodos.sort((a, b) => (b.completedDate || '').localeCompare(a.completedDate || '')).map(t => (
+                    <tr key={t.id} style={{opacity:0.6}}>
+                      <td style={{...SH.td, textDecoration:'line-through'}}>☑ {t.task}</td>
+                      <td style={{...SH.td, color:'#27ae60'}}>{t.completedDate || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {ps.length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>⚙️ Processes</h2>
+          {ps.map((p, i) => (
+            <div key={p.id || i} className="print-section" style={{marginBottom:14}}>
+              <h3 style={{...SH.h3, display:'flex', alignItems:'center', gap:10}}>
+                {p.name || '(sin nombre)'}
+                <span style={SH.pill(p.documented ? '#d4edda' : '#fdecea', p.documented ? '#155724' : '#b71c1c')}>
+                  {p.documented ? 'Documentado' : 'No documentado'}
+                </span>
+              </h3>
+              {p.steps && <div style={SH.p}>{p.steps}</div>}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {(data.stdWeeklyEvents || []).length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>📆 Std Week (template semanal)</h2>
+          <table style={SH.table}>
+            <thead>
+              <tr>
+                <th style={{...SH.th, width:70}}>Día</th>
+                <th style={{...SH.th, width:60}}>Hora</th>
+                <th style={{...SH.th, width:50}}>Dur.</th>
+                <th style={SH.th}>Evento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...data.stdWeeklyEvents].sort((a, b) => (a.day - b.day) || ((a.h * 60 + (a.m || 0)) - (b.h * 60 + (b.m || 0)))).map(e => (
+                <tr key={e.id}>
+                  <td style={SH.td}>{DAYS[e.day]}</td>
+                  <td style={SH.td}>{e.h}:{String(e.m || 0).padStart(2, '0')}</td>
+                  <td style={SH.td}>{e.duration}h</td>
+                  <td style={SH.td}>
+                    <strong>{e.title}</strong>
+                    {e.notes && <div style={{fontSize:10, color:'#888'}}>{e.notes}</div>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      <div style={{marginTop:30, paddingTop:14, borderTop:'1px solid #ddd', fontSize:9, color:'#aaa', textAlign:'center'}}>
+        EOS XE Dashboard · {today}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+</script>
+</body>
+</html>
+                <textarea style={S.ta} value={rev[seg.k] || ''}
+                  onChange={e => setR(seg.k, e.target.value)}
+                  placeholder={seg.k === 'issues' ? 'Issues and learnings...' : seg.k === 'vision' ? 'Aligned with Vision?' : 'Proposed Rocks for next quarter...'}/>
+              )}
+              {seg.k === 'conclude' && (
+                <div>
+                  <Fld label="Closing notes" value={rev.notes || ''} onChange={v => setR('notes', v)} placeholder="Decisions..." multi/>
+                  <label style={S.lbl}>Quarter rating (1-10)</label>
+                  <div style={{display:'flex', gap:6, marginTop:6, flexWrap:'wrap'}}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                      <button key={n} onClick={() => setR('rating', rev.rating === n ? null : n)}
+                        style={{width:36, height:36, borderRadius:7, border:'1px solid #eee', cursor:'pointer',
+                                fontWeight:700, fontSize:14,
+                                background: rev.rating === n ? '#f0a500' : 'white',
+                                color: rev.rating === n ? 'white' : '#555'}}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// =====================================================================
+// Print view - renders everything formatted for paper / Save as PDF
+// =====================================================================
+function PrintView({data, onBack}) {
+  const v = data.vision || INIT_V;
+  const today = new Date().toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
+
+  const triggerPrint = () => { setTimeout(() => window.print(), 100); };
+
+  // Sort quarters chronologically
+  const sortedQs = Object.keys(data.quarters || {}).sort();
+
+  // Group month notes by month
+  const monthNotes = data.monthNotes || {};
+  const monthsByKey = {};
+  Object.keys(monthNotes).forEach(ds => {
+    if (!monthNotes[ds]) return;
+    const mk = ds.slice(0, 7);
+    if (!monthsByKey[mk]) monthsByKey[mk] = [];
+    monthsByKey[mk].push({ds, note: monthNotes[ds]});
+  });
+  const sortedMonths = Object.keys(monthsByKey).sort();
+
+  const todos = data.todos || [];
+  const openTodos = todos.filter(t => !t.done);
+  const doneTodos = todos.filter(t => t.done);
+
+  const ps = (data.processes || []).filter(p => p.name || p.steps);
+
+  const SH = {
+    page: {background:'white', padding:20, color:'#1a1a2e', fontSize:11, lineHeight:1.45, maxWidth:900, margin:'0 auto'},
+    h1: {fontSize:24, fontWeight:900, color:'#0d0d1f', marginBottom:6, marginTop:0, borderBottom:'3px solid #f0a500', paddingBottom:8},
+    sub: {fontSize:11, color:'#888', marginBottom:24},
+    h2: {fontSize:16, fontWeight:800, color:'#0d0d1f', marginTop:24, marginBottom:10, paddingBottom:4, borderBottom:'2px solid #0d0d1f'},
+    h3: {fontSize:13, fontWeight:700, color:'#0d0d1f', marginTop:14, marginBottom:6},
+    h4: {fontSize:11, fontWeight:700, color:'#555', marginTop:10, marginBottom:4, textTransform:'uppercase', letterSpacing:0.5},
+    p: {fontSize:11, lineHeight:1.5, marginBottom:6, whiteSpace:'pre-wrap'},
+    table: {width:'100%', borderCollapse:'collapse', fontSize:10, marginTop:6, marginBottom:10},
+    th: {background:'#0d0d1f', color:'white', padding:'5px 7px', textAlign:'left', fontWeight:600, fontSize:10},
+    td: {padding:'4px 7px', borderBottom:'1px solid #eee', verticalAlign:'top'},
+    pill: (bg, c) => ({display:'inline-block', padding:'2px 8px', borderRadius:10, fontSize:9, fontWeight:700, background:bg, color:c}),
+    empty: {color:'#aaa', fontStyle:'italic', fontSize:11}
+  };
+
+  return (
+    <div className="print-view" style={SH.page}>
+      <div className="no-print" style={{display:'flex', gap:10, marginBottom:18, padding:'12px 14px', background:'#fff8e1', borderRadius:10, alignItems:'center', flexWrap:'wrap'}}>
+        <span style={{fontSize:13, color:'#856404', flex:1, minWidth:200}}>
+          Vista de impresión. Click en "Imprimir / PDF" y elige "Guardar como PDF" en el diálogo del navegador.
+        </span>
+        <button onClick={triggerPrint}
+          style={{padding:'8px 18px', borderRadius:8, border:'none',
+                  background:'#f0a500', color:'white', fontSize:13,
+                  fontWeight:700, cursor:'pointer'}}>🖨️ Imprimir / PDF</button>
+        <button onClick={onBack}
+          style={{padding:'8px 16px', borderRadius:8, border:'1px solid #ddd',
+                  background:'white', color:'#555', fontSize:13, cursor:'pointer'}}>← Volver</button>
+      </div>
+
+      <h1 style={SH.h1}>EOS XE Dashboard</h1>
+      <div style={SH.sub}>Resumen completo · Generado el {today}</div>
+
+      {/* ============ VISION ============ */}
+      <section className="print-section">
+        <h2 style={SH.h2}>🧭 Vision {YEAR}</h2>
+
+        <h3 style={SH.h3}>Core Values</h3>
+        {(v.values || []).length === 0
+          ? <div style={SH.empty}>Sin valores definidos.</div>
+          : <div>
+              {v.values.map((val, i) => (
+                <span key={i} style={{...SH.pill('#fff3cd','#856404'), marginRight:5, marginBottom:4}}>{val}</span>
+              ))}
+            </div>}
+
+        <h3 style={SH.h3}>Long Term View</h3>
+        <div style={SH.p}>{v.ltView || <span style={SH.empty}>Vacío.</span>}</div>
+
+        <h3 style={SH.h3}>3 Year View</h3>
+        <div style={SH.p}>{v.threeYearView || <span style={SH.empty}>Vacío.</span>}</div>
+
+        <h3 style={SH.h3}>1 Year View</h3>
+        <div style={SH.p}>{v.oneYearView || <span style={SH.empty}>Vacío.</span>}</div>
+      </section>
+
+      {/* ============ MONTH NOTES ============ */}
+      {sortedMonths.length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>🗓️ Notas mensuales</h2>
+          {sortedMonths.map(mk => {
+            const [y, m] = mk.split('-');
+            return (
+              <div key={mk} className="print-section" style={{marginBottom:14}}>
+                <h3 style={SH.h3}>{MONTHS_F[parseInt(m) - 1]} {y}</h3>
+                {monthsByKey[mk].sort((a, b) => a.ds.localeCompare(b.ds)).map(({ds, note}) => (
+                  <div key={ds} style={{display:'flex', gap:10, padding:'3px 0', borderBottom:'1px solid #f5f5f5'}}>
+                    <span style={{fontWeight:700, color:'#f0a500', minWidth:30}}>{ds.slice(8, 10)}</span>
+                    <span style={{flex:1}}>{note}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </section>
+      )}
+
+      {/* ============ QUARTERS ============ */}
+      {sortedQs.map(qKey => {
+        const qData = data.quarters[qKey];
+        const rocks = qData.rocks || [];
+        const wr = qData.weeklyRocks || {};
+        const sc = qData.scorecard || [];
+        const idsIssues = qData.idsIssues || [];
+        const weeks = qData.weeks || {};
+        const qReview = qData.qReview || {};
+        const wpByWk = data.weeklyProjects || {};
+        const qNum = parseInt(qKey.split('-Q')[1]);
+        const qw = qWeeks(qNum);
+        const hasContent = rocks.length || sc.length || idsIssues.length ||
+                           Object.keys(weeks).length || Object.keys(qReview).length ||
+                           qw.some(wn => (wpByWk[wKey(wn)] || []).length);
+        if (!hasContent) return null;
+
+        return (
+          <section key={qKey} className="print-page-break">
+            <h2 style={SH.h2}>{qKey.split('-')[1]} {YEAR}</h2>
+
+            {rocks.length > 0 && (
+              <div className="print-section">
+                <h3 style={SH.h3}>🪨 Rocks</h3>
+                <table style={SH.table}>
+                  <thead>
+                    <tr>
+                      <th style={SH.th}>Rock</th>
+                      <th style={{...SH.th, width:90}}>Status</th>
+                      <th style={{...SH.th, width:60, textAlign:'center'}}>Steps</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rocks.map(r => {
+                      const steps = wr[r.id] || [];
+                      const doneCount = steps.filter(s => stepDone(s)).length;
+                      const info = SI[r.status] || SI['on-track'];
+                      return (
+                        <tr key={r.id}>
+                          <td style={SH.td}>
+                            <div style={{fontWeight:700, marginBottom: steps.length ? 4 : 0}}>{r.title}</div>
+                            {steps.map(s => {
+                              const sw = s.startWeek || qw[0];
+                              const ew = s.endWeek || sw;
+                              const dn = stepDone(s);
+                              return (
+                                <div key={s.id} style={{fontSize:9, color:'#555', paddingLeft:10, lineHeight:1.6, textDecoration: dn ? 'line-through' : 'none'}}>
+                                  {dn ? '☑' : '☐'} {s.text} <span style={{color:'#aaa'}}>(W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''})</span>
+                                </div>
+                              );
+                            })}
+                          </td>
+                          <td style={SH.td}>
+                            <span style={SH.pill(info[0], info[1])}>{info[2]}</span>
+                          </td>
+                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>
+                            {doneCount}/{steps.length}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {sc.length > 0 && (
+              <div className="print-section">
+                <h3 style={SH.h3}>📊 Scorecard 13 semanas</h3>
+                <table style={SH.table}>
+                  <thead>
+                    <tr>
+                      <th style={SH.th}>Metric</th>
+                      <th style={{...SH.th, width:40}}>Goal</th>
+                      {qw.map((_, i) => <th key={i} style={{...SH.th, width:22, textAlign:'center', padding:'5px 1px', fontSize:9}}>W{i + 1}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sc.map(m => {
+                      const goal = parseInt(m.goal || 0);
+                      const hasGoal = !isNaN(goal) && goal > 0;
+                      return (
+                        <tr key={m.id}>
+                          <td style={SH.td}>{m.metric}</td>
+                          <td style={{...SH.td, fontWeight:700, color:'#f0a500'}}>{m.goal || ''}</td>
+                          {qw.map(wn => {
+                            const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
+                            const ok = hasGoal && cnt >= goal;
+                            return (
+                              <td key={wn} style={{...SH.td, textAlign:'center', fontWeight:700,
+                                                   color: cnt === 0 ? '#ddd' : (hasGoal ? (ok ? '#155724' : '#b71c1c') : '#3498db'),
+                                                   background: cnt === 0 ? 'transparent' : (hasGoal ? (ok ? '#eaf6ec' : '#fdecea') : '#e8f4fd')}}>
+                                {cnt > 0 ? cnt : '·'}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {qw.some(wn => (wpByWk[wKey(wn)] || []).length) && (
+              <div className="print-section">
+                <h3 style={SH.h3}>📁 Projects por semana</h3>
+                {qw.map(wn => {
+                  const projects = wpByWk[wKey(wn)] || [];
+                  if (!projects.length) return null;
+                  return (
+                    <div key={wn} style={{marginBottom:8}}>
+                      <h4 style={SH.h4}>W{wn - qw[0] + 1} · {wDates(wn)}</h4>
+                      {projects.map(p => (
+                        <div key={p.id} style={{paddingLeft:10, fontSize:11, marginBottom:3}}>
+                          <strong>{p.name || '(sin nombre)'}</strong>
+                          {p.textStatus && <span style={{color:'#888', marginLeft:8}}>· {p.textStatus}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {Object.keys(weeks).some(wn => weeks[wn].headlines || weeks[wn].conclusionNotes || weeks[wn].rating) && (
+              <div className="print-section">
+                <h3 style={SH.h3}>📋 L10 Meetings - Resumen</h3>
+                <table style={SH.table}>
+                  <thead>
+                    <tr>
+                      <th style={{...SH.th, width:60}}>Semana</th>
+                      <th style={SH.th}>Headlines</th>
+                      <th style={SH.th}>Conclusión</th>
+                      <th style={{...SH.th, width:50, textAlign:'center'}}>Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.keys(weeks).sort((a, b) => parseInt(a) - parseInt(b)).map(wn => {
+                      const w = weeks[wn];
+                      if (!w.headlines && !w.conclusionNotes && !w.rating) return null;
+                      return (
+                        <tr key={wn}>
+                          <td style={{...SH.td, fontWeight:700}}>W{parseInt(wn) - qw[0] + 1}</td>
+                          <td style={SH.td}>{w.headlines || '—'}</td>
+                          <td style={SH.td}>{w.conclusionNotes || '—'}</td>
+                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>
+                            {w.rating ? w.rating + '/10' : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {idsIssues.length > 0 && (
+              <div className="print-section">
+                <h3 style={SH.h3}>⚡ IDS Issues</h3>
+                {idsIssues.map(iss => (
+                  <div key={iss.id} style={{paddingLeft:10, marginBottom:5, fontSize:11,
+                                            opacity: iss.solved ? 0.6 : 1}}>
+                    {iss.solved ? '☑' : '☐'} <strong>{iss.sourceName}</strong>
+                    {iss.action && <div style={{paddingLeft:18, color:'#555', fontSize:10}}>→ {iss.action}</div>}
+                    <div style={{paddingLeft:18, color:'#aaa', fontSize:9}}>
+                      Wk {iss.weekAdded}{iss.solved && iss.solvedWeek ? ' → resuelta Wk ' + iss.solvedWeek : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(qReview.issues || qReview.vision || qReview.nextrocks || qReview.notes || qReview.rating) && (
+              <div className="print-section">
+                <h3 style={SH.h3}>🔍 Q Review</h3>
+                {qReview.issues && (<><h4 style={SH.h4}>Issues & Learnings</h4><div style={SH.p}>{qReview.issues}</div></>)}
+                {qReview.vision && (<><h4 style={SH.h4}>Vision Alignment</h4><div style={SH.p}>{qReview.vision}</div></>)}
+                {qReview.nextrocks && (<><h4 style={SH.h4}>Next Quarter Rocks</h4><div style={SH.p}>{qReview.nextrocks}</div></>)}
+                {qReview.notes && (<><h4 style={SH.h4}>Closing Notes</h4><div style={SH.p}>{qReview.notes}</div></>)}
+                {qReview.rating && (<div style={{marginTop:6, fontWeight:700, color:'#f0a500'}}>Quarter rating: {qReview.rating}/10</div>)}
+              </div>
+            )}
+          </section>
+        );
+      })}
+
+      {/* ============ TO-DOS ============ */}
+      {todos.length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>✅ To-dos</h2>
+
+          {openTodos.length > 0 && (
+            <div className="print-section">
+              <h3 style={SH.h3}>Pendientes ({openTodos.length})</h3>
+              <table style={SH.table}>
+                <thead>
+                  <tr>
+                    <th style={SH.th}>Tarea</th>
+                    <th style={{...SH.th, width:90}}>Vence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {openTodos.map(t => {
+                    const today = todayStr();
+                    const late = t.due && t.due < today;
+                    return (
+                      <tr key={t.id}>
+                        <td style={SH.td}>☐ {t.task}</td>
+                        <td style={{...SH.td, color: late ? '#b71c1c' : '#555'}}>
+                          {t.due || '—'}{late ? ' ⚠' : ''}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {doneTodos.length > 0 && (
+            <div className="print-section">
+              <h3 style={SH.h3}>Completadas ({doneTodos.length})</h3>
+              <table style={SH.table}>
+                <thead>
+                  <tr>
+                    <th style={SH.th}>Tarea</th>
+                    <th style={{...SH.th, width:90}}>Hecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {doneTodos.sort((a, b) => (b.completedDate || '').localeCompare(a.completedDate || '')).map(t => (
+                    <tr key={t.id} style={{opacity:0.6}}>
+                      <td style={{...SH.td, textDecoration:'line-through'}}>☑ {t.task}</td>
+                      <td style={{...SH.td, color:'#27ae60'}}>{t.completedDate || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ============ PROCESSES ============ */}
+      {ps.length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>⚙️ Processes</h2>
+          {ps.map((p, i) => (
+            <div key={p.id || i} className="print-section" style={{marginBottom:14}}>
+              <h3 style={{...SH.h3, display:'flex', alignItems:'center', gap:10}}>
+                {p.name || '(sin nombre)'}
+                <span style={SH.pill(p.documented ? '#d4edda' : '#fdecea', p.documented ? '#155724' : '#b71c1c')}>
+                  {p.documented ? 'Documentado' : 'No documentado'}
+                </span>
+              </h3>
+              {p.steps && <div style={SH.p}>{p.steps}</div>}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* ============ STD WEEK ============ */}
+      {(data.stdWeeklyEvents || []).length > 0 && (
+        <section className="print-page-break">
+          <h2 style={SH.h2}>📆 Std Week (template semanal)</h2>
+          <table style={SH.table}>
+            <thead>
+              <tr>
+                <th style={{...SH.th, width:70}}>Día</th>
+                <th style={{...SH.th, width:60}}>Hora</th>
+                <th style={{...SH.th, width:50}}>Dur.</th>
+                <th style={SH.th}>Evento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...data.stdWeeklyEvents].sort((a, b) => (a.day - b.day) || ((a.h * 60 + (a.m || 0)) - (b.h * 60 + (b.m || 0)))).map(e => (
+                <tr key={e.id}>
+                  <td style={SH.td}>{DAYS[e.day]}</td>
+                  <td style={SH.td}>{e.h}:{String(e.m || 0).padStart(2, '0')}</td>
+                  <td style={SH.td}>{e.duration}h</td>
+                  <td style={SH.td}>
+                    <strong>{e.title}</strong>
+                    {e.notes && <div style={{fontSize:10, color:'#888'}}>{e.notes}</div>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      <div style={{marginTop:30, paddingTop:14, borderTop:'1px solid #ddd', fontSize:9, color:'#aaa', textAlign:'center'}}>
+        EOS XE Dashboard · {today}
+      </div>
     </div>
   );
 }
