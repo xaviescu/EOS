@@ -1312,8 +1312,28 @@ function RocksTab({data, upd}) {
                           style={{fontSize:11, padding:'5px 10px'}}>X</Btn>
                       </div>
                   }
-                  <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.splice(ri, 1); })}
-                    style={{border:'none', background:'none', cursor:'pointer', color:'#ddd', fontSize:18, padding:0}}>x</button>
+                  <div style={{display:'flex', gap:3, alignItems:'center'}}>
+                    <button onClick={() => upd(d => {
+                        if (ri === 0) return;
+                        ensureQ(d, selQ);
+                        const arr = d.quarters[selQ].rocks;
+                        const tmp = arr[ri]; arr[ri] = arr[ri-1]; arr[ri-1] = tmp;
+                      })} disabled={ri === 0}
+                      style={{border:'1px solid #ddd', background:'white', cursor:'pointer',
+                              borderRadius:4, padding:'2px 7px', fontSize:11,
+                              opacity: ri === 0 ? 0.3 : 1}}>↑</button>
+                    <button onClick={() => upd(d => {
+                        ensureQ(d, selQ);
+                        const arr = d.quarters[selQ].rocks;
+                        if (ri === arr.length - 1) return;
+                        const tmp = arr[ri]; arr[ri] = arr[ri+1]; arr[ri+1] = tmp;
+                      })} disabled={ri === rocks.length - 1}
+                      style={{border:'1px solid #ddd', background:'white', cursor:'pointer',
+                              borderRadius:4, padding:'2px 7px', fontSize:11,
+                              opacity: ri === rocks.length - 1 ? 0.3 : 1}}>↓</button>
+                    <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.splice(ri, 1); })}
+                      style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:18, padding:'0 4px', lineHeight:1}}>x</button>
+                  </div>
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
                   {steps.length === 0 && <div style={{color:'#bbb', fontSize:13, marginBottom:10}}>No weekly steps yet.</div>}
@@ -1345,8 +1365,26 @@ function RocksTab({data, upd}) {
                                     color:'#888', fontSize:11, padding:'3px 10px', borderRadius:6}}>
                             {isEd ? 'Close' : 'Edit'}
                           </button>
+                          <button onClick={() => upd(d => {
+                              if (si === 0) return;
+                              ensureQ(d, selQ);
+                              const arr = d.quarters[selQ].weeklyRocks[rock.id];
+                              const tmp = arr[si]; arr[si] = arr[si-1]; arr[si-1] = tmp;
+                            })} disabled={si === 0}
+                            style={{border:'1px solid #ddd', background:'white', cursor:'pointer',
+                                    borderRadius:4, padding:'2px 6px', fontSize:11,
+                                    opacity: si === 0 ? 0.3 : 1}}>↑</button>
+                          <button onClick={() => upd(d => {
+                              ensureQ(d, selQ);
+                              const arr = d.quarters[selQ].weeklyRocks[rock.id];
+                              if (si === arr.length - 1) return;
+                              const tmp = arr[si]; arr[si] = arr[si+1]; arr[si+1] = tmp;
+                            })} disabled={si === steps.length - 1}
+                            style={{border:'1px solid #ddd', background:'white', cursor:'pointer',
+                                    borderRadius:4, padding:'2px 6px', fontSize:11,
+                                    opacity: si === steps.length - 1 ? 0.3 : 1}}>↓</button>
                           <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].weeklyRocks[rock.id].splice(si, 1); })}
-                            style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:15, padding:0}}>x</button>
+                            style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:15, padding:'0 4px', lineHeight:1}}>x</button>
                         </div>
                         {isEd && (
                           <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8,
@@ -1569,17 +1607,17 @@ function ScorecardTab({data, upd}) {
                         );
                       })}
                       <td style={{padding:'4px 6px', textAlign:'center'}}>
-                        <div style={{display:'flex', flexDirection:'column', gap:3, alignItems:'center'}}>
+                        <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'center'}}>
                           <button onClick={() => move(mi, -1)} disabled={mi === 0}
                             style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                                    borderRadius:3, padding:'1px 6px', fontSize:11, opacity: mi === 0 ? 0.3 : 1}}>↑</button>
+                                    borderRadius:3, padding:'1px 5px', fontSize:11, opacity: mi === 0 ? 0.3 : 1}}>↑</button>
                           <button onClick={() => move(mi, +1)} disabled={mi === scorecard.length - 1}
                             style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                                    borderRadius:3, padding:'1px 6px', fontSize:11,
+                                    borderRadius:3, padding:'1px 5px', fontSize:11,
                                     opacity: mi === scorecard.length - 1 ? 0.3 : 1}}>↓</button>
                           <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard.splice(mi, 1); })}
                             style={{border:'none', background:'none', cursor:'pointer',
-                                    color:'#ddd', fontSize:15, lineHeight:1}}>x</button>
+                                    color:'#ccc', fontSize:14, lineHeight:1, padding:'1px 4px'}}>x</button>
                         </div>
                       </td>
                     </tr>
@@ -1734,14 +1772,14 @@ function ProjectsTab({data, upd}) {
                               background:'transparent', padding:0}}/>
                   </td>
                   <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
-                    <div style={{display:'flex', flexDirection:'column', gap:3, alignItems:'center'}}>
+                    <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'flex-end'}}>
                       <button onClick={() => upd(d => {
                           if (pi === 0) return;
                           const arr = d.weeklyProjects[wk];
                           const tmp = arr[pi]; arr[pi] = arr[pi-1]; arr[pi-1] = tmp;
                         })} disabled={pi === 0}
                         style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                                borderRadius:3, padding:'1px 6px', fontSize:11,
+                                borderRadius:3, padding:'1px 5px', fontSize:11,
                                 opacity: pi === 0 ? 0.3 : 1}}>↑</button>
                       <button onClick={() => upd(d => {
                           if (pi === d.weeklyProjects[wk].length - 1) return;
@@ -1749,11 +1787,11 @@ function ProjectsTab({data, upd}) {
                           const tmp = arr[pi]; arr[pi] = arr[pi+1]; arr[pi+1] = tmp;
                         })} disabled={pi === projects.length - 1}
                         style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                                borderRadius:3, padding:'1px 6px', fontSize:11,
+                                borderRadius:3, padding:'1px 5px', fontSize:11,
                                 opacity: pi === projects.length - 1 ? 0.3 : 1}}>↓</button>
                       <button onClick={() => upd(d => { d.weeklyProjects[wk].splice(pi, 1); })}
                         style={{border:'none', background:'none', cursor:'pointer',
-                                color:'#ccc', fontSize:15, padding:0, lineHeight:1}}>x</button>
+                                color:'#ccc', fontSize:14, padding:'1px 4px', lineHeight:1}}>x</button>
                     </div>
                   </td>
                 </tr>
@@ -1802,24 +1840,25 @@ function TodosTab({data, upd}) {
               : <span style={{color:'#f0a500', fontWeight:600}}>In progress</span>}
           </div>
         </div>
-        <div style={{display:'flex', flexDirection:'column', gap:3, alignItems:'center', flexShrink:0}}>
+        <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
           <button onClick={() => upd(d => {
               if (ri <= 0) return;
               const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
             })} disabled={ri <= 0}
             style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                    borderRadius:3, padding:'1px 7px', fontSize:11,
+                    borderRadius:3, padding:'1px 6px', fontSize:11,
                     opacity: ri <= 0 ? 0.3 : 1}}>↑</button>
           <button onClick={() => upd(d => {
               if (ri >= d.todos.length - 1) return;
               const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
             })} disabled={ri >= data.todos.length - 1}
             style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                    borderRadius:3, padding:'1px 7px', fontSize:11,
+                    borderRadius:3, padding:'1px 6px', fontSize:11,
                     opacity: ri >= data.todos.length - 1 ? 0.3 : 1}}>↓</button>
+          <button onClick={() => upd(d => { d.todos.splice(ri, 1); })}
+            style={{border:'none', background:'none', cursor:'pointer',
+                    color:'#ccc', fontSize:16, padding:'1px 4px', lineHeight:1}}>x</button>
         </div>
-        <button onClick={() => upd(d => { d.todos.splice(ri, 1); })}
-          style={{border:'none', background:'none', cursor:'pointer', color:'#e0e0e0', fontSize:18, flexShrink:0}}>x</button>
       </div>
     );
   };
