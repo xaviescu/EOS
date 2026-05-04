@@ -133,6 +133,36 @@ const ensureQ = (d, qk) => {
   ['weeks','weeklyRocks','qReview'].forEach(k => { if (!d.quarters[qk][k]) d.quarters[qk][k] = {}; });
 };
 
+// Event colors (cycled by clicking on an event in Calendar or Daily Summary)
+// 5 states: none -> gray -> blue -> green -> orange -> none
+const EVENT_COLOR_CYCLE = [null, 'gray', 'blue', 'green', 'orange'];
+const EVENT_COLOR_STYLES = {
+  gray:   {bg:'#d6d6d6', text:'#1a1a2e', border:'#888'},
+  blue:   {bg:'#9ec5e8', text:'#0d3a5c', border:'#3071a8'},
+  green:  {bg:'#a3d4ad', text:'#0d3d1a', border:'#27ae60'},
+  orange: {bg:'#ffc985', text:'#5a2e00', border:'#e67e22'}
+};
+const cycleEventColor = c => {
+  const idx = EVENT_COLOR_CYCLE.indexOf(c || null);
+  return EVENT_COLOR_CYCLE[(idx + 1) % EVENT_COLOR_CYCLE.length];
+};
+const eventStyle = (ev) => {
+  if (ev.color && EVENT_COLOR_STYLES[ev.color]) {
+    const c = EVENT_COLOR_STYLES[ev.color];
+    return {bg: c.bg, text: c.text, border: c.border};
+  }
+  // Defaults
+  if (ev.isStdWeek) return {bg:'#f5f5f5', text:'#888', border:'#bbb'};
+  return {bg:'#e8f4fd', text:'#1a1a2e', border:'#3498db'};
+};
+const eventEndTime = (ev) => {
+  const totalMin = ev.h * 60 + (ev.m || 0) + Math.round((ev.duration || 1) * 60);
+  const eh = Math.floor(totalMin / 60);
+  const em = totalMin % 60;
+  return {h: eh, m: em};
+};
+const fmtTime = (h, m) => h + ':' + String(m || 0).padStart(2, '0');
+
 const normalizeData = p => ({
   ...INIT, ...p,
   monthNotes: p.monthNotes || {},
@@ -369,7 +399,7 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
 // =====================================================================
 // Calendar
 // =====================================================================
-function CalTable({events, onCellClick, onDelete, dayLabels, compact}) {
+function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compact}) {
   compact = compact || false;
   const occupied = {};
   events.forEach(e => {
@@ -416,25 +446,28 @@ function CalTable({events, onCellClick, onDelete, dayLabels, compact}) {
                 const ev = events.find(e => e.day === di && e.h === slot.h && (e.m || 0) === slot.m);
                 if (ev) {
                   const rSpan = Math.max(1, Math.round((ev.duration || 1) * 2));
-                  const isStd = !!ev.isStdWeek;
+                  const st = eventStyle(ev);
+                  const end = eventEndTime(ev);
                   return (
                     <td key={di} rowSpan={rSpan}
+                      onClick={() => onCycleColor && onCycleColor(ev.id)}
                       style={{padding:2, verticalAlign:'top',
-                              background: isStd ? '#f5f5f5' : '#e8f4fd',
-                              borderLeft:'3px solid ' + (isStd ? '#bbb' : '#3498db'),
-                              borderTop:'1px solid #f5f5f5', position:'relative'}}>
+                              background: st.bg,
+                              borderLeft:'3px solid ' + st.border,
+                              borderTop:'1px solid #f5f5f5', position:'relative',
+                              cursor: onCycleColor ? 'pointer' : 'default'}}>
                       <div style={{padding:'2px 18px 2px 5px', boxSizing:'border-box'}}>
-                        <div style={{fontWeight:700, color: isStd ? '#888' : '#1a1a2e',
+                        <div style={{fontWeight:700, color: st.text,
                                      fontSize:10, overflow:'hidden', textOverflow:'ellipsis',
                                      whiteSpace:'nowrap'}}>{ev.title}</div>
-                        <div style={{color:'#888', fontSize:9}}>
-                          {ev.h}:{String(ev.m || 0).padStart(2,'0')} {ev.duration}h
+                        <div style={{color: st.text, opacity:0.75, fontSize:9}}>
+                          {fmtTime(ev.h, ev.m)}-{fmtTime(end.h, end.m)}
                         </div>
                       </div>
-                      <button onClick={() => onDelete(ev.id)}
+                      <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
                         style={{position:'absolute', top:2, right:3, border:'none',
-                                background:'none', cursor:'pointer', color:'rgba(0,0,0,0.2)',
-                                fontSize:11, padding:0, lineHeight:1}}>x</button>
+                                background:'none', cursor:'pointer', color: st.text,
+                                opacity:0.4, fontSize:11, padding:0, lineHeight:1}}>x</button>
                     </td>
                   );
                 }
@@ -525,6 +558,10 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
           const idx = (d.weeklyCalendar[wk] || []).findIndex(x => x.id === id);
           if (idx >= 0) d.weeklyCalendar[wk].splice(idx, 1);
         })}
+        onCycleColor={id => upd(d => {
+          const idx = (d.weeklyCalendar[wk] || []).findIndex(x => x.id === id);
+          if (idx >= 0) d.weeklyCalendar[wk][idx].color = cycleEventColor(d.weeklyCalendar[wk][idx].color);
+        })}
         dayLabels={dayLabels} compact={compact}/>
       {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)} dayLabels={dayLabels}/>}
     </div>
@@ -551,6 +588,10 @@ function StdWeekCalendar({data, upd}) {
         onDelete={id => upd(d => {
           const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
           if (idx >= 0) d.stdWeeklyEvents.splice(idx, 1);
+        })}
+        onCycleColor={id => upd(d => {
+          const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
+          if (idx >= 0) d.stdWeeklyEvents[idx].color = cycleEventColor(d.stdWeeklyEvents[idx].color);
         })}/>
       {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)}/>}
     </div>
@@ -1670,7 +1711,7 @@ function ProjectsTab({data, upd}) {
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width:'45%'}}>Project</th>
                 <th style={{fontSize:10, fontWeight:700, color:'#aaa', textTransform:'uppercase',
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left'}}>Status</th>
-                <th style={{width:20}}/>
+                <th style={{width:46}}/>
               </tr>
             </thead>
             <tbody>
@@ -1692,10 +1733,28 @@ function ProjectsTab({data, upd}) {
                               fontFamily:'inherit', color:'#888',
                               background:'transparent', padding:0}}/>
                   </td>
-                  <td style={{textAlign:'right', verticalAlign:'middle'}}>
-                    <button onClick={() => upd(d => { d.weeklyProjects[wk].splice(pi, 1); })}
-                      style={{border:'none', background:'none', cursor:'pointer',
-                              color:'#ccc', fontSize:15, padding:0, lineHeight:1}}>x</button>
+                  <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
+                    <div style={{display:'flex', flexDirection:'column', gap:3, alignItems:'center'}}>
+                      <button onClick={() => upd(d => {
+                          if (pi === 0) return;
+                          const arr = d.weeklyProjects[wk];
+                          const tmp = arr[pi]; arr[pi] = arr[pi-1]; arr[pi-1] = tmp;
+                        })} disabled={pi === 0}
+                        style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                                borderRadius:3, padding:'1px 6px', fontSize:11,
+                                opacity: pi === 0 ? 0.3 : 1}}>↑</button>
+                      <button onClick={() => upd(d => {
+                          if (pi === d.weeklyProjects[wk].length - 1) return;
+                          const arr = d.weeklyProjects[wk];
+                          const tmp = arr[pi]; arr[pi] = arr[pi+1]; arr[pi+1] = tmp;
+                        })} disabled={pi === projects.length - 1}
+                        style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                                borderRadius:3, padding:'1px 6px', fontSize:11,
+                                opacity: pi === projects.length - 1 ? 0.3 : 1}}>↓</button>
+                      <button onClick={() => upd(d => { d.weeklyProjects[wk].splice(pi, 1); })}
+                        style={{border:'none', background:'none', cursor:'pointer',
+                                color:'#ccc', fontSize:15, padding:0, lineHeight:1}}>x</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1730,7 +1789,12 @@ function TodosTab({data, upd}) {
           onChange={e => upd(d => { d.todos[ri].done = e.target.checked; d.todos[ri].completedDate = e.target.checked ? todayStr() : null; })}
           style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
         <div style={{flex:1}}>
-          <div style={{fontWeight:500, color:'#1a1a2e', textDecoration: t.done ? 'line-through' : 'none', fontSize:14, marginBottom:4}}>{t.task}</div>
+          <input value={t.task}
+            onChange={e => upd(d => { d.todos[ri].task = e.target.value; })}
+            style={{width:'100%', border:'none', outline:'none', fontWeight:500,
+                    color:'#1a1a2e', textDecoration: t.done ? 'line-through' : 'none',
+                    fontSize:14, marginBottom:4, background:'transparent',
+                    fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'#bbb', display:'flex', gap:12, flexWrap:'wrap'}}>
             {t.due && <span style={{color: late ? '#e74c3c' : 'inherit'}}>Due: {t.due}{late ? ' !!' : ''}</span>}
             {t.done && t.completedDate
@@ -1738,8 +1802,24 @@ function TodosTab({data, upd}) {
               : <span style={{color:'#f0a500', fontWeight:600}}>In progress</span>}
           </div>
         </div>
+        <div style={{display:'flex', flexDirection:'column', gap:3, alignItems:'center', flexShrink:0}}>
+          <button onClick={() => upd(d => {
+              if (ri <= 0) return;
+              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
+            })} disabled={ri <= 0}
+            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                    borderRadius:3, padding:'1px 7px', fontSize:11,
+                    opacity: ri <= 0 ? 0.3 : 1}}>↑</button>
+          <button onClick={() => upd(d => {
+              if (ri >= d.todos.length - 1) return;
+              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
+            })} disabled={ri >= data.todos.length - 1}
+            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                    borderRadius:3, padding:'1px 7px', fontSize:11,
+                    opacity: ri >= data.todos.length - 1 ? 0.3 : 1}}>↓</button>
+        </div>
         <button onClick={() => upd(d => { d.todos.splice(ri, 1); })}
-          style={{border:'none', background:'none', cursor:'pointer', color:'#e0e0e0', fontSize:18}}>x</button>
+          style={{border:'none', background:'none', cursor:'pointer', color:'#e0e0e0', fontSize:18, flexShrink:0}}>x</button>
       </div>
     );
   };
@@ -1909,6 +1989,38 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
   const scorecard = qData.scorecard || [];
   const isMobile = window.innerWidth <= 700;
 
+  // Meeting management for Daily Summary
+  const [meetingForm, setMeetingForm] = useState(null);
+  const cycleEventColorById = (id) => upd(d => {
+    if (!d.weeklyCalendar) d.weeklyCalendar = {};
+    const wkey = wKey(wn);
+    if (!d.weeklyCalendar[wkey]) return;
+    const idx = d.weeklyCalendar[wkey].findIndex(x => x.id === id);
+    if (idx >= 0) d.weeklyCalendar[wkey][idx].color = cycleEventColor(d.weeklyCalendar[wkey][idx].color);
+  });
+  const saveMeeting = () => {
+    if (!meetingForm || !meetingForm.title) return;
+    const wkey = wKey(wn);
+    upd(d => {
+      if (!d.weeklyCalendar) d.weeklyCalendar = {};
+      if (!d.weeklyCalendar[wkey]) d.weeklyCalendar[wkey] = [];
+      d.weeklyCalendar[wkey].push({id: uid(), ...meetingForm});
+    });
+    setMeetingForm(null);
+  };
+  const deleteMeeting = (id) => upd(d => {
+    const wkey = wKey(wn);
+    if (!d.weeklyCalendar || !d.weeklyCalendar[wkey]) return;
+    const idx = d.weeklyCalendar[wkey].findIndex(x => x.id === id);
+    if (idx >= 0) d.weeklyCalendar[wkey].splice(idx, 1);
+  });
+
+  // Inline editable to-do (for the day-todo list)
+  const updateTodoTask = (id, val) => upd(d => {
+    const idx = d.todos.findIndex(x => x.id === id);
+    if (idx >= 0) d.todos[idx].task = val;
+  });
+
   return (
     <div>
       <h2 style={S.h2}>Daily Summary</h2>
@@ -1960,109 +2072,109 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   outline:'none', fontSize:14, padding:'4px 6px',
                   background:'transparent', color:'#1a1a2e', fontFamily:'inherit'}}/>
       </div>
-      <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:16}}>
-        <div>
-          <div style={S.card}>
-            <h3 style={S.h3}>Weekly Rocks this week</h3>
-            {wrThisWeek.length === 0
-              ? <div style={{color:'#aaa', fontSize:14}}>No steps this week.</div>
-              : wrThisWeek.map(({rock, steps}) => (
-                <div key={rock.id} style={{marginBottom:10}}>
-                  <div style={{fontSize:13, fontWeight:700, color:'#1a1a2e', marginBottom:4}}>{rock.title}</div>
-                  {steps.map(step => {
-                    const done = isWkDone(step, wn);
-                    return (
-                      <div key={step.id} style={{display:'flex', alignItems:'center', gap:8, padding:'4px 0', opacity: done ? 0.5 : 1}}>
-                        <input type="checkbox" checked={done}
-                          onChange={() => upd(d => {
-                            ensureQ(d, curQ);
-                            const idx = (d.quarters[curQ].weeklyRocks[rock.id] || []).findIndex(s => s.id === step.id);
-                            if (idx >= 0) {
-                              if (!d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone)
-                                d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone = {};
-                              d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone[wn] = !done;
-                            }
-                          })}
-                          style={{width:15, height:15, cursor:'pointer'}}/>
-                        <span style={{fontSize:14, textDecoration: done ? 'line-through' : 'none', color:'#1a1a2e'}}>{step.text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
-            }
-          </div>
-          <div style={S.card}>
-            <h3 style={S.h3}>Scorecard today</h3>
-            {scorecard.length === 0
-              ? <div style={{color:'#aaa', fontSize:14}}>No metrics for Q{q}.</div>
-              : scorecard.map((m, mi) => {
-                const st = m.dayData && m.dayData[selDay];
-                const DST2 = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','✗']};
-                const info = DST2[st] || ['#f0f0f0','#ccc','.'];
-                return (
-                  <div key={m.id} style={{display:'flex', alignItems:'center', gap:10,
-                                          padding:'5px 0', borderBottom:'1px solid #f5f5f5'}}>
-                    <div style={{flex:1, fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
-                    <button onClick={() => setDayScore(mi, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
-                      style={{width:36, height:36, borderRadius:7,
-                              border:'2px solid ' + info[0], background:info[0],
-                              color:info[1], cursor:'pointer', fontSize:16, fontWeight:800}}>{info[2]}</button>
-                  </div>
-                );
-              })
-            }
-          </div>
+      {/* Meetings */}
+      <div style={S.card}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+          <h3 style={{...S.h3, marginBottom:0}}>Meetings</h3>
+          <Btn onClick={() => setMeetingForm({day: dayOfWeek, h:9, m:0, duration:1, title:'', notes:''})}
+            style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
         </div>
-        <div>
-          <div style={S.card}>
-            <h3 style={S.h3}>Meetings</h3>
-            {calEvents.length === 0
-              ? <div style={{color:'#aaa', fontSize:14}}>No events today.</div>
-              : calEvents.map(e => (
-                <div key={e.id} style={{display:'flex', gap:12, padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
-                  <div style={{fontSize:13, fontWeight:700, color:'#3498db', flexShrink:0, minWidth:45}}>
-                    {e.h}:{String(e.m || 0).padStart(2, '0')}
-                  </div>
-                  <div>
-                    <div style={{fontSize:14, fontWeight:600, color:'#1a1a2e'}}>{e.title}</div>
-                    {e.duration > 1 && <div style={{fontSize:11, color:'#aaa'}}>{e.duration}h</div>}
-                  </div>
+        {calEvents.length === 0
+          ? <div style={{color:'#aaa', fontSize:14}}>No events today.</div>
+          : calEvents.map(e => {
+            const st = eventStyle(e);
+            const end = eventEndTime(e);
+            return (
+              <div key={e.id}
+                onClick={() => cycleEventColorById(e.id)}
+                style={{display:'flex', gap:12, padding:'9px 12px', marginBottom:5,
+                        borderRadius:8, cursor:'pointer',
+                        background: st.bg,
+                        borderLeft:'4px solid ' + st.border,
+                        position:'relative'}}>
+                <div style={{fontSize:13, fontWeight:700, color: st.text, flexShrink:0, minWidth:90}}>
+                  {fmtTime(e.h, e.m)} - {fmtTime(end.h, end.m)}
                 </div>
-              ))
-            }
-          </div>
-          <div style={S.card}>
-            <h3 style={S.h3}>To-dos</h3>
-            {dayTodos.length === 0
-              ? <div style={{color:'#aaa', fontSize:14}}>No to-dos today</div>
-              : dayTodos.map(t => {
-                const donOnDay = t.completedDate && t.completedDate <= selDay;
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14, fontWeight:600, color: st.text}}>{e.title}</div>
+                  {e.notes && <div style={{fontSize:11, color: st.text, opacity:0.7}}>{e.notes}</div>}
+                </div>
+                <button onClick={(ev) => { ev.stopPropagation(); deleteMeeting(e.id); }}
+                  style={{border:'none', background:'none', cursor:'pointer',
+                          color: st.text, opacity:0.5, fontSize:16, padding:0,
+                          flexShrink:0}}>x</button>
+              </div>
+            );
+          })
+        }
+      </div>
+
+      {/* To-Dos */}
+      <div style={S.card}>
+        <h3 style={S.h3}>To-dos</h3>
+        {dayTodos.length === 0
+          ? <div style={{color:'#aaa', fontSize:14}}>No to-dos today</div>
+          : dayTodos.map(t => {
+            const donOnDay = t.completedDate && t.completedDate <= selDay;
+            return (
+              <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
+                                      padding:'6px 0', borderBottom:'1px solid #f5f5f5',
+                                      opacity: donOnDay ? 0.5 : 1}}>
+                <input type="checkbox" checked={!!donOnDay}
+                  onChange={() => upd(d => {
+                    const ri = d.todos.findIndex(x => x.id === t.id);
+                    if (ri >= 0) {
+                      d.todos[ri].done = !donOnDay;
+                      d.todos[ri].completedDate = !donOnDay ? todayStr() : null;
+                    }
+                  })}
+                  style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+                <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
+                  style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
+                          color:'#1a1a2e', textDecoration: donOnDay ? 'line-through' : 'none',
+                          background:'transparent', fontFamily:'inherit', padding:0}}/>
+                {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa', flexShrink:0}}>{t.due}</span>}
+              </div>
+            );
+          })
+        }
+      </div>
+
+      {/* Weekly Rocks */}
+      <div style={S.card}>
+        <h3 style={S.h3}>Weekly Rocks this week</h3>
+        {wrThisWeek.length === 0
+          ? <div style={{color:'#aaa', fontSize:14}}>No steps this week.</div>
+          : wrThisWeek.map(({rock, steps}) => (
+            <div key={rock.id} style={{marginBottom:10}}>
+              <div style={{fontSize:13, fontWeight:700, color:'#1a1a2e', marginBottom:4}}>{rock.title}</div>
+              {steps.map(step => {
+                const done = isWkDone(step, wn);
                 return (
-                  <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
-                                          padding:'6px 0', borderBottom:'1px solid #f5f5f5',
-                                          opacity: donOnDay ? 0.5 : 1}}>
-                    <input type="checkbox" checked={!!donOnDay}
+                  <div key={step.id} style={{display:'flex', alignItems:'center', gap:8, padding:'4px 0', opacity: done ? 0.5 : 1}}>
+                    <input type="checkbox" checked={done}
                       onChange={() => upd(d => {
-                        const ri = d.todos.findIndex(x => x.id === t.id);
-                        if (ri >= 0) {
-                          d.todos[ri].done = !donOnDay;
-                          d.todos[ri].completedDate = !donOnDay ? todayStr() : null;
+                        ensureQ(d, curQ);
+                        const idx = (d.quarters[curQ].weeklyRocks[rock.id] || []).findIndex(s => s.id === step.id);
+                        if (idx >= 0) {
+                          if (!d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone)
+                            d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone = {};
+                          d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone[wn] = !done;
                         }
                       })}
-                      style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:14, fontWeight:500, color:'#1a1a2e',
-                                   textDecoration: donOnDay ? 'line-through' : 'none'}}>{t.task}</div>
-                    </div>
-                    {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa'}}>{t.due}</span>}
+                      style={{width:15, height:15, cursor:'pointer'}}/>
+                    <span style={{fontSize:14, textDecoration: done ? 'line-through' : 'none', color:'#1a1a2e'}}>{step.text}</span>
                   </div>
                 );
-              })
-            }
-          </div>
-        </div>
+              })}
+            </div>
+          ))
+        }
       </div>
+
+      {meetingForm && <EventModal form={meetingForm} setForm={setMeetingForm}
+        onSave={saveMeeting} onClose={() => setMeetingForm(null)}
+        dayLabels={DAYS.map((d, di) => ({sub: dayShort(wn, di)}))}/>}
     </div>
   );
 }
