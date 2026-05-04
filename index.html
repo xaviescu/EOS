@@ -2419,13 +2419,14 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
   };
   // Visibility rules:
   // - Show only todos created in week <= weekNum (not in weeks before they exist)
-  // - Hide completed todos starting from the week they were completed (inclusive)
+  // - Show completed todos in the same week they were completed (crossed out)
+  // - Hide completed todos starting from the FOLLOWING week onwards
   const visibleTodos = data.todos.filter(t => {
     const createdWeek = t.startDate ? dateToWn(t.startDate) : 1;
     if (createdWeek > weekNum) return false;
     if (t.done && t.completedDate) {
       const completionWeek = dateToWn(t.completedDate);
-      if (completionWeek <= weekNum) return false;
+      if (completionWeek < weekNum) return false;
     }
     return true;
   });
