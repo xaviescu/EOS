@@ -1826,6 +1826,10 @@ function ProjectsTab({data, upd}) {
       projects.forEach(p => { d.weeklyProjects[nwk].push({...p, id: uid()}); });
     });
   };
+  const createTodoFromProject = (proj) => upd(d => {
+    const taskName = (proj.name || '(sin nombre)') + (proj.textStatus ? ' — ' + proj.textStatus : '');
+    d.todos.push({id: uid(), task: taskName, startDate: todayStr(), due: '', done: false, completedDate: null});
+  });
   return (
     <div>
       <h2 style={S.h2}>Projects</h2>
@@ -1852,7 +1856,8 @@ function ProjectsTab({data, upd}) {
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width:'45%'}}>Project</th>
                 <th style={{fontSize:10, fontWeight:700, color:'#aaa', textTransform:'uppercase',
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left'}}>Status</th>
-                <th style={{width:46}}/>
+                <th style={{width:60}}/>
+                <th style={{width:60}}/>
               </tr>
             </thead>
             <tbody>
@@ -1873,6 +1878,12 @@ function ProjectsTab({data, upd}) {
                       style={{width:'100%', border:'none', outline:'none', fontSize:12,
                               fontFamily:'inherit', color:'#888',
                               background:'transparent', padding:0}}/>
+                  </td>
+                  <td style={{textAlign:'center', verticalAlign:'middle', padding:'4px 6px'}}>
+                    <button onClick={() => createTodoFromProject(proj)}
+                      style={{padding:'2px 8px', borderRadius:10, border:'1px solid #e0e0e0', cursor:'pointer',
+                              fontSize:10, fontWeight:700, background:'white', color:'#666',
+                              whiteSpace:'nowrap'}}>+ To-do</button>
                   </td>
                   <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
                     <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'flex-end'}}>
@@ -2626,15 +2637,30 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues}) {
   const wk = wKey(weekNum);
   const projects = (data.weeklyProjects && data.weeklyProjects[wk]) || [];
   if (!projects.length) return <div style={{color:'#aaa', fontSize:14}}>No projects this week. Add them in the Projects tab.</div>;
+  const setStatus = (pid, val) => upd(d => {
+    if (!d.weeklyProjects || !d.weeklyProjects[wk]) return;
+    const idx = d.weeklyProjects[wk].findIndex(p => p.id === pid);
+    if (idx >= 0) d.weeklyProjects[wk][idx].textStatus = val;
+  });
+  const createTodoFromProject = (proj) => upd(d => {
+    const taskName = (proj.name || '(sin nombre)') + (proj.textStatus ? ' — ' + proj.textStatus : '');
+    d.todos.push({id: uid(), task: taskName, startDate: todayStr(), due: '', done: false, completedDate: null});
+  });
   return (
     <div>
       {projects.map(proj => (
         <div key={proj.id} style={{display:'flex', alignItems:'center', gap:10,
-                                   padding:'8px 0', borderBottom:'1px solid #f5f5f5'}}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{proj.name || '(unnamed)'}</div>
-            {proj.textStatus && <div style={{fontSize:12, color:'#888', marginTop:2}}>{proj.textStatus}</div>}
-          </div>
+                                   padding:'8px 0', borderBottom:'1px solid #f5f5f5', flexWrap:'wrap'}}>
+          <div style={{fontSize:14, fontWeight:700, color:'#1a1a2e', flexShrink:0}}>{proj.name || '(unnamed)'}</div>
+          <input value={proj.textStatus || ''} onChange={e => setStatus(proj.id, e.target.value)}
+            placeholder="Status..."
+            style={{flex:1, minWidth:80, border:'none', borderBottom:'1px solid #f0f0f0',
+                    outline:'none', fontSize:12, color:'#666', background:'transparent',
+                    fontFamily:'inherit', padding:'2px 4px'}}/>
+          <button onClick={() => createTodoFromProject(proj)}
+            style={{padding:'2px 8px', borderRadius:10, border:'1px solid #e0e0e0', cursor:'pointer',
+                    fontSize:10, fontWeight:700, flexShrink:0, background:'white', color:'#666',
+                    whiteSpace:'nowrap'}}>+ To-do</button>
           <IssueBtn idsIssues={idsIssues} sourceId={proj.id} sourceName={'Project: ' + (proj.name || '(unnamed)')}
             weekNum={weekNum} upd={upd} qKey={qKey}/>
         </div>
@@ -2664,6 +2690,10 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
     if (idx >= 0) d.quarters[qKey].idsIssues.splice(idx, 1);
+  });
+  const createTodoFromIssue = (issue) => upd(d => {
+    const taskName = issue.sourceName + (issue.action ? ' — ' + issue.action : '');
+    d.todos.push({id: uid(), task: taskName, startDate: todayStr(), due: '', done: false, completedDate: null});
   });
   const addIssue = () => {
     if (!form || !form.name) return;
@@ -2704,8 +2734,14 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
                 </span>}
               {issue.solved && <span style={{fontSize:10, color:'#27ae60', marginTop:3, display:'block'}}>Solved this week</span>}
             </div>
-            <button onClick={() => deleteIssue(issue.id)}
-              style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:14, padding:0, flexShrink:0, marginTop:2}}>x</button>
+            <div style={{display:'flex', flexDirection:'column', gap:4, alignItems:'flex-end', flexShrink:0}}>
+              <button onClick={() => createTodoFromIssue(issue)}
+                style={{padding:'2px 8px', borderRadius:10, border:'1px solid #e0e0e0', cursor:'pointer',
+                        fontSize:10, fontWeight:700, background:'white', color:'#666',
+                        whiteSpace:'nowrap'}}>+ To-do</button>
+              <button onClick={() => deleteIssue(issue.id)}
+                style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:14, padding:0}}>x</button>
+            </div>
           </div>
         </div>
       ))}
