@@ -982,6 +982,33 @@ function App({bundle, onLogout}) {
   const skipNextSave = useRef(false);
   const lastSavedSerial = useRef(JSON.stringify(initial));
 
+  // Auto-carry-forward incomplete weekly rock steps (run once on mount)
+  // Rule: if a step's endWeek is in the past AND it's not done, MOVE the
+  // step to the current week (start = end = curWn). This way it appears
+  // again only in the current week, week by week, until completed.
+  useEffect(() => {
+    const curWn = getCurWn();
+    setD(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      let changed = false;
+      Object.keys(next.quarters || {}).forEach(qk => {
+        const wr = (next.quarters[qk] || {}).weeklyRocks || {};
+        Object.keys(wr).forEach(rid => {
+          (wr[rid] || []).forEach(step => {
+            const endW = step.endWeek || step.weekNum || 1;
+            if (endW < curWn && !stepDone(step)) {
+              step.startWeek = curWn;
+              step.endWeek = curWn;
+              changed = true;
+            }
+          });
+        });
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Save (debounced 800ms)
   useEffect(() => {
     if (skipNextSave.current) { skipNextSave.current = false; return; }
