@@ -1,8 +1,9 @@
 // EOS XE Dashboard - Service Worker
-// Caches the app shell so the PWA opens instantly and works offline.
-// Data sync (Supabase) goes straight through and is never cached.
+// Caches ONLY the local app shell (HTML, icons, manifest).
+// External resources (Supabase, unpkg, jsdelivr CDNs) ALWAYS go to network -
+// they must never be cached by the SW or stale/broken versions stick forever.
 
-const CACHE = 'eos-xe-v6';
+const CACHE = 'eos-xe-v8';
 const SHELL = [
   './',
   './index.html',
@@ -29,11 +30,14 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Never cache Supabase or any API call - always go through network
-  if (url.hostname.includes('supabase')) return;
+  // ONLY handle requests for our own origin (the GitHub Pages site).
+  // Everything else (Supabase, unpkg, jsdelivr, etc.) is left untouched and
+  // goes through the network directly. This prevents stale CDN scripts from
+  // being cached forever by the SW.
+  if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML so updates roll out immediately
-  if (e.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+  // Network-first for HTML/navigation so updates always roll out immediately
+  if (e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     e.respondWith(
       fetch(e.request).then(r => {
         const copy = r.clone();
@@ -44,11 +48,11 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-first for other shell assets and CDN libraries
+  // Cache-first for local shell assets (icons, manifest, sw.js)
   e.respondWith(
     caches.match(e.request).then(cached =>
       cached || fetch(e.request).then(r => {
-        if (r.ok && (url.protocol === 'https:' || url.protocol === 'http:')) {
+        if (r.ok) {
           const copy = r.clone();
           caches.open(CACHE).then(c => c.put(e.request, copy));
         }
