@@ -3,7 +3,7 @@
 // External resources (Supabase, unpkg, jsdelivr CDNs) ALWAYS go to network -
 // they must never be cached by the SW or stale/broken versions stick forever.
 
-const CACHE = 'eos-xe-v8';
+const CACHE = 'eos-xe-v9';
 const SHELL = [
   './',
   './index.html',
