@@ -2,7 +2,7 @@
 // Caches the app shell so the PWA opens instantly and works offline.
 // Data sync (Supabase) goes straight through and is never cached.
 
-const CACHE = 'eos-xe-v4';
+const CACHE = 'eos-xe-v5';
 const SHELL = [
   './',
   './index.html',
