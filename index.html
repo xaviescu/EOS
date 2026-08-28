@@ -209,7 +209,10 @@
     .print-section{page-break-inside:avoid;}
     .print-area{padding:0 !important;max-height:none !important;overflow:visible !important;}
     nav.sidebar{display:none !important;}
-    main.main-content{padding:0 !important;max-height:none !important;overflow:visible !important;}
+    main.main-content{padding:0 !important;max-height:none !important;overflow:visible !important;scrollbar-gutter:auto !important;}
+    /* Ocultar cualquier scrollbar en modo impresión */
+    html,body{overflow:visible !important;scrollbar-gutter:auto !important;}
+    html::-webkit-scrollbar,body::-webkit-scrollbar,main::-webkit-scrollbar{display:none !important;}
     .print-view{padding:0 !important;}
     .print-view h1{font-size:22pt;}
     .print-view h2{font-size:16pt;page-break-after:avoid;}
@@ -242,6 +245,33 @@
     } catch(e){}
   })();
 </script>
+<style>
+  /* Skeleton loading — se ve antes de que React monte, luego React reemplaza #root.
+     Anti-flash + sensación de rapidez. */
+  #root:empty::before{
+    content:""; display:block; position:fixed; inset:0;
+    background:
+      /* Sidebar (dark strip) */
+      linear-gradient(90deg, var(--sidebar-bg) 0, var(--sidebar-bg) 210px, transparent 210px),
+      var(--bg);
+  }
+  #root:empty::after{
+    content:""; display:block; position:fixed;
+    top:100px; left:calc(210px + 32px); right:32px; height:16px;
+    border-radius:6px;
+    background:linear-gradient(90deg, var(--border) 0, var(--border-strong) 50%, var(--border) 100%);
+    background-size:200% 100%;
+    animation: skeletonPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes skeletonPulse{
+    0%{background-position:200% 0;}
+    100%{background-position:-200% 0;}
+  }
+  @media (max-width: 700px){
+    #root:empty::before{background: linear-gradient(90deg, var(--sidebar-bg) 0, var(--sidebar-bg) 48px, transparent 48px), var(--bg);}
+    #root:empty::after{left:14px; right:14px; top:70px;}
+  }
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -869,7 +899,7 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
 // =====================================================================
 // Calendar
 // =====================================================================
-function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compact}) {
+function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabels, compact}) {
   compact = compact || false;
   const occupied = {};
   events.forEach(e => {
@@ -919,26 +949,41 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compa
                   const rSpan = Math.max(1, Math.round((ev.duration || 1) * 2));
                   const st = eventStyle(ev);
                   const end = eventEndTime(ev);
+                  const emptyTitle = !ev.title || !ev.title.trim();
                   return (
                     <td key={di} rowSpan={rSpan}
-                      onClick={() => onCycleColor && onCycleColor(ev.id)}
+                      onClick={() => onEdit ? onEdit(ev) : (onCycleColor && onCycleColor(ev.id))}
+                      title={onEdit ? 'Click para editar' : ''}
                       style={{padding:2, verticalAlign:'top',
                               background: st.bg,
                               borderLeft:'3px solid ' + st.border,
                               borderTop:'1px solid var(--surface-alt)', position:'relative',
-                              cursor: onCycleColor ? 'pointer' : 'default'}}>
-                      <div style={{padding:'2px 18px 2px 5px', boxSizing:'border-box'}}>
+                              cursor: (onEdit || onCycleColor) ? 'pointer' : 'default'}}>
+                      <div style={{padding:'2px 32px 2px 5px', boxSizing:'border-box'}}>
                         <div style={{fontWeight:700, color: st.text,
                                      fontSize:10, overflow:'hidden', textOverflow:'ellipsis',
-                                     whiteSpace:'nowrap'}}>{ev.title}</div>
+                                     whiteSpace:'nowrap',
+                                     fontStyle: emptyTitle ? 'italic' : 'normal',
+                                     opacity: emptyTitle ? 0.5 : 1}}>
+                          {emptyTitle ? '(sin título)' : ev.title}
+                        </div>
                         <div style={{color: st.text, opacity:0.75, fontSize:9}}>
                           {fmtTime(ev.h, ev.m)}-{fmtTime(end.h, end.m)}
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
-                        style={{position:'absolute', top:2, right:3, border:'none',
-                                background:'none', cursor:'pointer', color: st.text,
-                                opacity:0.4, fontSize:11, padding:0, lineHeight:1}}>x</button>
+                      <div style={{position:'absolute', top:2, right:3, display:'flex', gap:2, alignItems:'center'}}>
+                        {onCycleColor && (
+                          <button onClick={(e) => { e.stopPropagation(); onCycleColor(ev.id); }}
+                            title="Cambiar color"
+                            style={{border:'1px solid ' + st.border, borderRadius:'50%',
+                                    background:'transparent', width:11, height:11, padding:0,
+                                    cursor:'pointer'}}/>
+                        )}
+                        <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
+                          title="Eliminar"
+                          style={{border:'none', background:'none', cursor:'pointer', color: st.text,
+                                  opacity:0.5, fontSize:12, padding:'0 2px', lineHeight:1}}>×</button>
+                      </div>
                     </td>
                   );
                 }
@@ -1012,7 +1057,12 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
     upd(d => {
       if (!d.weeklyCalendar) d.weeklyCalendar = {};
       if (!d.weeklyCalendar[wk]) d.weeklyCalendar[wk] = [];
-      d.weeklyCalendar[wk].push({id: uid(), ...form});
+      if (form.id) {
+        const idx = d.weeklyCalendar[wk].findIndex(x => x.id === form.id);
+        if (idx >= 0) d.weeklyCalendar[wk][idx] = {...form};
+      } else {
+        d.weeklyCalendar[wk].push({id: uid(), ...form});
+      }
     });
     setForm(null);
   };
@@ -1025,6 +1075,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
       </div>
       <CalTable events={events}
         onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
+        onEdit={ev => setForm({...ev})}
         onDelete={id => upd(d => {
           const idx = (d.weeklyCalendar[wk] || []).findIndex(x => x.id === id);
           if (idx >= 0) d.weeklyCalendar[wk].splice(idx, 1);
@@ -1044,18 +1095,27 @@ function StdWeekCalendar({data, upd}) {
   const events = data.stdWeeklyEvents || [];
   const save = () => {
     if (!form || !form.title) return;
-    upd(d => { if (!d.stdWeeklyEvents) d.stdWeeklyEvents = []; d.stdWeeklyEvents.push({id: uid(), ...form}); });
+    upd(d => {
+      if (!d.stdWeeklyEvents) d.stdWeeklyEvents = [];
+      if (form.id) {
+        const idx = d.stdWeeklyEvents.findIndex(x => x.id === form.id);
+        if (idx >= 0) d.stdWeeklyEvents[idx] = {...form};
+      } else {
+        d.stdWeeklyEvents.push({id: uid(), ...form});
+      }
+    });
     setForm(null);
   };
   return (
     <div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-        <div style={{fontSize:13, color:'var(--muted)'}}>Template - click any slot to add</div>
+        <div style={{fontSize:13, color:'var(--muted)'}}>Template - click any slot to add · click en un evento para editar</div>
         <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
       </div>
       <CalTable events={events}
         onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
+        onEdit={ev => setForm({...ev})}
         onDelete={id => upd(d => {
           const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
           if (idx >= 0) d.stdWeeklyEvents.splice(idx, 1);
@@ -2159,43 +2219,43 @@ function ScorecardTab({data, upd}) {
         <button className={'tab-underline' + (view === 'summary' ? ' active' : '')}
           onClick={() => setView('summary')}>13-Week Summary</button>
       </div>
+
+      {/* Toolbar de acciones — siempre arriba y consistente entre vistas */}
+      <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
+        <Btn onClick={() => setShowF(true)} style={{fontSize:12}}>+ Metric</Btn>
+        {!showCopyQ
+          ? <Btn v="sec" onClick={() => setShowCopyQ(true)} style={{fontSize:12}}>Copy to Q...</Btn>
+          : <React.Fragment>
+              <span style={{fontSize:12, color:'var(--muted)'}}>Copy to:</span>
+              {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
+                <button key={q} onClick={() => copyToQ(YEAR + '-' + q)}
+                  style={{padding:'6px 12px', borderRadius:'var(--r-md)', border:'1px solid var(--brand)',
+                          background:'var(--brand)', color:'white', cursor:'pointer', fontSize:12, fontWeight:700}}>{q}</button>
+              ))}
+              <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:12}}>Cancelar</Btn>
+            </React.Fragment>
+        }
+      </div>
+      {showF && (
+        <InlineForm marginTop={0}>
+          <h3 style={S.h3}>Nueva métrica — {selQ.split('-')[1]}</h3>
+          <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
+          <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
+          <div style={{display:'flex', gap:8}}>
+            <Btn onClick={addM}>Save</Btn>
+            <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
+          </div>
+        </InlineForm>
+      )}
+
       {view === 'summary' ? (
-        <React.Fragment>
-          <ScorecardSummary scorecard={scorecard} qw={qw} selWn={selWn} onSelectWn={setSelWn}/>
-          {!showF
-            ? <Btn onClick={() => setShowF(true)}>+ Metric</Btn>
-            : (
-              <div style={S.card}>
-                <h3 style={S.h3}>New Metric - {selQ.split('-')[1]}</h3>
-                <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
-                <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
-                <div style={{display:'flex', gap:8}}>
-                  <Btn onClick={addM}>Save</Btn>
-                  <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
-                </div>
-              </div>
-            )
-          }
-        </React.Fragment>
+        <ScorecardSummary scorecard={scorecard} qw={qw} selWn={selWn} onSelectWn={setSelWn}/>
       ) : (
       <React.Fragment>
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <div style={S.card}>
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
-                     marginBottom:10, flexWrap:'wrap', gap:8}}>
+        <div style={{marginBottom:10}}>
           <h3 style={{...S.h3, marginBottom:0}}>W{selWn - qw[0] + 1} - {wDates(selWn)}</h3>
-          {!showCopyQ
-            ? <Btn v="sec" onClick={() => setShowCopyQ(true)} style={{fontSize:11, padding:'4px 10px'}}>Copy to Q...</Btn>
-            : <div style={{display:'flex', gap:4, alignItems:'center', flexWrap:'wrap'}}>
-                <span style={{fontSize:12, color:'var(--muted)'}}>Copy to:</span>
-                {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
-                  <button key={q} onClick={() => copyToQ(YEAR + '-' + q)}
-                    style={{padding:'4px 10px', borderRadius:6, border:'1px solid var(--brand)',
-                            background:'var(--brand)', color:'white', cursor:'pointer', fontSize:12, fontWeight:700}}>{q}</button>
-                ))}
-                <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:11, padding:'4px 8px'}}>X</Btn>
-              </div>
-          }
         </div>
         {scorecard.length === 0
           ? <EmptyState icon="chart" message={'Sin métricas para ' + selQ.split('-')[1] + '. Añade la primera abajo.'}/>
@@ -2266,21 +2326,6 @@ function ScorecardTab({data, upd}) {
           )
         }
       </div>
-      <ScorecardSummary scorecard={scorecard} qw={qw} selWn={selWn} onSelectWn={setSelWn}/>
-      {!showF
-        ? <Btn onClick={() => setShowF(true)}>+ Metric</Btn>
-        : (
-          <div style={S.card}>
-            <h3 style={S.h3}>New Metric - {selQ.split('-')[1]}</h3>
-            <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
-            <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
-            <div style={{display:'flex', gap:8}}>
-              <Btn onClick={addM}>Save</Btn>
-              <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
-            </div>
-          </div>
-        )
-      }
       </React.Fragment>
       )}
     </div>
@@ -3673,10 +3718,41 @@ function PrintView({data, onBack}) {
                   background:'var(--surface)', color:'var(--text-2)', fontSize:13, cursor:'pointer'}}>← Volver</button>
       </div>
 
-      <h1 style={SH.h1}>EOS XE Dashboard</h1>
-      <div style={SH.sub}>Resumen completo · Generado el {today}</div>
+      {/* Cover page — solo visible en impresión */}
+      <section className="print-cover print-section" style={{textAlign:'center', padding:'40px 20px 32px'}}>
+        <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center',
+                     width:96, height:96, borderRadius:20,
+                     background:'var(--brand)', color:'var(--sidebar-bg)',
+                     fontSize:36, fontWeight:700, letterSpacing:1, marginBottom:24}}>XE</div>
+        <div style={{fontSize:38, fontWeight:700, color:'var(--sidebar-bg)', letterSpacing:-0.5, marginBottom:8}}>EOS XE</div>
+        <div style={{fontSize:18, color:'var(--muted)', marginBottom:32}}>Dashboard — Resumen completo</div>
+        <div style={{width:80, height:3, background:'var(--brand)', margin:'0 auto 24px', borderRadius:2}}/>
+        <div style={{fontSize:14, color:'var(--text-2)', fontWeight:600, textTransform:'uppercase', letterSpacing:1.5, marginBottom:4}}>
+          Generado el
+        </div>
+        <div style={{fontSize:20, color:'var(--text)', fontWeight:600}}>{today}</div>
 
-      <section className="print-section">
+        {/* Índice */}
+        <div style={{marginTop:48, textAlign:'left', display:'inline-block', minWidth:280}}>
+          <div style={{fontSize:11, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, textAlign:'center'}}>Contenido</div>
+          {(() => {
+            let secs = ['Vision ' + YEAR];
+            if (sortedMonths.length > 0) secs.push('Notas mensuales');
+            sortedQs.forEach(qk => secs.push(qk.split('-')[1] + ' ' + YEAR));
+            if (openTodos.length > 0 || doneTodos.length > 0) secs.push('To-Dos');
+            if (ps.length > 0) secs.push('Procesos');
+            return secs.map((s, i) => (
+              <div key={i} style={{display:'flex', justifyContent:'space-between', gap:12,
+                                   padding:'5px 0', borderBottom:'1px dotted var(--border)',
+                                   fontSize:13, color:'var(--text)'}}>
+                <span>{i + 1}. {s}</span>
+              </div>
+            ));
+          })()}
+        </div>
+      </section>
+
+      <section className="print-section print-page-break">
         <h2 style={SH.h2}>Vision {YEAR}</h2>
         <h3 style={SH.h3}>Core Values</h3>
         {(v.values || []).length === 0
