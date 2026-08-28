@@ -533,26 +533,26 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compa
     }
   });
   return (
-    <div style={{overflowX:'auto'}}>
+    <div style={{overflowX: compact ? 'hidden' : 'auto'}}>
       <table style={{tableLayout:'fixed', borderCollapse:'collapse', background:'white',
                      borderRadius:10, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
-                     width:'100%', minWidth: compact ? 500 : 680}}>
+                     width:'100%', minWidth: compact ? 0 : 680}}>
         <colgroup>
-          <col style={{width:44}}/>
+          <col style={{width: compact ? 30 : 44}}/>
           {DAYS.map((_, i) => <col key={i}/>)}
         </colgroup>
         <thead>
           <tr style={{background:'#0d0d1f'}}>
-            <th style={{padding:'5px 6px', color:'rgba(255,255,255,0.4)', fontSize:9, textAlign:'right'}}>h</th>
+            <th style={{padding: compact ? '3px 2px' : '5px 6px', color:'rgba(255,255,255,0.4)', fontSize:9, textAlign:'right'}}>h</th>
             {DAYS.map((day, di) => (
               <th key={di}
                 onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
-                style={{padding: compact ? '5px 3px' : '7px 4px', color:'white',
-                        fontSize: compact ? 10 : 12, fontWeight:600, textAlign:'center',
+                style={{padding: compact ? '4px 1px' : '7px 4px', color:'white',
+                        fontSize: compact ? 9 : 12, fontWeight:600, textAlign:'center',
                         cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
-                <div>{day.slice(0, 3)}</div>
+                <div>{compact ? day[0] : day.slice(0, 3)}</div>
                 {dayLabels && dayLabels[di] && dayLabels[di].sub &&
-                  <div style={{fontSize:9, opacity:0.65, fontWeight:400}}>{dayLabels[di].sub}</div>}
+                  <div style={{fontSize: compact ? 8 : 9, opacity:0.65, fontWeight:400}}>{dayLabels[di].sub}</div>}
               </th>
             ))}
           </tr>
@@ -560,7 +560,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compa
         <tbody>
           {SLOTS.map(slot => (
             <tr key={slot.h + '-' + slot.m} style={{borderTop:'1px solid #f5f5f5'}}>
-              <td style={{padding:'1px 6px', fontSize:8, color:'#aaa', fontWeight:700,
+              <td style={{padding: compact ? '0 3px' : '1px 6px', fontSize: compact ? 7 : 8, color:'#aaa', fontWeight:700,
                           background:'#fafafa', textAlign:'right', whiteSpace:'nowrap'}}>{slot.lbl}</td>
               {DAYS.map((_, di) => {
                 const ck = di + '-' + slot.h + '-' + slot.m;
@@ -2216,46 +2216,55 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
   return (
     <div>
       <h2 style={S.h2}>Daily Summary</h2>
-      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14, flexWrap:'wrap'}}>
+      <div style={{display:'flex', alignItems:'center', gap: isMobile ? 6 : 10, marginBottom: isMobile ? 8 : 14, flexWrap:'wrap'}}>
         <DatePicker value={selDay}
           onChange={ds => { if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
-          style={{width:185}}/>
-        <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec">Today</Btn>
-        <div style={{fontSize:14, color:'#888'}}>{DAYS[dayOfWeek]} - Week {wn} - Q{q}</div>
+          style={{width: isMobile ? 150 : 185}}/>
+        <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec"
+          style={isMobile ? {padding:'6px 10px', fontSize:12} : {}}>Today</Btn>
+        <div style={{display:'flex', gap:4, alignItems:'center', marginLeft: isMobile ? 'auto' : 0}}>
+          <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
+            style={{height:34, width:34, boxSizing:'border-box', borderRadius:8,
+                    border:'1px solid #e0e0e0', background:'white', cursor:'pointer',
+                    fontSize:14, color:'#555', padding:0, display:'flex',
+                    alignItems:'center', justifyContent:'center'}}>&lt;</button>
+          <button onClick={() => setShowCal(s => !s)}
+            style={{height:34, boxSizing:'border-box', borderRadius:8,
+                    border:'1px solid ' + (showCal ? '#f0a500' : '#e0e0e0'),
+                    background: showCal ? '#f0a500' : 'white',
+                    cursor:'pointer', fontSize:12, fontWeight:700,
+                    color: showCal ? 'white' : '#555',
+                    padding:'0 14px', display:'flex',
+                    alignItems:'center', justifyContent:'center'}}>Calendar</button>
+          <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
+            style={{height:34, width:34, boxSizing:'border-box', borderRadius:8,
+                    border:'1px solid #e0e0e0', background:'white', cursor:'pointer',
+                    fontSize:14, color:'#555', padding:0, display:'flex',
+                    alignItems:'center', justifyContent:'center'}}>&gt;</button>
+        </div>
+        {!isMobile && <div style={{fontSize:14, color:'#888'}}>{DAYS[dayOfWeek]} - Week {wn} - Q{q}</div>}
       </div>
-      <div style={{display:'flex', gap:6, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
+      {isMobile && <div style={{fontSize:12, color:'#888', marginBottom:8}}>{DAYS[dayOfWeek]} - Week {wn} - Q{q}</div>}
+      <div style={{display:'flex', gap:4, marginBottom:8, alignItems:'center'}}>
         {DAYS.map((day, di) => {
           const ds = dayStr(dispWn, di);
           const isActive = ds === selDay;
           const isToday = ds === today;
           return (
             <button key={di} onClick={() => handleDayClick(ds)}
-              style={{padding:'8px 12px', borderRadius:8, border:'none', cursor:'pointer',
+              style={{flex:'1 1 0', minWidth:0, padding: isMobile ? '6px 2px' : '8px 6px',
+                      borderRadius:8, border:'none', cursor:'pointer',
                       background: isActive ? '#f0a500' : isToday ? 'rgba(240,165,0,0.15)' : '#f0f0f0',
                       color: isActive ? 'white' : isToday ? '#f0a500' : '#555',
                       fontWeight: (isActive || isToday) ? 700 : 400,
-                      fontSize:12, lineHeight:1.4, textAlign:'center'}}>
+                      fontSize: isMobile ? 11 : 12, lineHeight:1.3, textAlign:'center'}}>
               <div>{day.slice(0, 3)}</div>
-              <div style={{fontSize:11, opacity:0.85}}>{dayShort(dispWn, di)}</div>
+              <div style={{fontSize: isMobile ? 10 : 11, opacity:0.85}}>{dayShort(dispWn, di)}</div>
             </button>
           );
         })}
-        <div style={{display:'flex', gap:4, marginLeft:'auto', flexShrink:0}}>
-          <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
-            style={{padding:'8px 12px', borderRadius:8, border:'1px solid #e0e0e0',
-                    background:'white', cursor:'pointer', fontSize:14, color:'#555'}}>&lt;</button>
-          <button onClick={() => setShowCal(s => !s)}
-            style={{padding:'8px 14px', borderRadius:8,
-                    border:'2px solid ' + (showCal ? '#f0a500' : '#e0e0e0'),
-                    background: showCal ? '#f0a500' : 'white',
-                    cursor:'pointer', fontSize:12, fontWeight:700,
-                    color: showCal ? 'white' : '#555'}}>Calendar</button>
-          <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
-            style={{padding:'8px 12px', borderRadius:8, border:'1px solid #e0e0e0',
-                    background:'white', cursor:'pointer', fontSize:14, color:'#555'}}>&gt;</button>
-        </div>
       </div>
-      {showCal && <div style={{marginBottom:16}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true}/></div>}
+      {showCal && <div style={{marginBottom:16, marginTop:8}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true}/></div>}
       <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
         <span style={{fontSize:12, color:'#aaa', flexShrink:0}}>Note</span>
         <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
