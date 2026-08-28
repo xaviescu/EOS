@@ -217,8 +217,21 @@
     .print-view table{page-break-inside:auto;}
     .print-view tr{page-break-inside:avoid;page-break-after:auto;}
     a{color:black !important;text-decoration:none !important;}
-    @page{margin:14mm 12mm;size:A4;}
+    @page{
+      margin:16mm 12mm 14mm;
+      size:A4;
+      @top-right{content:"EOS XE — página " counter(page); font-size:9pt; color:#888;}
+      @bottom-center{content:counter(page); font-size:9pt; color:#888;}
+    }
+    .print-view{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
   }
+
+  /* Animación slide-in para InlineForm */
+  @keyframes slideIn{
+    from{opacity:0; transform:translateY(-4px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .inline-form-anim{animation: slideIn .18s ease-out;}
 </style>
 <script>
   // Anti-flash: aplica el tema guardado antes de que React monte.
@@ -641,9 +654,10 @@ function EmptyState({icon, message, cta, compact}) {
 // Panel gris inline para sub-formularios (añadir item). Sustituye 4 divs ad-hoc.
 function InlineForm({children, marginTop}) {
   return (
-    <div style={{padding:'var(--s-3)', background:'var(--surface-alt)',
-                 borderRadius:'var(--r-md)', border:'1px solid var(--border)',
-                 marginTop: marginTop != null ? marginTop : 10}}>
+    <div className="inline-form-anim"
+      style={{padding:'var(--s-3)', background:'var(--surface-alt)',
+              borderRadius:'var(--r-md)', border:'1px solid var(--border)',
+              marginTop: marginTop != null ? marginTop : 10}}>
       {children}
     </div>
   );
@@ -1263,15 +1277,18 @@ function SetupGate({onReady}) {
 
   return (
     <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center',
-                 background:'linear-gradient(135deg,var(--sidebar-bg),var(--sidebar-bg))', padding:16}}>
-      <div style={{background:'var(--surface)', borderRadius:16, padding:'28px 26px', maxWidth:460, width:'100%',
-                   boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
-        <div style={{textAlign:'center', marginBottom:18}}>
-          <div style={{display:'inline-block', width:56, height:56, borderRadius:14,
-                       background:'var(--brand)', color:'var(--sidebar-bg)', fontWeight:700, fontSize:24,
-                       lineHeight:'56px', marginBottom:10}}>XE</div>
-          <div style={{fontSize:20, fontWeight:700, color:'var(--text)'}}>EOS XE</div>
-          <div style={{fontSize:12, color:'var(--muted)'}}>{step === 'config' ? 'Configura tu Supabase' : 'Desbloquea tu dashboard'}</div>
+                 background:'var(--sidebar-bg)', padding:16}}>
+      <div style={{background:'var(--surface)', borderRadius:'var(--r-lg)', padding:'32px 28px', maxWidth:420, width:'100%',
+                   boxShadow:'var(--elev-3)', border:'1px solid var(--border)'}}>
+        <div style={{textAlign:'center', marginBottom:24}}>
+          <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center',
+                       width:44, height:44, borderRadius:'var(--r-md)',
+                       background:'var(--brand)', color:'var(--sidebar-bg)', fontWeight:700, fontSize:15,
+                       letterSpacing:0.5, marginBottom:14}}>XE</div>
+          <div style={{fontSize:18, fontWeight:600, color:'var(--text)', letterSpacing:-0.2}}>EOS XE</div>
+          <div style={{fontSize:13, color:'var(--muted)', marginTop:4}}>
+            {step === 'config' ? 'Configura tu Supabase' : (needsPin2 ? 'Crea tu PIN' : 'Desbloquea tu dashboard')}
+          </div>
         </div>
 
         {step === 'config' && (
@@ -1280,38 +1297,42 @@ function SetupGate({onReady}) {
               placeholder="https://XXXX.supabase.co"/>
             <Fld label="Anon Key (publishable)" value={anonKey} onChange={setAnonKey}
               placeholder="eyJhbGciOiJIUzI1Ni..."/>
-            <div style={{fontSize:11, color:'var(--muted)', marginBottom:14, lineHeight:1.5}}>
+            <div style={{fontSize:12, color:'var(--muted)', marginBottom:16, lineHeight:1.5}}>
               Encuéntralos en supabase.com → tu proyecto → Settings → API.
-              Estos valores se guardan en el navegador, no se envían a ningún lado.
+              Los valores se guardan en el navegador, no se envían a ningún lado.
             </div>
-            {err && <div style={{color:'var(--err-line)', fontSize:13, marginBottom:10}}>{err}</div>}
-            <button type="submit" style={{width:'100%', padding:'8px 16px', borderRadius:8, border:'none',
-                    cursor:'pointer', fontSize:13, fontWeight:600, background:'var(--brand)', color:'white'}}>Continuar</button>
+            {err && (
+              <div style={{background:'var(--err-bg)', color:'var(--err-fg)', fontSize:12,
+                           padding:'8px 12px', borderRadius:'var(--r-sm)', marginBottom:12,
+                           borderLeft:'3px solid var(--err-line)'}}>{err}</div>
+            )}
+            <Btn onClick={saveConfig} style={{width:'100%'}}>Continuar</Btn>
           </form>
         )}
 
         {step === 'pin' && (
           <form onSubmit={e => { e.preventDefault(); if (!busy) tryUnlock(); }}>
-            <Fld label={needsPin2 ? "Crea tu PIN (mínimo 4 caracteres)" : "Tu PIN"}
+            <Fld label={needsPin2 ? 'Nuevo PIN (mínimo 4 caracteres)' : 'Tu PIN'}
               value={pin} onChange={setPin} type="password" placeholder="****"/>
             {needsPin2 && (
               <Fld label="Confirma el PIN" value={pin2} onChange={setPin2} type="password" placeholder="****"/>
             )}
-            <div style={{fontSize:11, color:'var(--muted)', marginBottom:14, lineHeight:1.5}}>
+            <div style={{fontSize:12, color:'var(--muted)', marginBottom:16, lineHeight:1.5}}>
               {needsPin2
                 ? 'Este PIN cifra tus datos. Si lo pierdes, los datos se vuelven irrecuperables.'
-                : 'Introduce el mismo PIN que usaste al configurar la app.'}
+                : 'Introduce el mismo PIN que usaste al configurar.'}
             </div>
-            {err && <div style={{color:'var(--err-line)', fontSize:13, marginBottom:10}}>{err}</div>}
-            <button type="submit" disabled={busy}
-              style={{width:'100%', padding:'8px 16px', borderRadius:8, border:'none',
-                      cursor: busy ? 'not-allowed' : 'pointer', fontSize:13, fontWeight:600,
-                      background:'var(--brand)', color:'white', opacity: busy ? 0.5 : 1}}>
+            {err && (
+              <div style={{background:'var(--err-bg)', color:'var(--err-fg)', fontSize:12,
+                           padding:'8px 12px', borderRadius:'var(--r-sm)', marginBottom:12,
+                           borderLeft:'3px solid var(--err-line)'}}>{err}</div>
+            )}
+            <Btn onClick={tryUnlock} disabled={busy} style={{width:'100%'}}>
               {busy ? 'Verificando...' : (needsPin2 ? 'Crear y entrar' : 'Desbloquear')}
-            </button>
+            </Btn>
             <button type="button" onClick={reset}
-              style={{width:'100%', marginTop:10, background:'none', border:'none',
-                      color:'var(--muted-soft)', fontSize:11, cursor:'pointer', padding:6}}>
+              style={{width:'100%', marginTop:12, background:'none', border:'none',
+                      color:'var(--muted-soft)', fontSize:12, cursor:'pointer', padding:6, fontFamily:'inherit'}}>
               Cambiar configuración de Supabase
             </button>
           </form>
@@ -1484,19 +1505,21 @@ function App({bundle, onLogout}) {
   const goToDay = day => { setSelDay(day); setTab('diario'); if (isMobile) setNavOpen(false); };
 
   const GNAV = [
+    {label:null, items: [
+      ['diario','Daily Summary'],
+      ['month','Month']
+    ]},
     {label:'Planificar', items: [
       ['vision','Vision'],
-      ['month','Month'],
-      ['rocks_all','Rocks']
+      ['rocks_all','Rocks'],
+      ['procesos','Processes']
     ]},
     {label:'Hacer', items: [
-      ['diario','Daily Summary'],
-      ['todos','To-Dos'],
       ['projects','Projects'],
-      ['scorecard','Scorecard']
+      ['scorecard','Scorecard'],
+      ['todos','To-Dos']
     ]},
-    {label:'Proceso', items: [
-      ['procesos','Processes'],
+    {label:'Review', items: [
       ['l10_main','L10 Meetings'],
       ['qreview_main','Q Review']
     ]}
@@ -1568,10 +1591,12 @@ function App({bundle, onLogout}) {
         <div style={{padding:'6px 0', flex:1, overflowY:'auto'}}>
           {navOpen ? GNAV.map((section, si) => (
             <div key={si} style={{marginTop: si === 0 ? 0 : 10}}>
-              <div style={{padding:'6px 18px 3px', fontSize:10, fontWeight:700,
-                           color:'rgba(255,255,255,0.32)', textTransform:'uppercase', letterSpacing:1.2}}>
-                {section.label}
-              </div>
+              {section.label && (
+                <div style={{padding:'6px 18px 3px', fontSize:10, fontWeight:700,
+                             color:'rgba(255,255,255,0.32)', textTransform:'uppercase', letterSpacing:1.2}}>
+                  {section.label}
+                </div>
+              )}
               {section.items.map(([id, l]) => (
                 <NB key={id} active={tab === id} icon={<Icon name={id}/>}
                     onClick={() => { setTab(id); if (isMobile) setNavOpen(false); }}>{l}</NB>
@@ -1889,6 +1914,12 @@ function RocksTab({data, upd}) {
                     style={{flex:1, minWidth:130, fontWeight:700, color:'var(--text)', fontSize:15,
                             border:'none', outline:'none', fontFamily:'inherit',
                             background:'transparent', padding:0}} placeholder="Rock title..."/>
+                  <StatusPill status={rock.status || 'on-track'}
+                    onChange={val => upd(d => {
+                      ensureQ(d, selQ);
+                      const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
+                      if (idx >= 0) d.quarters[selQ].rocks[idx].status = val;
+                    })}/>
                   <span style={{fontSize:12, color:'var(--muted-soft)'}}>
                     {steps.filter(s => stepDone(s)).length}/{steps.length} steps
                   </span>
@@ -2079,6 +2110,7 @@ function ScorecardTab({data, upd}) {
   const [showF, setShowF] = useState(false);
   const [form, setForm] = useState({metric:'', goal:''});
   const [showCopyQ, setShowCopyQ] = useState(false);
+  const [view, setView] = useState('daily'); // 'daily' | 'summary'
   const qn = parseInt(selQ.split('-Q')[1]);
   const qw = qWeeks(qn);
   const handleSetQ = qk => {
@@ -2121,6 +2153,32 @@ function ScorecardTab({data, upd}) {
     <div>
       <h2 style={S.h2}>Scorecard</h2>
       <QBtns selQ={selQ} onSelect={handleSetQ}/>
+      <div className="tabbar">
+        <button className={'tab-underline' + (view === 'daily' ? ' active' : '')}
+          onClick={() => setView('daily')}>Daily</button>
+        <button className={'tab-underline' + (view === 'summary' ? ' active' : '')}
+          onClick={() => setView('summary')}>13-Week Summary</button>
+      </div>
+      {view === 'summary' ? (
+        <React.Fragment>
+          <ScorecardSummary scorecard={scorecard} qw={qw} selWn={selWn} onSelectWn={setSelWn}/>
+          {!showF
+            ? <Btn onClick={() => setShowF(true)}>+ Metric</Btn>
+            : (
+              <div style={S.card}>
+                <h3 style={S.h3}>New Metric - {selQ.split('-')[1]}</h3>
+                <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
+                <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
+                <div style={{display:'flex', gap:8}}>
+                  <Btn onClick={addM}>Save</Btn>
+                  <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
+                </div>
+              </div>
+            )
+          }
+        </React.Fragment>
+      ) : (
+      <React.Fragment>
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <div style={S.card}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
@@ -2223,6 +2281,8 @@ function ScorecardTab({data, upd}) {
           </div>
         )
       }
+      </React.Fragment>
+      )}
     </div>
   );
 }
