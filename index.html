@@ -16,9 +16,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.js"></script>
 <style>
-  html,body,#root{margin:0;padding:0;height:100%;background:#f5f6fa;font-family:'Segoe UI',system-ui,sans-serif;}
-  /* Reserve scrollbar space so layout doesn't jump when content grows/shrinks */
-  main.main-content{scrollbar-gutter:stable;overflow-y:scroll;}
+  html,body,#root{margin:0;padding:0;height:100%;background:#f5f6fa;font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden;}
+  /* Reserve scrollbar space so layout doesn't jump when content grows/shrinks
+     - Only on devices with a fine pointer (desktop) where scrollbars take
+       up layout width. On touch devices (mobile/tablet) scrollbars overlay
+       and this rule would force unwanted layout width shifts. */
+  @media (pointer: fine){
+    main.main-content{scrollbar-gutter:stable;overflow-y:scroll;}
+  }
   *{box-sizing:border-box;}
   input,textarea,select,button{font-family:inherit;}
   /* iOS safe areas */
@@ -932,7 +937,7 @@ function SetupGate({onReady}) {
         </div>
 
         {step === 'config' && (
-          <div>
+          <form onSubmit={e => { e.preventDefault(); saveConfig(); }}>
             <Fld label="Supabase URL" value={supabaseUrl} onChange={setSupabaseUrl}
               placeholder="https://XXXX.supabase.co"/>
             <Fld label="Anon Key (publishable)" value={anonKey} onChange={setAnonKey}
@@ -942,12 +947,13 @@ function SetupGate({onReady}) {
               Estos valores se guardan en el navegador, no se envían a ningún lado.
             </div>
             {err && <div style={{color:'#e74c3c', fontSize:13, marginBottom:10}}>{err}</div>}
-            <Btn onClick={saveConfig} style={{width:'100%'}}>Continuar</Btn>
-          </div>
+            <button type="submit" style={{width:'100%', padding:'8px 16px', borderRadius:8, border:'none',
+                    cursor:'pointer', fontSize:13, fontWeight:600, background:'#f0a500', color:'white'}}>Continuar</button>
+          </form>
         )}
 
         {step === 'pin' && (
-          <div>
+          <form onSubmit={e => { e.preventDefault(); if (!busy) tryUnlock(); }}>
             <Fld label={needsPin2 ? "Crea tu PIN (mínimo 4 caracteres)" : "Tu PIN"}
               value={pin} onChange={setPin} type="password" placeholder="****"/>
             {needsPin2 && (
@@ -959,15 +965,18 @@ function SetupGate({onReady}) {
                 : 'Introduce el mismo PIN que usaste al configurar la app.'}
             </div>
             {err && <div style={{color:'#e74c3c', fontSize:13, marginBottom:10}}>{err}</div>}
-            <Btn onClick={tryUnlock} disabled={busy} style={{width:'100%'}}>
+            <button type="submit" disabled={busy}
+              style={{width:'100%', padding:'8px 16px', borderRadius:8, border:'none',
+                      cursor: busy ? 'not-allowed' : 'pointer', fontSize:13, fontWeight:600,
+                      background:'#f0a500', color:'white', opacity: busy ? 0.5 : 1}}>
               {busy ? 'Verificando...' : (needsPin2 ? 'Crear y entrar' : 'Desbloquear')}
-            </Btn>
-            <button onClick={reset}
+            </button>
+            <button type="button" onClick={reset}
               style={{width:'100%', marginTop:10, background:'none', border:'none',
                       color:'#aaa', fontSize:11, cursor:'pointer', padding:6}}>
               Cambiar configuración de Supabase
             </button>
-          </div>
+          </form>
         )}
       </div>
     </div>
@@ -3053,18 +3062,18 @@ function PrintView({data, onBack}) {
   const ps = (data.processes || []).filter(p => p.name || p.steps);
 
   const SH = {
-    page: {background:'white', padding:20, color:'#1a1a2e', fontSize:11, lineHeight:1.45, maxWidth:900, margin:'0 auto'},
-    h1: {fontSize:24, fontWeight:900, color:'#0d0d1f', marginBottom:6, marginTop:0, borderBottom:'3px solid #f0a500', paddingBottom:8},
-    sub: {fontSize:11, color:'#888', marginBottom:24},
-    h2: {fontSize:16, fontWeight:800, color:'#0d0d1f', marginTop:24, marginBottom:10, paddingBottom:4, borderBottom:'2px solid #0d0d1f'},
-    h3: {fontSize:13, fontWeight:700, color:'#0d0d1f', marginTop:14, marginBottom:6},
-    h4: {fontSize:11, fontWeight:700, color:'#555', marginTop:10, marginBottom:4, textTransform:'uppercase', letterSpacing:0.5},
-    p: {fontSize:11, lineHeight:1.5, marginBottom:6, whiteSpace:'pre-wrap'},
-    table: {width:'100%', borderCollapse:'collapse', fontSize:10, marginTop:6, marginBottom:10},
-    th: {background:'#f0a500', color:'white', padding:'6px 8px', textAlign:'left', fontWeight:700, fontSize:12},
-    td: {padding:'4px 7px', borderBottom:'1px solid #eee', verticalAlign:'top'},
-    pill: (bg, c) => ({display:'inline-block', padding:'2px 8px', borderRadius:10, fontSize:9, fontWeight:700, background:bg, color:c}),
-    empty: {color:'#aaa', fontStyle:'italic', fontSize:11}
+    page: {background:'white', padding:20, color:'#1a1a2e', fontSize:13, lineHeight:1.5, maxWidth:900, margin:'0 auto'},
+    h1: {fontSize:26, fontWeight:900, color:'#0d0d1f', marginBottom:6, marginTop:0, borderBottom:'3px solid #f0a500', paddingBottom:8},
+    sub: {fontSize:12, color:'#888', marginBottom:24},
+    h2: {fontSize:19, fontWeight:800, color:'#0d0d1f', marginTop:26, marginBottom:12, paddingBottom:5, borderBottom:'2px solid #f0a500'},
+    h3: {fontSize:15, fontWeight:700, color:'#0d0d1f', marginTop:16, marginBottom:8},
+    h4: {fontSize:12, fontWeight:700, color:'#555', marginTop:12, marginBottom:5, textTransform:'uppercase', letterSpacing:0.5},
+    p: {fontSize:13, lineHeight:1.55, marginBottom:8, whiteSpace:'pre-wrap'},
+    table: {width:'100%', borderCollapse:'collapse', fontSize:12, marginTop:8, marginBottom:12},
+    th: {background:'#f0a500', color:'white', padding:'7px 9px', textAlign:'left', fontWeight:700, fontSize:13},
+    td: {padding:'6px 9px', borderBottom:'1px solid #eee', verticalAlign:'top', fontSize:12},
+    pill: (bg, c) => ({display:'inline-block', padding:'3px 10px', borderRadius:10, fontSize:11, fontWeight:700, background:bg, color:c}),
+    empty: {color:'#aaa', fontStyle:'italic', fontSize:12}
   };
 
   return (
@@ -3140,13 +3149,22 @@ function PrintView({data, onBack}) {
 
             {rocks.length > 0 && (
               <div className="print-section">
-                <h3 style={SH.h3}>🪨 Rocks</h3>
-                <table style={SH.table}>
+                <h3 style={SH.h3}>🪨 Rocks - Gantt (13 semanas)</h3>
+                <table style={{...SH.table, tableLayout:'fixed'}}>
+                  <colgroup>
+                    <col style={{width:210}}/>
+                    <col style={{width:90}}/>
+                    <col style={{width:50}}/>
+                    {qw.map((_, i) => <col key={i}/>)}
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={SH.th}>Rock</th>
-                      <th style={{...SH.th, width:90}}>Status</th>
-                      <th style={{...SH.th, width:60, textAlign:'center'}}>Steps</th>
+                      <th style={SH.th}>Rock / Step</th>
+                      <th style={{...SH.th, textAlign:'center'}}>Status</th>
+                      <th style={{...SH.th, textAlign:'center'}}>Steps</th>
+                      {qw.map((_, i) => (
+                        <th key={i} style={{...SH.th, textAlign:'center', padding:'6px 1px', fontSize:11}}>W{i + 1}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -3154,56 +3172,18 @@ function PrintView({data, onBack}) {
                       const steps = wr[r.id] || [];
                       const doneCount = steps.filter(s => stepDone(s)).length;
                       const info = SI[r.status] || SI['on-track'];
-                      return (
-                        <tr key={r.id}>
-                          <td style={SH.td}>
-                            <div style={{fontWeight:700, marginBottom: steps.length ? 4 : 0}}>{r.title}</div>
-                            {steps.map(s => {
-                              const sw = s.startWeek || qw[0];
-                              const ew = s.endWeek || sw;
-                              const dn = stepDone(s);
-                              return (
-                                <div key={s.id} style={{fontSize:9, color:'#555', paddingLeft:10, lineHeight:1.6, textDecoration: dn ? 'line-through' : 'none'}}>
-                                  {dn ? '☑' : '☐'} {s.text} <span style={{color:'#aaa'}}>(W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''})</span>
-                                </div>
-                              );
-                            })}
-                          </td>
-                          <td style={SH.td}><span style={SH.pill(info[0], info[1])}>{info[2]}</span></td>
-                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>{doneCount}/{steps.length}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                {/* Gantt visual per week */}
-                <h4 style={{...SH.h4, marginTop:14}}>Gantt (13 semanas)</h4>
-                <table style={{...SH.table, tableLayout:'fixed'}}>
-                  <colgroup>
-                    <col style={{width:160}}/>
-                    {qw.map((_, i) => <col key={i}/>)}
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th style={SH.th}>Rock / Step</th>
-                      {qw.map((_, i) => (
-                        <th key={i} style={{...SH.th, textAlign:'center', padding:'4px 1px', fontSize:9}}>W{i + 1}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rocks.map(r => {
-                      const steps = wr[r.id] || [];
-                      const info = SI[r.status] || SI['on-track'];
                       const rows = [];
-                      // Rock row (header): title + status color bar spanning all weeks
+                      // Rock row (header): title + status pill + step counter + colored bar per week
                       rows.push(
                         <tr key={'r' + r.id} style={{background:'#f5f5f5', borderTop:'2px solid #ddd'}}>
-                          <td style={{...SH.td, fontWeight:700, fontSize:10}}>🪨 {r.title}</td>
+                          <td style={{...SH.td, fontWeight:700, fontSize:12}}>🪨 {r.title}</td>
+                          <td style={{...SH.td, textAlign:'center'}}>
+                            <span style={SH.pill(info[0], info[1])}>{info[2]}</span>
+                          </td>
+                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>{doneCount}/{steps.length}</td>
                           {qw.map(wn => (
-                            <td key={wn} style={{padding:'2px 1px'}}>
-                              <div style={{height:8, background:info[0], borderRadius:2, opacity:0.7}}/>
+                            <td key={wn} style={{padding:'3px 1px'}}>
+                              <div style={{height:10, background:info[0], borderRadius:2, opacity:0.7}}/>
                             </td>
                           ))}
                         </tr>
@@ -3212,16 +3192,19 @@ function PrintView({data, onBack}) {
                       steps.forEach(s => {
                         const sw = s.startWeek || qw[0];
                         const ew = s.endWeek || sw;
+                        const dn = stepDone(s);
                         rows.push(
                           <tr key={'s' + s.id} style={{borderTop:'1px solid #f0f0f0'}}>
-                            <td style={{...SH.td, paddingLeft:18, fontSize:9, color:'#555'}}>· {s.text}</td>
+                            <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'#555', textDecoration: dn ? 'line-through' : 'none'}}>{dn ? '☑' : '☐'} {s.text}</td>
+                            <td style={{...SH.td, textAlign:'center', fontSize:10, color:'#888'}}>W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''}</td>
+                            <td/>
                             {qw.map(wn => {
                               const inRange = wn >= sw && wn <= ew;
                               const done = isWkDone(s, wn) || s.done;
                               return (
-                                <td key={wn} style={{padding:'2px 1px'}}>
+                                <td key={wn} style={{padding:'3px 1px'}}>
                                   {inRange && (
-                                    <div style={{height:8, borderRadius:2,
+                                    <div style={{height:10, borderRadius:2,
                                                  background: done ? '#27ae60' : '#f0a500',
                                                  opacity: done ? 1 : 0.55}}/>
                                   )}
@@ -3235,9 +3218,9 @@ function PrintView({data, onBack}) {
                     })}
                   </tbody>
                 </table>
-                <div style={{fontSize:9, color:'#888', marginTop:4, display:'flex', gap:14}}>
-                  <span><span style={{display:'inline-block', width:12, height:8, background:'#f0a500', borderRadius:2, opacity:0.55, verticalAlign:'middle', marginRight:4}}/>Pendiente</span>
-                  <span><span style={{display:'inline-block', width:12, height:8, background:'#27ae60', borderRadius:2, verticalAlign:'middle', marginRight:4}}/>Hecho</span>
+                <div style={{fontSize:11, color:'#888', marginTop:6, display:'flex', gap:16}}>
+                  <span><span style={{display:'inline-block', width:14, height:10, background:'#f0a500', borderRadius:2, opacity:0.55, verticalAlign:'middle', marginRight:5}}/>Pendiente</span>
+                  <span><span style={{display:'inline-block', width:14, height:10, background:'#27ae60', borderRadius:2, verticalAlign:'middle', marginRight:5}}/>Hecho</span>
                 </div>
               </div>
             )}
