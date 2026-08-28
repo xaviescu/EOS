@@ -98,6 +98,8 @@
     overflow-x:hidden;-webkit-text-size-adjust:100%;}
   /* Números tabulares en tablas — todas las cifras alinean en columnas. */
   table, .num{font-variant-numeric:tabular-nums;}
+  /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
+  table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
   /* Prevent iOS Safari from auto-zooming on input focus (happens when
      input font-size < 16px). Applies on touch devices only, so desktop
      keeps its compact input font-size. */
@@ -126,9 +128,10 @@
 
   /* Nav item de la sidebar */
   .nb-item{transition:background .12s ease, color .12s ease;}
-  .nb-item:hover{background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.95);}
-  .nb-item:focus-visible{outline:none; background:rgba(255,255,255,0.09); color:rgba(255,255,255,0.95);}
-  .nb-item.active:hover{background:var(--brand-soft);}
+  .nb-item:hover{background:rgba(255,255,255,0.06) !important; color:rgba(255,255,255,0.95);}
+  .nb-item:focus-visible{outline:none; background:rgba(255,255,255,0.09) !important; color:rgba(255,255,255,0.95);}
+  .nb-item.active,
+  .nb-item.active:hover{background:var(--brand-soft) !important; color:var(--brand);}
 
   /* Botones del footer de la sidebar (Export / Import / Imprimir / Bloquear) */
   .side-btn{
@@ -474,7 +477,7 @@ function clearCfg() {
 // =====================================================================
 const S = {
   card: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)'},
-  h2:   {fontSize:'var(--f-xl)', fontWeight:800, color:'var(--text)', marginBottom:'var(--s-5)', marginTop:0},
+  h2:   {fontSize:'var(--f-xl)', fontWeight:600, color:'var(--text)', marginBottom:'var(--s-5)', marginTop:0, letterSpacing:-0.2},
   h3:   {fontSize:'var(--f-xs)', fontWeight:700, color:'var(--muted)', marginBottom:'var(--s-2)', marginTop:0, textTransform:'uppercase', letterSpacing:0.6},
   lbl:  {fontSize:'var(--f-xs)', color:'var(--muted-soft)', display:'block', marginBottom:'var(--s-1)', fontWeight:700, textTransform:'uppercase'},
   inp:  {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:14, boxSizing:'border-box', outline:'none', fontFamily:'inherit', color:'var(--text)'},
@@ -708,7 +711,7 @@ function NB({active, onClick, icon, children}) {
     <button onClick={onClick} className={'nb-item' + (active ? ' active' : '')}
       style={{display:'flex', alignItems:'center', gap:10, width:'calc(100% - 12px)',
               padding:'7px 12px', margin:'1px 6px', border:'none', cursor:'pointer', textAlign:'left',
-              background: active ? 'var(--brand-soft)' : undefined,
+              background: active ? 'var(--brand-soft)' : 'transparent',
               color: active ? 'var(--brand)' : 'rgba(255,255,255,0.72)',
               fontSize:13, fontWeight: active ? 600 : 400, borderRadius:'var(--r-sm)'}}>
       {icon}
@@ -1222,9 +1225,9 @@ function SetupGate({onReady}) {
                    boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
         <div style={{textAlign:'center', marginBottom:18}}>
           <div style={{display:'inline-block', width:56, height:56, borderRadius:14,
-                       background:'var(--brand)', color:'var(--sidebar-bg)', fontWeight:900, fontSize:24,
+                       background:'var(--brand)', color:'var(--sidebar-bg)', fontWeight:700, fontSize:24,
                        lineHeight:'56px', marginBottom:10}}>XE</div>
-          <div style={{fontSize:20, fontWeight:800, color:'var(--text)'}}>EOS XE</div>
+          <div style={{fontSize:20, fontWeight:700, color:'var(--text)'}}>EOS XE</div>
           <div style={{fontSize:12, color:'var(--muted)'}}>{step === 'config' ? 'Configura tu Supabase' : 'Desbloquea tu dashboard'}</div>
         </div>
 
@@ -1485,7 +1488,7 @@ function App({bundle, onLogout}) {
                 <div style={{width:26, height:26, borderRadius:'var(--r-sm)',
                              background:'var(--brand)', color:'var(--sidebar-bg)',
                              display:'flex', alignItems:'center', justifyContent:'center',
-                             fontSize:11, fontWeight:900, letterSpacing:0.5, flexShrink:0}}>XE</div>
+                             fontSize:11, fontWeight:700, letterSpacing:0.5, flexShrink:0}}>XE</div>
                 <div style={{fontSize:13, fontWeight:700, color:'white', letterSpacing:0.3}}>EOS XE</div>
               </div>
               <div style={{display:'flex', alignItems:'center', gap:2, flexShrink:0}}>
@@ -1536,7 +1539,7 @@ function App({bundle, onLogout}) {
               className={'nb-item' + (tab === id ? ' active' : '')}
               style={{display:'flex', alignItems:'center', justifyContent:'center',
                       width:'100%', padding:'10px 0', border:'none',
-                      background: tab === id ? 'var(--brand-soft)' : undefined,
+                      background: tab === id ? 'var(--brand-soft)' : 'transparent',
                       color: tab === id ? 'var(--brand)' : 'rgba(255,255,255,0.55)',
                       cursor:'pointer'}}>
               <Icon name={id} size={20}/>
@@ -2142,7 +2145,7 @@ function ScorecardTab({data, upd}) {
                             <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
                               style={{width:'100%', height:24, borderRadius:5,
                                       border:'1px solid ' + info[0], background:info[0],
-                                      color:info[1], cursor:'pointer', fontSize:13, fontWeight:800}}>{info[2]}</button>
+                                      color:info[1], cursor:'pointer', fontSize:13, fontWeight:700}}>{info[2]}</button>
                           </td>
                         );
                       })}
@@ -2234,7 +2237,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                               outline: isSel ? '2px solid rgba(245,158,11,0.5)' : 'none', outlineOffset:-1}}>
                       <div style={{width:30, height:28, background:bg, borderRadius:4,
                                    display:'flex', alignItems:'center', justifyContent:'center',
-                                   fontSize:13, color:col, fontWeight:800, margin:'0 auto'}}>
+                                   fontSize:13, color:col, fontWeight:700, margin:'0 auto'}}>
                         {cnt > 0 ? cnt : '.'}
                       </div>
                     </td>
@@ -2920,7 +2923,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                             })}
                             style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
                                     border:'1px solid ' + info[0], background:info[0],
-                                    color:info[1], cursor:'pointer', fontSize:13, fontWeight:800}}>{info[2]}</button>
+                                    color:info[1], cursor:'pointer', fontSize:13, fontWeight:700}}>{info[2]}</button>
                         </td>
                       );
                     })}
@@ -2986,7 +2989,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
                      padding:'10px 16px', marginBottom:12, background:'var(--surface-alt)'}}>
           <div style={{fontSize:13, color:'var(--muted)'}}>Week {localWn} of {qKey.split('-')[1]} - {wDates(weekNum)}</div>
           {wData.rating && <div style={{background:'var(--brand)', color:'white', borderRadius:8,
-                                        padding:'6px 14px', fontWeight:800, fontSize:16}}>{wData.rating}/10</div>}
+                                        padding:'6px 14px', fontWeight:700, fontSize:16}}>{wData.rating}/10</div>}
         </div>
       )}
       <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
@@ -3099,7 +3102,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
                     <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
                       style={{width:'100%', height:24, borderRadius:5,
                               border:'1px solid ' + info[0], background:info[0],
-                              color:info[1], cursor:'pointer', fontSize:13, fontWeight:800}}>{info[2]}</button>
+                              color:info[1], cursor:'pointer', fontSize:13, fontWeight:700}}>{info[2]}</button>
                   </td>
                 );
               })}
@@ -3540,9 +3543,9 @@ function PrintView({data, onBack}) {
 
   const SH = {
     page: {background:'var(--surface)', padding:20, color:'var(--text)', fontSize:13, lineHeight:1.5, maxWidth:900, margin:'0 auto'},
-    h1: {fontSize:26, fontWeight:900, color:'var(--sidebar-bg)', marginBottom:6, marginTop:0, borderBottom:'3px solid var(--brand)', paddingBottom:8},
+    h1: {fontSize:26, fontWeight:700, color:'var(--sidebar-bg)', marginBottom:6, marginTop:0, borderBottom:'3px solid var(--brand)', paddingBottom:8},
     sub: {fontSize:12, color:'var(--muted)', marginBottom:24},
-    h2: {fontSize:19, fontWeight:800, color:'var(--sidebar-bg)', marginTop:26, marginBottom:12, paddingBottom:5, borderBottom:'2px solid var(--brand)'},
+    h2: {fontSize:19, fontWeight:700, color:'var(--sidebar-bg)', marginTop:26, marginBottom:12, paddingBottom:5, borderBottom:'2px solid var(--brand)'},
     h3: {fontSize:15, fontWeight:700, color:'var(--sidebar-bg)', marginTop:16, marginBottom:8},
     h4: {fontSize:12, fontWeight:700, color:'var(--text-2)', marginTop:12, marginBottom:5, textTransform:'uppercase', letterSpacing:0.5},
     p: {fontSize:13, lineHeight:1.55, marginBottom:8, whiteSpace:'pre-wrap'},
