@@ -822,9 +822,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth}) {
                     const isCur = highlightWn && wn === highlightWn;
                     return (
                       <td key={wn} style={{padding:'2px 1px',
-                                           background: isCur ? 'rgba(240,165,0,0.08)' : 'transparent'}}>
-                        <div style={{height:12, background:bg, borderRadius:2, margin:'0 1px', opacity:0.55}}/>
-                      </td>
+                                           background: isCur ? 'rgba(240,165,0,0.08)' : 'transparent'}}/>
                     );
                   })}
                   {rightGutterWidth && <td/>}
@@ -1154,7 +1152,7 @@ function App({bundle, onLogout}) {
     ['rocks_all','R','Rocks'],
     ['projects','P','Projects'],
     ['scorecard','S','Scorecard'],
-    ['todos','T','To-dos'],
+    ['todos','T','To-Dos'],
     ['procesos','Pc','Processes'],
     ['l10_main','L','L10 Meetings'],
     ['qreview_main','Q','Q Review']
@@ -1716,7 +1714,7 @@ function ScorecardTab({data, upd}) {
     });
     setShowCopyQ(false);
   };
-  const DST = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','X']};
+  const DST = {ok:['#f0f7f2','#6b9c7d','✓'], nok:['#faf1f1','#b58686','X']};
   const getDST = st => DST[st] || ['#f0f0f0','#ccc','.'];
 
   return (
@@ -1786,11 +1784,11 @@ function ScorecardTab({data, upd}) {
                         const st = m.dayData && m.dayData[date];
                         const info = getDST(st);
                         return (
-                          <td key={di} style={{padding:4, textAlign:'center'}}>
+                          <td key={di} style={{padding:2, textAlign:'center'}}>
                             <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
-                              style={{width:'100%', height:40, borderRadius:7,
-                                      border:'2px solid ' + info[0], background:info[0],
-                                      color:info[1], cursor:'pointer', fontSize:16, fontWeight:800}}>{info[2]}</button>
+                              style={{width:'100%', height:24, borderRadius:5,
+                                      border:'1px solid ' + info[0], background:info[0],
+                                      color:info[1], cursor:'pointer', fontSize:13, fontWeight:800}}>{info[2]}</button>
                           </td>
                         );
                       })}
@@ -1873,8 +1871,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                   const goal = parseInt(m.goal || 0);
                   const hasGoal = !isNaN(goal) && goal > 0;
                   const isSel = wn === selWn;
-                  const bg = cnt === 0 ? 'transparent' : hasGoal ? (cnt >= goal ? '#d4edda' : '#fdecea') : '#e8f4fd';
-                  const col = cnt === 0 ? '#ddd' : hasGoal ? (cnt >= goal ? '#155724' : '#b71c1c') : '#3498db';
+                  const bg = cnt === 0 ? 'transparent' : hasGoal ? (cnt >= goal ? '#f0f7f2' : '#faf1f1') : '#f0f5f8';
+                  const col = cnt === 0 ? '#ddd' : hasGoal ? (cnt >= goal ? '#6b9c7d' : '#b58686') : '#7098b0';
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                       style={{padding:2, textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
@@ -2015,7 +2013,9 @@ function TodosTab({data, upd}) {
   const [showF, setShowF] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [form, setForm] = useState({task:'', due:'', startDate: todayStr()});
+  const [editingId, setEditingId] = useState(null);
   const today = todayStr();
+  const curWn = getCurWn();
   const add = () => {
     if (!form.task) return;
     upd(d => { d.todos.push({id: uid(), ...form, done:false, completedDate:null}); });
@@ -2023,10 +2023,19 @@ function TodosTab({data, upd}) {
   };
   const overdue = data.todos.filter(t => !t.done && t.due && t.due < today);
   const pending = data.todos.filter(t => !t.done && !(t.due && t.due < today));
-  const done = data.todos.filter(t => t.done);
+  // Completed: only those completed during the CURRENT week
+  const done = data.todos.filter(t => {
+    if (!t.done || !t.completedDate) return false;
+    return dateToWn(t.completedDate) === curWn;
+  });
   const TRow = ({t}) => {
     const ri = data.todos.indexOf(t);
     const late = !t.done && t.due && t.due < today;
+    const isEd = editingId === t.id;
+    const updField = (field, val) => upd(d => {
+      const idx = d.todos.findIndex(x => x.id === t.id);
+      if (idx >= 0) d.todos[idx][field] = val;
+    });
     return (
       <div style={{...S.card, padding:'11px 16px', display:'flex',
                    alignItems:'flex-start', gap:10, marginBottom:7, opacity: t.done ? 0.6 : 1}}>
@@ -2046,8 +2055,27 @@ function TodosTab({data, upd}) {
             {t.done && t.completedDate &&
               <span style={{color:'#27ae60', fontWeight:600}}>Hecha: {t.completedDate}</span>}
           </div>
+          {isEd && (
+            <div style={{marginTop:8, padding:10, background:'#f8f9fa', borderRadius:6}}>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
+                <div>
+                  <label style={S.lbl}>Inicio</label>
+                  <DatePicker value={t.startDate || ''} onChange={v => updField('startDate', v)}/>
+                </div>
+                <div>
+                  <label style={S.lbl}>Vence</label>
+                  <DatePicker value={t.due || ''} onChange={v => updField('due', v)}/>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+          <button onClick={() => setEditingId(isEd ? null : t.id)}
+            style={{border:'1px solid #ddd', background:'white', cursor:'pointer',
+                    color:'#888', fontSize:11, padding:'2px 8px', borderRadius:4}}>
+            {isEd ? 'Close' : 'Edit'}
+          </button>
           <button onClick={() => upd(d => {
               if (ri <= 0) return;
               const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
@@ -2071,7 +2099,7 @@ function TodosTab({data, upd}) {
   };
   return (
     <div>
-      <h2 style={S.h2}>To-dos</h2>
+      <h2 style={S.h2}>To-Dos</h2>
       {overdue.length > 0 &&
         <div style={{marginBottom:12}}>
           <div style={{fontSize:13, fontWeight:700, color:'#e74c3c', marginBottom:6}}>Overdue ({overdue.length})</div>
@@ -2266,6 +2294,11 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
     const idx = d.todos.findIndex(x => x.id === id);
     if (idx >= 0) d.todos[idx].task = val;
   });
+  const updateTodoField = (id, field, val) => upd(d => {
+    const idx = d.todos.findIndex(x => x.id === id);
+    if (idx >= 0) d.todos[idx][field] = val;
+  });
+  const [editingTodoId, setEditingTodoId] = useState(null);
 
   // Quick-add to-do from Daily Summary - startDate defaults to the viewed day
   const [todoForm, setTodoForm] = useState(null);
@@ -2384,7 +2417,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       {/* To-Dos */}
       <div style={S.card}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-          <h3 style={{...S.h3, marginBottom:0}}>To-dos</h3>
+          <h3 style={{...S.h3, marginBottom:0}}>To-Dos</h3>
           <Btn onClick={() => setTodoForm({task:'', due:''})}
             style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
         </div>
@@ -2392,6 +2425,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           ? <div style={{color:'#aaa', fontSize:14}}>No to-dos today</div>
           : dayTodos.map((t, dti) => {
             const donOnDay = t.completedDate && t.completedDate <= selDay;
+            const isEd = editingTodoId === t.id;
             const swapWithNeighbor = (dir) => upd(d => {
               // Find target neighbor within the FILTERED dayTodos view, then
               // swap the two todos in the underlying d.todos array.
@@ -2403,39 +2437,59 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               const tmp = d.todos[a]; d.todos[a] = d.todos[b]; d.todos[b] = tmp;
             });
             return (
-              <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
-                                      padding:'6px 0', borderBottom:'1px solid #f5f5f5',
+              <div key={t.id} style={{padding:'6px 0', borderBottom:'1px solid #f5f5f5',
                                       opacity: donOnDay ? 0.5 : 1}}>
-                <input type="checkbox" checked={!!donOnDay}
-                  onChange={() => upd(d => {
-                    const ri = d.todos.findIndex(x => x.id === t.id);
-                    if (ri >= 0) {
-                      d.todos[ri].done = !donOnDay;
-                      d.todos[ri].completedDate = !donOnDay ? todayStr() : null;
-                    }
-                  })}
-                  style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
-                <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
-                  style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
-                          color:'#1a1a2e', textDecoration: 'none',
-                          background:'transparent', fontFamily:'inherit', padding:0}}/>
-                {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa', flexShrink:0}}>{t.due}</span>}
-                <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-                  <button onClick={() => swapWithNeighbor(-1)} disabled={dti === 0}
-                    style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                            borderRadius:3, padding:'1px 6px', fontSize:11,
-                            opacity: dti === 0 ? 0.3 : 1}}>↑</button>
-                  <button onClick={() => swapWithNeighbor(+1)} disabled={dti === dayTodos.length - 1}
-                    style={{border:'1px solid #eee', background:'white', cursor:'pointer',
-                            borderRadius:3, padding:'1px 6px', fontSize:11,
-                            opacity: dti === dayTodos.length - 1 ? 0.3 : 1}}>↓</button>
-                  <button onClick={() => upd(d => {
+                <div style={{display:'flex', alignItems:'center', gap:9}}>
+                  <input type="checkbox" checked={!!donOnDay}
+                    onChange={() => upd(d => {
                       const ri = d.todos.findIndex(x => x.id === t.id);
-                      if (ri >= 0) d.todos.splice(ri, 1);
+                      if (ri >= 0) {
+                        d.todos[ri].done = !donOnDay;
+                        d.todos[ri].completedDate = !donOnDay ? todayStr() : null;
+                      }
+                    })}
+                    style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+                  <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
+                    style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
+                            color:'#1a1a2e', textDecoration: 'none',
+                            background:'transparent', fontFamily:'inherit', padding:0}}/>
+                  {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa', flexShrink:0}}>{t.due}</span>}
+                  <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+                    <button onClick={() => setEditingTodoId(isEd ? null : t.id)}
+                      style={{border:'1px solid #ddd', background:'white', cursor:'pointer',
+                              color:'#888', fontSize:11, padding:'2px 8px', borderRadius:4}}>
+                      {isEd ? 'Close' : 'Edit'}
+                    </button>
+                    <button onClick={() => swapWithNeighbor(-1)} disabled={dti === 0}
+                      style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                              borderRadius:3, padding:'1px 6px', fontSize:11,
+                              opacity: dti === 0 ? 0.3 : 1}}>↑</button>
+                    <button onClick={() => swapWithNeighbor(+1)} disabled={dti === dayTodos.length - 1}
+                      style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                              borderRadius:3, padding:'1px 6px', fontSize:11,
+                              opacity: dti === dayTodos.length - 1 ? 0.3 : 1}}>↓</button>
+                    <button onClick={() => upd(d => {
+                        const ri = d.todos.findIndex(x => x.id === t.id);
+                        if (ri >= 0) d.todos.splice(ri, 1);
                     })}
                     style={{border:'none', background:'none', cursor:'pointer',
                             color:'#ccc', fontSize:16, padding:'0 4px', lineHeight:1}}>x</button>
+                  </div>
                 </div>
+                {isEd && (
+                  <div style={{marginTop:6, padding:10, background:'#f8f9fa', borderRadius:6}}>
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
+                      <div>
+                        <label style={S.lbl}>Inicio</label>
+                        <DatePicker value={t.startDate || ''} onChange={v => updateTodoField(t.id, 'startDate', v)}/>
+                      </div>
+                      <div>
+                        <label style={S.lbl}>Vence</label>
+                        <DatePicker value={t.due || ''} onChange={v => updateTodoField(t.id, 'due', v)}/>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })
@@ -2511,16 +2565,16 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               <tbody>
                 {scorecard.map((m, mi) => (
                   <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
-                    <td style={{padding:'6px 12px'}}>
-                      <div style={{fontSize:14, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
+                    <td style={{padding:'4px 12px'}}>
+                      <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
                     </td>
-                    <td style={{padding:'6px 4px'}}>
+                    <td style={{padding:'4px 4px'}}>
                       <div style={{fontSize:13, fontWeight:600, color:'#f0a500'}}>{m.goal || ''}</div>
                     </td>
                     {DAYS.map((_, di) => {
                       const date = dayStr(wn, di);
                       const st = m.dayData && m.dayData[date];
-                      const DST2 = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','X']};
+                      const DST2 = {ok:['#f0f7f2','#6b9c7d','✓'], nok:['#faf1f1','#b58686','X']};
                       const info = DST2[st] || ['#f0f0f0','#ccc','.'];
                       return (
                         <td key={di} style={{padding:2, textAlign:'center'}}>
@@ -2530,9 +2584,9 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                               const cur = d.quarters[curQ].scorecard[mi].dayData[date];
                               d.quarters[curQ].scorecard[mi].dayData[date] = cur === (st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok') ? null : (st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok');
                             })}
-                            style={{width:'100%', height: isMobile ? 32 : 38, borderRadius:6,
-                                    border:'2px solid ' + info[0], background:info[0],
-                                    color:info[1], cursor:'pointer', fontSize:14, fontWeight:800}}>{info[2]}</button>
+                            style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
+                                    border:'1px solid ' + info[0], background:info[0],
+                                    color:info[1], cursor:'pointer', fontSize:13, fontWeight:800}}>{info[2]}</button>
                         </td>
                       );
                     })}
@@ -2584,7 +2638,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
   const idsIssues = qData.idsIssues || [];
   const [open, setOpen] = useState({todos:true, scorecard:true, rocks:true, projects:true, ids:true, conclude:true});
   const AGENDA = [
-    {k:'todos', label:'To-dos'},
+    {k:'todos', label:'To-Dos'},
     {k:'scorecard', label:'Scorecard'},
     {k:'rocks', label:'Rocks'},
     {k:'projects', label:'Projects'},
@@ -2673,7 +2727,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
     const cur = d.quarters[qKey].scorecard[mi].dayData[date];
     d.quarters[qKey].scorecard[mi].dayData[date] = cur === st ? null : st;
   });
-  const DST = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','X']};
+  const DST = {ok:['#f0f7f2','#6b9c7d','✓'], nok:['#faf1f1','#b58686','X']};
   const getDST = st => DST[st] || ['#f0f0f0','#ccc','.'];
   return (
     <div style={{overflowX:'auto'}}>
@@ -2698,22 +2752,22 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
         <tbody>
           {scorecard.map((m, mi) => (
             <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
-              <td style={{padding:'8px 12px'}}><div style={{fontSize:14, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div></td>
-              <td style={{padding:'8px 4px'}}><div style={{fontSize:13, fontWeight:600, color:'#f0a500'}}>{m.goal || ''}</div></td>
+              <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div></td>
+              <td style={{padding:'4px 4px'}}><div style={{fontSize:13, fontWeight:600, color:'#f0a500'}}>{m.goal || ''}</div></td>
               {DAYS.map((_, di) => {
                 const date = dayStr(weekNum, di);
                 const st = m.dayData && m.dayData[date];
                 const info = getDST(st);
                 return (
-                  <td key={di} style={{padding:4, textAlign:'center'}}>
+                  <td key={di} style={{padding:2, textAlign:'center'}}>
                     <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
-                      style={{width:'100%', height:40, borderRadius:7,
-                              border:'2px solid ' + info[0], background:info[0],
-                              color:info[1], cursor:'pointer', fontSize:16, fontWeight:800}}>{info[2]}</button>
+                      style={{width:'100%', height:24, borderRadius:5,
+                              border:'1px solid ' + info[0], background:info[0],
+                              color:info[1], cursor:'pointer', fontSize:13, fontWeight:800}}>{info[2]}</button>
                   </td>
                 );
               })}
-              <td style={{padding:'4px 6px', textAlign:'center', verticalAlign:'middle'}}>
+              <td style={{padding:'2px 6px', textAlign:'center', verticalAlign:'middle'}}>
                 <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
                   weekNum={weekNum} upd={upd} qKey={qKey}/>
               </td>
@@ -3227,8 +3281,8 @@ function PrintView({data, onBack}) {
                 <h3 style={SH.h3}>Rocks</h3>
                 <table style={{...SH.table, tableLayout:'fixed'}}>
                   <colgroup>
-                    <col style={{width:170}}/>
-                    <col style={{width:45}}/>
+                    <col style={{width:160}}/>
+                    <col style={{width:55}}/>
                     {qw.map((_, i) => <col key={i}/>)}
                   </colgroup>
                   <thead>
@@ -3244,18 +3298,13 @@ function PrintView({data, onBack}) {
                     {rocks.map(r => {
                       const steps = wr[r.id] || [];
                       const doneCount = steps.filter(s => stepDone(s)).length;
-                      const info = SI[r.status] || SI['on-track'];
                       const rows = [];
-                      // Rock row (header): title + step counter + colored bar per week
+                      // Rock row (header): title + step counter (no bar)
                       rows.push(
                         <tr key={'r' + r.id} style={{background:'#f5f5f5', borderTop:'2px solid #ddd'}}>
                           <td style={{...SH.td, fontWeight:700, fontSize:12}}>{r.title}</td>
                           <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>{doneCount}/{steps.length}</td>
-                          {qw.map(wn => (
-                            <td key={wn} style={{padding:'3px 1px'}}>
-                              <div style={{height:10, background:info[0], borderRadius:2, opacity:0.7}}/>
-                            </td>
-                          ))}
+                          {qw.map(wn => <td key={wn}/>)}
                         </tr>
                       );
                       // Step rows
