@@ -1201,6 +1201,9 @@ function App({bundle, onLogout}) {
         </div>
         {navOpen && (
           <div style={{padding:'10px 14px', borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+            <div style={{marginBottom:8}}>
+              <SyncBadge status={syncStatus}/>
+            </div>
             <div style={{fontSize:10, color:'rgba(255,255,255,0.28)', marginBottom:6,
                          textTransform:'uppercase', letterSpacing:1}}>Backup</div>
             <div style={{display:'flex', gap:5}}>
@@ -1226,9 +1229,6 @@ function App({bundle, onLogout}) {
                       border:'1px solid rgba(255,255,255,0.1)',
                       background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.55)',
                       cursor:'pointer', fontSize:11}}>Bloquear (logout)</button>
-            <div style={{marginTop:10, paddingTop:8, borderTop:'1px solid rgba(255,255,255,0.07)'}}>
-              <SyncBadge status={syncStatus}/>
-            </div>
           </div>
         )}
       </nav>
@@ -1381,7 +1381,6 @@ function MonthTab({data, upd, goToDay}) {
 
 function RocksTab({data, upd}) {
   const [selQ, setSelQ] = useState(getCurQ());
-  const [rockTab, setRockTab] = useState('gantt');
   const [editStep, setEditStep] = useState(null);
   const [addRock, setAddRock] = useState(false);
   const [rockForm, setRockForm] = useState({title:''});
@@ -1428,25 +1427,16 @@ function RocksTab({data, upd}) {
     setCopyRock(s => { const n = {...s}; delete n[rock.id]; return n; });
   };
 
+  const curWn = getCurWn();
   return (
     <div>
       <h2 style={S.h2}>Rocks</h2>
       <QBtns selQ={selQ} onSelect={qk => { setSelQ(qk); setAddRock(false); }}/>
-      <div style={{display:'flex', gap:8, marginBottom:16}}>
-        <Btn onClick={() => setRockTab('gantt')} v={rockTab === 'gantt' ? 'pri' : 'sec'}>Gantt</Btn>
-        <Btn onClick={() => setRockTab('rocks')} v={rockTab === 'rocks' ? 'pri' : 'sec'}>Rocks</Btn>
-      </div>
-      {rockTab === 'gantt' && (
-        rocks.length === 0
-          ? <div style={{...S.card, textAlign:'center', color:'#aaa', padding:28}}>No rocks for {selQ.split('-')[1]}.</div>
-          : <GanttChart rocks={rocks} wr={wr} qw={qw} upd={upd} qKey={selQ} highlightWn={getCurWn()}/>
-      )}
-      {rockTab === 'rocks' && (
-        <div>
-          {rocks.length === 0 && !addRock &&
-            <div style={{...S.card, textAlign:'center', color:'#aaa', padding:36, fontSize:15}}>
-              No rocks for {selQ.split('-')[1]}.
-            </div>}
+      <div>
+        {rocks.length === 0 && !addRock &&
+          <div style={{...S.card, textAlign:'center', color:'#aaa', padding:36, fontSize:15}}>
+            No rocks for {selQ.split('-')[1]}.
+          </div>}
           {rocks.map((rock, ri) => {
             const steps = wr[rock.id] || [];
             const sf = stepForms[rock.id] || {text:'', sw: qw[0], ew: qw[0]};
@@ -1510,6 +1500,28 @@ function RocksTab({data, upd}) {
                   </div>
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
+                  {/* Week header (W1..W13) — right-aligned above the step boxes */}
+                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, paddingRight:2}}>
+                    <div style={{flex:'0 1 200px', minWidth:120}}/>
+                    <div style={{display:'flex', gap:3, flexWrap:'nowrap'}}>
+                      {qw.map(wn => {
+                        const isCur = wn === curWn;
+                        return (
+                          <div key={wn}
+                            style={{width:22, height:14, display:'flex', alignItems:'center', justifyContent:'center',
+                                    fontSize:8, fontWeight:isCur ? 800 : 600,
+                                    color: isCur ? '#f0a500' : '#aaa',
+                                    background: isCur ? 'rgba(240,165,0,0.12)' : 'transparent',
+                                    borderRadius:3}}>
+                            W{wn - qw[0] + 1}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <span style={{marginLeft:'auto', fontSize:10, color:'#aaa', fontWeight:600}}>
+                      {steps.filter(s => stepDone(s)).length}/{steps.length}
+                    </span>
+                  </div>
                   {steps.length === 0 && <div style={{color:'#bbb', fontSize:13, marginBottom:10}}>No weekly steps yet.</div>}
                   {steps.map((step, si) => {
                     const sw2 = step.startWeek || step.weekNum || qw[0];
@@ -1527,7 +1539,7 @@ function RocksTab({data, upd}) {
                               const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
                               if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
                             })}
-                            style={{flex:'1 1 180px', minWidth:120, fontSize:14, fontWeight:600, color:'#1a1a2e',
+                            style={{flex:'0 1 200px', minWidth:120, fontSize:14, fontWeight:600, color:'#1a1a2e',
                                     textDecoration: 'none',
                                     border:'none', outline:'none', fontFamily:'inherit',
                                     background:'transparent', padding:0}}/>
@@ -1548,7 +1560,7 @@ function RocksTab({data, upd}) {
                               );
                             })}
                           </div>
-                          <span style={{fontSize:11, color:'#f0a500', fontWeight:700}}>
+                          <span style={{fontSize:11, color:'#f0a500', fontWeight:700, marginLeft:'auto'}}>
                             W{sw2 - qw[0] + 1}{sw2 !== ew2 ? '-' + String(ew2 - qw[0] + 1) : ''}
                           </span>
                           <button onClick={() => setEditStep(isEd ? null : rock.id + '-' + step.id)}
@@ -1651,9 +1663,8 @@ function RocksTab({data, upd}) {
               </div>
             )
             : <Btn onClick={() => setAddRock(true)} style={{marginTop:4}}>+ Rock</Btn>
-          }
-        </div>
-      )}
+        }
+      </div>
     </div>
   );
 }
@@ -2023,7 +2034,7 @@ function TodosTab({data, upd}) {
           <input value={t.task}
             onChange={e => upd(d => { d.todos[ri].task = e.target.value; })}
             style={{width:'100%', border:'none', outline:'none', fontWeight:500,
-                    color:'#1a1a2e', textDecoration: t.done ? 'line-through' : 'none',
+                    color:'#1a1a2e', textDecoration: 'none',
                     fontSize:14, marginBottom:4, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'#bbb', display:'flex', gap:12, flexWrap:'wrap'}}>
@@ -2403,7 +2414,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
                 <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
                   style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
-                          color:'#1a1a2e', textDecoration: donOnDay ? 'line-through' : 'none',
+                          color:'#1a1a2e', textDecoration: 'none',
                           background:'transparent', fontFamily:'inherit', padding:0}}/>
                 {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa', flexShrink:0}}>{t.due}</span>}
                 <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
@@ -2759,7 +2770,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
                 if (idx >= 0) d.todos[idx].task = ev.target.value;
               })}
               style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
-                      textDecoration: t.done ? 'line-through' : 'none', color:'#1a1a2e',
+                      textDecoration: 'none', color:'#1a1a2e',
                       background:'transparent', fontFamily:'inherit', padding:0}}/>
             {t.due && <span style={{fontSize:11, color: late ? '#e74c3c' : '#aaa'}}>{t.due}</span>}
             <IssueBtn idsIssues={idsIssues} sourceId={t.id} sourceName={'Todo: ' + t.task}
@@ -2880,7 +2891,7 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
               style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
             <div style={{flex:1}}>
               <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e',
-                           textDecoration: issue.solved ? 'line-through' : 'none', marginBottom:5}}>
+                           textDecoration: 'none', marginBottom:5}}>
                 {issue.sourceName}
               </div>
               <input value={issue.action || ''} onChange={e => setAction(issue.id, e.target.value)}
@@ -3038,7 +3049,7 @@ function QReview({data, upd, qKey, qData}) {
                           style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
                         <div style={{flex:1}}>
                           <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e',
-                                       textDecoration: issue.solved ? 'line-through' : 'none', marginBottom:5}}>
+                                       textDecoration: 'none', marginBottom:5}}>
                             {issue.sourceName}
                           </div>
                           <input value={issue.action || ''}
