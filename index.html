@@ -135,10 +135,10 @@ const SLOTS = Array.from({length:34}, (_,i) => ({
 }));
 const MONTHS_F = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const SI = {
-  'on-track': ['#d4edda','#155724','🟢 On Track'],
-  'at-risk':  ['#fff3cd','#856404','🟡 At Risk'],
-  'not-done': ['#fdecea','#b71c1c','🔴 Not Done'],
-  'done':     ['#d1ecf1','#0c5460','✅ Done']
+  'on-track': ['#d4edda','#155724','On Track'],
+  'at-risk':  ['#fff3cd','#856404','At Risk'],
+  'not-done': ['#fdecea','#b71c1c','Not Done'],
+  'done':     ['#d1ecf1','#0c5460','Done']
 };
 const YEAR = 2026;
 const QS = ['Q1','Q2','Q3','Q4'];
@@ -766,7 +766,7 @@ function StdWeekCalendar({data, upd}) {
 // =====================================================================
 // Gantt
 // =====================================================================
-function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
+function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth}) {
   const fw = qw[0];
   const toggle = (rid, sid, wn) => {
     if (!upd || !qKey) return;
@@ -788,6 +788,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
           <colgroup>
             <col style={{width:200}}/>
             {qw.map((_, i) => <col key={i}/>)}
+            {rightGutterWidth && <col style={{width: rightGutterWidth}}/>}
           </colgroup>
           <thead>
             <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
@@ -804,6 +805,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
                   </th>
                 );
               })}
+              {rightGutterWidth && <th/>}
             </tr>
           </thead>
           <tbody>
@@ -815,7 +817,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
                 <tr key={'r' + rock.id} style={{background:'#f5f5f5', borderTop:'2px solid #e0e0e0'}}>
                   <td style={{padding:'6px 14px', fontSize:13, fontWeight:700, color:'#1a1a2e',
                               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                      title={rock.title}>🪨 {rock.title}</td>
+                      title={rock.title}>{rock.title}</td>
                   {qw.map(wn => {
                     const isCur = highlightWn && wn === highlightWn;
                     return (
@@ -825,6 +827,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
                       </td>
                     );
                   })}
+                  {rightGutterWidth && <td/>}
                 </tr>
               );
               const stepRows = steps.map(step => {
@@ -834,7 +837,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
                   <tr key={'s' + step.id} style={{borderTop:'1px solid #f0f0f0'}}>
                     <td style={{padding:'3px 14px 3px 24px', fontSize:12, color:'#666',
                                 overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                        title={step.text}>- {step.text}</td>
+                        title={step.text}>{step.text}</td>
                     {qw.map(wn => {
                       const inR = wn >= sw && wn <= ew;
                       const chk = isWkDone(step, wn) || step.done;
@@ -853,6 +856,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
                         </td>
                       );
                     })}
+                    {rightGutterWidth && <td/>}
                   </tr>
                 );
               });
@@ -1144,21 +1148,21 @@ function App({bundle, onLogout}) {
   const goToDay = day => { setSelDay(day); setTab('diario'); if (isMobile) setNavOpen(false); };
 
   const GNAV = [
-    ['diario','📆','Daily Summary'],
-    ['vision','🧭','Vision'],
-    ['month','🗓️','Month'],
-    ['rocks_all','🪨','Rocks'],
-    ['projects','📁','Projects'],
-    ['scorecard','📊','Scorecard'],
-    ['todos','✅','To-dos'],
-    ['procesos','⚙️','Processes'],
-    ['l10_main','📋','L10 Meetings'],
-    ['qreview_main','🔍','Q Review']
+    ['diario','D','Daily Summary'],
+    ['vision','V','Vision'],
+    ['month','M','Month'],
+    ['rocks_all','R','Rocks'],
+    ['projects','P','Projects'],
+    ['scorecard','S','Scorecard'],
+    ['todos','T','To-dos'],
+    ['procesos','Pc','Processes'],
+    ['l10_main','L','L10 Meetings'],
+    ['qreview_main','Q','Q Review']
   ];
 
   return (
     <div style={{display:'flex', fontFamily:"'Segoe UI',system-ui,sans-serif",
-                 minHeight:'100vh', width:'100%', maxWidth:'100vw', overflowX:'hidden',
+                 minHeight:'100dvh', width:'100%', maxWidth:'100vw', overflowX:'hidden',
                  background:'#f5f6fa', position:'relative'}}>
       {isMobile && navOpen && (
         <div onClick={() => setNavOpen(false)}
@@ -1181,16 +1185,15 @@ function App({bundle, onLogout}) {
             {navOpen ? '<' : '>'}
           </button>
         </div>
-        <SyncBadge status={syncStatus}/>
         <div style={{padding:'4px 0', flex:1}}>
           {GNAV.map(([id, ic, l]) => navOpen
-            ? <NB key={id} active={tab === id} onClick={() => { setTab(id); if (isMobile) setNavOpen(false); }}><span>{ic}</span>{l}</NB>
+            ? <NB key={id} active={tab === id} onClick={() => { setTab(id); if (isMobile) setNavOpen(false); }}>{l}</NB>
             : <button key={id} onClick={() => { setTab(id); setNavOpen(true); }} title={l}
                 style={{display:'flex', alignItems:'center', justifyContent:'center',
                         width:'100%', padding:'11px 0', border:'none',
                         background: tab === id ? 'rgba(240,165,0,0.1)' : 'transparent',
                         color: tab === id ? '#f0a500' : 'rgba(255,255,255,0.55)',
-                        cursor:'pointer', fontSize:16,
+                        cursor:'pointer', fontSize:13, fontWeight:600,
                         borderLeft: tab === id ? '3px solid #f0a500' : '3px solid transparent'}}>
                 {ic}
               </button>
@@ -1217,16 +1220,19 @@ function App({bundle, onLogout}) {
               style={{width:'100%', marginTop:6, padding:'5px 0', borderRadius:6,
                       border:'1px solid rgba(255,255,255,0.1)',
                       background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.55)',
-                      cursor:'pointer', fontSize:11}}>🖨️ Imprimir / PDF</button>
+                      cursor:'pointer', fontSize:11}}>Imprimir / PDF</button>
             <button onClick={onLogout}
               style={{width:'100%', marginTop:8, padding:'5px 0', borderRadius:6,
                       border:'1px solid rgba(255,255,255,0.1)',
                       background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.55)',
                       cursor:'pointer', fontSize:11}}>Bloquear (logout)</button>
+            <div style={{marginTop:10, paddingTop:8, borderTop:'1px solid rgba(255,255,255,0.07)'}}>
+              <SyncBadge status={syncStatus}/>
+            </div>
           </div>
         )}
       </nav>
-      <main className="main-content print-area" style={{flex:1, padding: isMobile ? '14px 14px 60px' : 26, overflowY:'auto', maxHeight:'100vh', minWidth:0}}>
+      <main className="main-content print-area" style={{flex:1, padding: isMobile ? '14px 14px 14px' : 26, overflowY:'auto', maxHeight:'100dvh', minHeight:'100dvh', minWidth:0}}>
         {isMobile && (
           <button onClick={() => setNavOpen(true)}
             style={{position:'fixed',
@@ -1512,19 +1518,36 @@ function RocksTab({data, upd}) {
                     const isEd = editStep === rock.id + '-' + step.id;
                     return (
                       <div key={step.id} style={{marginBottom:10, padding:'10px 12px',
-                                                 background: d2 ? '#f0f9f0' : '#f8f9fa',
-                                                 borderRadius:8, opacity: d2 ? 0.65 : 1}}>
-                        <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap'}}>
+                                                 background: '#f8f9fa',
+                                                 borderRadius:8}}>
+                        <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                           <input value={step.text}
                             onChange={e => upd(d => {
                               ensureQ(d, selQ);
                               const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
                               if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
                             })}
-                            style={{flex:1, minWidth:120, fontSize:14, fontWeight:600, color:'#1a1a2e',
-                                    textDecoration: d2 ? 'line-through' : 'none',
+                            style={{flex:'1 1 180px', minWidth:120, fontSize:14, fontWeight:600, color:'#1a1a2e',
+                                    textDecoration: 'none',
                                     border:'none', outline:'none', fontFamily:'inherit',
                                     background:'transparent', padding:0}}/>
+                          <div style={{display:'flex', gap:3, flexWrap:'nowrap'}}>
+                            {qw.map(wn => {
+                              const inR = wn >= sw2 && wn <= ew2;
+                              const chk = isWkDone(step, wn);
+                              return (
+                                <div key={wn} onClick={() => inR && toggleWk(rock.id, step.id, wn)}
+                                  style={{width:22, height:22, borderRadius:4, border:'1px solid',
+                                          display:'flex', alignItems:'center', justifyContent:'center',
+                                          fontSize:9, fontWeight:700, cursor: inR ? 'pointer' : 'default',
+                                          borderColor: !inR ? '#f0f0f0' : chk ? '#27ae60' : '#f0a500',
+                                          background: !inR ? '#fafafa' : chk ? '#d4edda' : 'rgba(240,165,0,0.12)',
+                                          color: !inR ? '#ddd' : chk ? '#155724' : '#f0a500'}}>
+                                  {wn - qw[0] + 1}
+                                </div>
+                              );
+                            })}
+                          </div>
                           <span style={{fontSize:11, color:'#f0a500', fontWeight:700}}>
                             W{sw2 - qw[0] + 1}{sw2 !== ew2 ? '-' + String(ew2 - qw[0] + 1) : ''}
                           </span>
@@ -1555,7 +1578,7 @@ function RocksTab({data, upd}) {
                             style={{border:'none', background:'none', cursor:'pointer', color:'#ccc', fontSize:15, padding:'0 4px', lineHeight:1}}>x</button>
                         </div>
                         {isEd && (
-                          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8,
+                          <div style={{display:'flex', alignItems:'center', gap:8, marginTop:8,
                                        padding:'7px 10px', background:'white', borderRadius:6,
                                        border:'1px solid #e8e8e8', flexWrap:'wrap'}}>
                             <span style={{fontSize:12, color:'#888'}}>From Wk</span>
@@ -1572,23 +1595,6 @@ function RocksTab({data, upd}) {
                             </select>
                           </div>
                         )}
-                        <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
-                          {qw.map(wn => {
-                            const inR = wn >= sw2 && wn <= ew2;
-                            const chk = isWkDone(step, wn);
-                            return (
-                              <div key={wn} onClick={() => inR && toggleWk(rock.id, step.id, wn)}
-                                style={{width:26, height:26, borderRadius:5, border:'1px solid',
-                                        display:'flex', alignItems:'center', justifyContent:'center',
-                                        fontSize:10, fontWeight:700, cursor: inR ? 'pointer' : 'default',
-                                        borderColor: !inR ? '#f0f0f0' : chk ? '#27ae60' : '#f0a500',
-                                        background: !inR ? '#fafafa' : chk ? '#d4edda' : 'rgba(240,165,0,0.12)',
-                                        color: !inR ? '#ddd' : chk ? '#155724' : '#f0a500'}}>
-                                {wn - qw[0] + 1}
-                              </div>
-                            );
-                          })}
-                        </div>
                       </div>
                     );
                   })}
@@ -1820,10 +1826,14 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
   if (!scorecard || !scorecard.length) return null;
   return (
     <div style={S.card}>
-      <h3 style={S.h3}>13-Week Summary</h3>
+      {!renderMetricExtra && <h3 style={S.h3}>13-Week Summary</h3>}
       <div style={{overflowX:'auto'}}>
         <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:500}}>
-          <colgroup><col style={{width: renderMetricExtra ? 200 : 170}}/>{qw.map((_, i) => <col key={i}/>)}</colgroup>
+          <colgroup>
+            <col style={{width: renderMetricExtra ? 200 : 170}}/>
+            {qw.map((_, i) => <col key={i}/>)}
+            {renderMetricExtra && <col style={{width:70}}/>}
+          </colgroup>
           <thead>
             <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
               <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:14, fontWeight:700}}>Metric</th>
@@ -1834,19 +1844,15 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                           fontSize:11, cursor: onSelectWn ? 'pointer' : 'default',
                           fontWeight: wn === selWn ? 800 : 600}}>W{i + 1}</th>
               ))}
+              {renderMetricExtra && <th/>}
             </tr>
           </thead>
           <tbody>
             {scorecard.map(m => (
               <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
                 <td style={{padding:'7px 12px', fontSize:14, fontWeight:600, color:'#1a1a2e'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:8}}>
-                    <span style={{flex:1}}>
-                      {m.metric}
-                      {m.goal && <span style={{fontSize:11, color:'#aaa', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
-                    </span>
-                    {renderMetricExtra && renderMetricExtra(m)}
-                  </div>
+                  {m.metric}
+                  {m.goal && <span style={{fontSize:11, color:'#aaa', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
                 </td>
                 {qw.map(wn => {
                   const cnt = weekCount(m, wn);
@@ -1868,6 +1874,9 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                     </td>
                   );
                 })}
+                {renderMetricExtra && (
+                  <td style={{padding:'4px 8px', textAlign:'right'}}>{renderMetricExtra(m)}</td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -2453,7 +2462,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                         }
                       })}
                       style={{width:15, height:15, cursor:'pointer'}}/>
-                    <span style={{fontSize:14, textDecoration: done ? 'line-through' : 'none', color:'#1a1a2e'}}>{step.text}</span>
+                    <span style={{fontSize:14, color:'#1a1a2e'}}>{step.text}</span>
                   </div>
                 );
               })}
@@ -2461,6 +2470,65 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           ))
         }
       </div>
+
+      {/* Weekly Scorecard */}
+      {scorecard.length > 0 && (
+        <div style={S.card}>
+          <h3 style={S.h3}>Scorecard - W{wn - qWeeks(q)[0] + 1} · {wDates(wn)}</h3>
+          <div style={{overflowX:'auto'}}>
+            <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:isMobile ? 0 : 560}}>
+              <colgroup>
+                <col style={{width: isMobile ? 100 : 150}}/>
+                <col style={{width: isMobile ? 40 : 55}}/>
+                {DAYS.map((_, i) => <col key={i}/>)}
+              </colgroup>
+              <thead>
+                <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
+                  <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Metric</th>
+                  <th style={{padding:'8px 4px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Goal</th>
+                  {DAYS.map((day, di) => (
+                    <th key={di} style={{padding:'8px 2px', textAlign:'center', color:'#1a1a2e', fontSize: isMobile ? 10 : 12, fontWeight:700}}>
+                      <div>{isMobile ? day[0] : day.slice(0, 3)}</div>
+                      <div style={{fontSize: isMobile ? 9 : 10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayShort(wn, di)}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {scorecard.map((m, mi) => (
+                  <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
+                    <td style={{padding:'6px 12px'}}>
+                      <div style={{fontSize:14, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
+                    </td>
+                    <td style={{padding:'6px 4px'}}>
+                      <div style={{fontSize:13, fontWeight:600, color:'#f0a500'}}>{m.goal || ''}</div>
+                    </td>
+                    {DAYS.map((_, di) => {
+                      const date = dayStr(wn, di);
+                      const st = m.dayData && m.dayData[date];
+                      const DST2 = {ok:['#d4edda','#155724','✓'], nok:['#fdecea','#b71c1c','X']};
+                      const info = DST2[st] || ['#f0f0f0','#ccc','.'];
+                      return (
+                        <td key={di} style={{padding:2, textAlign:'center'}}>
+                          <button onClick={() => upd(d => {
+                              ensureQ(d, curQ);
+                              if (!d.quarters[curQ].scorecard[mi].dayData) d.quarters[curQ].scorecard[mi].dayData = {};
+                              const cur = d.quarters[curQ].scorecard[mi].dayData[date];
+                              d.quarters[curQ].scorecard[mi].dayData[date] = cur === (st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok') ? null : (st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok');
+                            })}
+                            style={{width:'100%', height: isMobile ? 32 : 38, borderRadius:6,
+                                    border:'2px solid ' + info[0], background:info[0],
+                                    color:info[1], cursor:'pointer', fontSize:14, fontWeight:800}}>{info[2]}</button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {meetingForm && <EventModal form={meetingForm} setForm={setMeetingForm}
         onSave={saveMeeting} onClose={() => setMeetingForm(null)}
@@ -2502,12 +2570,12 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
   const idsIssues = qData.idsIssues || [];
   const [open, setOpen] = useState({todos:true, scorecard:true, rocks:true, projects:true, ids:true, conclude:true});
   const AGENDA = [
-    {k:'todos', icon:'✅', label:'To-dos', min:5},
-    {k:'scorecard', icon:'📊', label:'Scorecard', min:5},
-    {k:'rocks', icon:'🪨', label:'Rocks', min:15},
-    {k:'projects', icon:'📁', label:'Projects', min:10},
-    {k:'ids', icon:'⚡', label:'IDS', min:60},
-    {k:'conclude', icon:'🏁', label:'Conclude', min:5}
+    {k:'todos', label:'To-dos'},
+    {k:'scorecard', label:'Scorecard'},
+    {k:'rocks', label:'Rocks'},
+    {k:'projects', label:'Projects'},
+    {k:'ids', label:'IDS'},
+    {k:'conclude', label:'Conclude'}
   ];
   return (
     <div>
@@ -2531,10 +2599,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
                        padding:'13px 18px', cursor:'pointer'}}
             onClick={() => setOpen(o => ({...o, [seg.k]: !o[seg.k]}))}>
-            <div style={{...S.h3, marginBottom:0, display:'flex', alignItems:'baseline', gap:10}}>
-              <span>{seg.label}</span>
-              <span style={{fontSize:10, color:'#bbb', textTransform:'none', letterSpacing:0, fontWeight:400}}>{seg.min} min</span>
-            </div>
+            <div style={{...S.h3, marginBottom:0}}>{seg.label}</div>
             <span style={{color:'#bbb', fontSize:11}}>{open[seg.k] ? '^' : 'v'}</span>
           </div>
           {open[seg.k] && (
@@ -2575,12 +2640,6 @@ function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd}) {
         {rocks.map(r => (
           <div key={r.id} style={{display:'flex', alignItems:'center', gap:8,
                                   padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
-            <StatusPill status={r.status}
-              onChange={v => upd(d => {
-                ensureQ(d, qKey);
-                const idx = d.quarters[qKey].rocks.findIndex(x => x.id === r.id);
-                if (idx >= 0) d.quarters[qKey].rocks[idx].status = v;
-              })}/>
             <div style={{flex:1, fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{r.title}</div>
             <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
               weekNum={weekNum} upd={upd} qKey={qKey}/>
@@ -2678,10 +2737,8 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
     }
     return true;
   });
-  const completedCount = visibleTodos.filter(t => t.done).length;
   return (
     <div>
-      <div style={{fontSize:12, color:'#888', marginBottom:8}}>{completedCount}/{visibleTodos.length} completed</div>
       {visibleTodos.map(t => {
         const late = !t.done && t.due && t.due < today;
         return (
@@ -2707,6 +2764,12 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
             {t.due && <span style={{fontSize:11, color: late ? '#e74c3c' : '#aaa'}}>{t.due}</span>}
             <IssueBtn idsIssues={idsIssues} sourceId={t.id} sourceName={'Todo: ' + t.task}
               weekNum={weekNum} upd={upd} qKey={qKey}/>
+            <button onClick={() => upd(d => {
+                const idx = d.todos.findIndex(x => x.id === t.id);
+                if (idx >= 0) d.todos.splice(idx, 1);
+              })}
+              style={{border:'none', background:'none', cursor:'pointer',
+                      color:'#ccc', fontSize:16, padding:'0 4px', lineHeight:1, flexShrink:0}}>x</button>
           </div>
         );
       })}
@@ -2879,12 +2942,12 @@ function QReview({data, upd, qKey, qData}) {
   const qw = qWeeks(qn);
   const lastWk = qw[qw.length - 1]; // Last week of the quarter (used as the "review week" anchor)
   const AGENDA = [
-    {k:'scorecard', icon:'📊', label:'Scorecard'},
-    {k:'rocks', icon:'🪨', label:'Rock Review'},
-    {k:'issues', icon:'⚡', label:'Issues & Learnings'},
-    {k:'vision', icon:'🧭', label:'Vision Alignment'},
-    {k:'nextrocks', icon:'🎯', label:'Next Quarter Rocks'},
-    {k:'conclude', icon:'🏁', label:'Conclude'}
+    {k:'scorecard', label:'Scorecard'},
+    {k:'rocks', label:'Rock Review'},
+    {k:'issues', label:'Issues & Learnings'},
+    {k:'vision', label:'Vision Alignment'},
+    {k:'nextrocks', label:'Next Quarter Rocks'},
+    {k:'conclude', label:'Conclude'}
   ];
   const [open, setOpen] = useState({scorecard:true, rocks:true, issues:true, vision:true, nextrocks:true, conclude:true});
 
@@ -2923,14 +2986,6 @@ function QReview({data, upd, qKey, qData}) {
 
   return (
     <div>
-      <div style={{...S.card, background:'linear-gradient(135deg,#0d0d1f,#1a1a3e)', padding:'16px 20px', marginBottom:16}}>
-        <div style={{fontSize:14, fontWeight:700, color:'#f0a500', marginBottom:2}}>
-          Q Review - {qKey.split('-')[1]} {YEAR}
-        </div>
-        <div style={{fontSize:12, color:'rgba(255,255,255,0.5)'}}>
-          {rocks.length} rocks - {rocks.filter(r => r.status === 'done').length} completed
-        </div>
-      </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
@@ -2957,19 +3012,13 @@ function QReview({data, upd, qKey, qData}) {
                         {rocks.map(r => (
                           <div key={r.id} style={{display:'flex', alignItems:'center', gap:8,
                                                   padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
-                            <StatusPill status={r.status}
-                              onChange={v => upd(d => {
-                                ensureQ(d, qKey);
-                                const idx = d.quarters[qKey].rocks.findIndex(x => x.id === r.id);
-                                if (idx >= 0) d.quarters[qKey].rocks[idx].status = v;
-                              })}/>
                             <div style={{flex:1, fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{r.title}</div>
                             <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
                               weekNum={lastWk} upd={upd} qKey={qKey}/>
                           </div>
                         ))}
                       </div>
-                      <GanttChart rocks={rocks} wr={qData.weeklyRocks || {}} qw={qw} upd={upd} qKey={qKey}/>
+                      <GanttChart rocks={rocks} wr={qData.weeklyRocks || {}} qw={qw} upd={upd} qKey={qKey} rightGutterWidth={70}/>
                     </div>
                   )
               )}
@@ -3096,7 +3145,7 @@ function PrintView({data, onBack}) {
         </span>
         <button onClick={triggerPrint}
           style={{padding:'8px 18px', borderRadius:8, border:'none',
-                  background:'#f0a500', color:'white', fontSize:13, fontWeight:700, cursor:'pointer'}}>🖨️ Imprimir / PDF</button>
+                  background:'#f0a500', color:'white', fontSize:13, fontWeight:700, cursor:'pointer'}}>Imprimir / PDF</button>
         <button onClick={onBack}
           style={{padding:'8px 16px', borderRadius:8, border:'1px solid #ddd',
                   background:'white', color:'#555', fontSize:13, cursor:'pointer'}}>← Volver</button>
@@ -3106,7 +3155,7 @@ function PrintView({data, onBack}) {
       <div style={SH.sub}>Resumen completo · Generado el {today}</div>
 
       <section className="print-section">
-        <h2 style={SH.h2}>🧭 Vision {YEAR}</h2>
+        <h2 style={SH.h2}>Vision {YEAR}</h2>
         <h3 style={SH.h3}>Core Values</h3>
         {(v.values || []).length === 0
           ? <div style={SH.empty}>Sin valores definidos.</div>
@@ -3121,7 +3170,7 @@ function PrintView({data, onBack}) {
 
       {sortedMonths.length > 0 && (
         <section className="print-page-break">
-          <h2 style={SH.h2}>🗓️ Notas mensuales</h2>
+          <h2 style={SH.h2}>Notas mensuales</h2>
           {sortedMonths.map(mk => {
             const [y, m] = mk.split('-');
             return (
@@ -3164,8 +3213,8 @@ function PrintView({data, onBack}) {
                 <h3 style={SH.h3}>Rocks</h3>
                 <table style={{...SH.table, tableLayout:'fixed'}}>
                   <colgroup>
-                    <col style={{width:190}}/>
-                    <col style={{width:50}}/>
+                    <col style={{width:170}}/>
+                    <col style={{width:45}}/>
                     {qw.map((_, i) => <col key={i}/>)}
                   </colgroup>
                   <thead>
@@ -3202,7 +3251,7 @@ function PrintView({data, onBack}) {
                         const dn = stepDone(s);
                         rows.push(
                           <tr key={'s' + s.id} style={{borderTop:'1px solid #f0f0f0'}}>
-                            <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'#555'}}>{dn ? '☑' : '☐'} {s.text}</td>
+                            <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'#555'}}>{s.text}</td>
                             <td style={{...SH.td, textAlign:'center', fontSize:10, color:'#888'}}>W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''}</td>
                             {qw.map(wn => {
                               const inRange = wn >= sw && wn <= ew;
@@ -3232,8 +3281,8 @@ function PrintView({data, onBack}) {
                 <h3 style={SH.h3}>Scorecard</h3>
                 <table style={{...SH.table, tableLayout:'fixed'}}>
                   <colgroup>
-                    <col style={{width:140}}/>
-                    <col style={{width:40}}/>
+                    <col style={{width:170}}/>
+                    <col style={{width:45}}/>
                     {qw.map((_, i) => <col key={i}/>)}
                   </colgroup>
                   <thead>
@@ -3249,7 +3298,7 @@ function PrintView({data, onBack}) {
                       const hasGoal = !isNaN(goal) && goal > 0;
                       return (
                         <tr key={m.id}>
-                          <td style={SH.td}>{m.metric}</td>
+                          <td style={{...SH.td, fontSize:11, color:'#555'}}>{m.metric}</td>
                           <td style={{...SH.td, fontWeight:700, color:'#f0a500', textAlign:'center'}}>{m.goal || ''}</td>
                           {qw.map(wn => {
                             const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
@@ -3272,7 +3321,7 @@ function PrintView({data, onBack}) {
 
             {Object.keys(weeks).some(wn => weeks[wn].headlines || weeks[wn].conclusionNotes || weeks[wn].rating) && (
               <div className="print-section">
-                <h3 style={SH.h3}>📋 L10 Meetings - Resumen</h3>
+                <h3 style={SH.h3}>L10 Meetings - Resumen</h3>
                 <table style={SH.table}>
                   <thead>
                     <tr>
@@ -3304,10 +3353,10 @@ function PrintView({data, onBack}) {
 
             {idsIssues.length > 0 && (
               <div className="print-section">
-                <h3 style={SH.h3}>⚡ IDS Issues</h3>
+                <h3 style={SH.h3}>IDS Issues</h3>
                 {idsIssues.map(iss => (
                   <div key={iss.id} style={{paddingLeft:10, marginBottom:5, fontSize:11, opacity: iss.solved ? 0.6 : 1}}>
-                    {iss.solved ? '☑' : '☐'} <strong>{iss.sourceName}</strong>
+                    <strong>{iss.sourceName}</strong>{iss.solved && <span style={{fontSize:9, color:'#27ae60', marginLeft:6}}>[Solved]</span>}
                     {iss.action && <div style={{paddingLeft:18, color:'#555', fontSize:10}}>→ {iss.action}</div>}
                     <div style={{paddingLeft:18, color:'#aaa', fontSize:9}}>
                       Wk {iss.weekAdded}{iss.solved && iss.solvedWeek ? ' → resuelta Wk ' + iss.solvedWeek : ''}
@@ -3319,7 +3368,7 @@ function PrintView({data, onBack}) {
 
             {(qReview.issues || qReview.vision || qReview.nextrocks || qReview.notes || qReview.rating) && (
               <div className="print-section">
-                <h3 style={SH.h3}>🔍 Q Review</h3>
+                <h3 style={SH.h3}>Q Review</h3>
                 {qReview.issues && (<><h4 style={SH.h4}>Issues & Learnings</h4><div style={SH.p}>{qReview.issues}</div></>)}
                 {qReview.vision && (<><h4 style={SH.h4}>Vision Alignment</h4><div style={SH.p}>{qReview.vision}</div></>)}
                 {qReview.nextrocks && (<><h4 style={SH.h4}>Next Quarter Rocks</h4><div style={SH.p}>{qReview.nextrocks}</div></>)}
@@ -3333,7 +3382,7 @@ function PrintView({data, onBack}) {
 
       {ps.length > 0 && (
         <section className="print-page-break">
-          <h2 style={SH.h2}>⚙️ Processes</h2>
+          <h2 style={SH.h2}>Processes</h2>
           {ps.map((p, i) => (
             <div key={p.id || i} className="print-section" style={{marginBottom:14}}>
               <h3 style={{...SH.h3, display:'flex', alignItems:'center', gap:10}}>
@@ -3350,7 +3399,7 @@ function PrintView({data, onBack}) {
 
       {(data.stdWeeklyEvents || []).length > 0 && (
         <section className="print-page-break">
-          <h2 style={SH.h2}>📆 Std Week (template semanal)</h2>
+          <h2 style={SH.h2}>Std Week (template semanal)</h2>
           <table style={SH.table}>
             <thead>
               <tr>
