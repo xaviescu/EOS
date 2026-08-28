@@ -17,6 +17,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.js"></script>
 <style>
   html,body,#root{margin:0;padding:0;height:100%;background:#f5f6fa;font-family:'Segoe UI',system-ui,sans-serif;}
+  /* Reserve scrollbar space so layout doesn't jump when content grows/shrinks */
+  main.main-content{scrollbar-gutter:stable;overflow-y:scroll;}
   *{box-sizing:border-box;}
   input,textarea,select,button{font-family:inherit;}
   /* iOS safe areas */
@@ -49,11 +51,18 @@
   // PWA service worker registration + auto-reload on update
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then(reg => {
-        // Check for updates every time the tab regains focus
+      // updateViaCache:'none' forces Chrome to always fetch sw.js from
+      // the network (bypasses HTTP cache) so new SW versions are detected
+      // immediately after each deploy.
+      navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).then(reg => {
+        // Force an update check right after registering (in case a new SW is on the server)
+        reg.update();
+        // And again every time the tab regains focus
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') reg.update();
         });
+        // And every 60s while the tab is open
+        setInterval(() => reg.update(), 60000);
       }).catch(err => console.warn('SW failed', err));
 
       // When a new SW takes control (after skipWaiting + claim), reload the page
@@ -542,17 +551,18 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compa
           {DAYS.map((_, i) => <col key={i}/>)}
         </colgroup>
         <thead>
-          <tr style={{background:'#0d0d1f'}}>
-            <th style={{padding: compact ? '3px 2px' : '5px 6px', color:'rgba(255,255,255,0.4)', fontSize:9, textAlign:'right'}}>h</th>
+          <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
+            <th style={{padding: compact ? '3px 2px' : '5px 6px', color:'#bbb', fontSize:9, textAlign:'right', fontFamily:'inherit'}}>h</th>
             {DAYS.map((day, di) => (
               <th key={di}
                 onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
-                style={{padding: compact ? '4px 1px' : '7px 4px', color:'white',
-                        fontSize: compact ? 9 : 12, fontWeight:600, textAlign:'center',
+                style={{padding: compact ? '6px 1px' : '8px 4px', color:'#1a1a2e',
+                        fontSize: compact ? 10 : 13, fontWeight:700, textAlign:'center',
+                        fontFamily:'inherit', letterSpacing:0.3,
                         cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
                 <div>{compact ? day[0] : day.slice(0, 3)}</div>
                 {dayLabels && dayLabels[di] && dayLabels[di].sub &&
-                  <div style={{fontSize: compact ? 8 : 9, opacity:0.65, fontWeight:400}}>{dayLabels[di].sub}</div>}
+                  <div style={{fontSize: compact ? 9 : 10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayLabels[di].sub}</div>}
               </th>
             ))}
           </tr>
@@ -3051,7 +3061,7 @@ function PrintView({data, onBack}) {
     h4: {fontSize:11, fontWeight:700, color:'#555', marginTop:10, marginBottom:4, textTransform:'uppercase', letterSpacing:0.5},
     p: {fontSize:11, lineHeight:1.5, marginBottom:6, whiteSpace:'pre-wrap'},
     table: {width:'100%', borderCollapse:'collapse', fontSize:10, marginTop:6, marginBottom:10},
-    th: {background:'#0d0d1f', color:'white', padding:'5px 7px', textAlign:'left', fontWeight:600, fontSize:10},
+    th: {background:'#f0a500', color:'white', padding:'6px 8px', textAlign:'left', fontWeight:700, fontSize:12},
     td: {padding:'4px 7px', borderBottom:'1px solid #eee', verticalAlign:'top'},
     pill: (bg, c) => ({display:'inline-block', padding:'2px 8px', borderRadius:10, fontSize:9, fontWeight:700, background:bg, color:c}),
     empty: {color:'#aaa', fontStyle:'italic', fontSize:11}
@@ -3166,6 +3176,69 @@ function PrintView({data, onBack}) {
                     })}
                   </tbody>
                 </table>
+
+                {/* Gantt visual per week */}
+                <h4 style={{...SH.h4, marginTop:14}}>Gantt (13 semanas)</h4>
+                <table style={{...SH.table, tableLayout:'fixed'}}>
+                  <colgroup>
+                    <col style={{width:160}}/>
+                    {qw.map((_, i) => <col key={i}/>)}
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th style={SH.th}>Rock / Step</th>
+                      {qw.map((_, i) => (
+                        <th key={i} style={{...SH.th, textAlign:'center', padding:'4px 1px', fontSize:9}}>W{i + 1}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rocks.map(r => {
+                      const steps = wr[r.id] || [];
+                      const info = SI[r.status] || SI['on-track'];
+                      const rows = [];
+                      // Rock row (header): title + status color bar spanning all weeks
+                      rows.push(
+                        <tr key={'r' + r.id} style={{background:'#f5f5f5', borderTop:'2px solid #ddd'}}>
+                          <td style={{...SH.td, fontWeight:700, fontSize:10}}>🪨 {r.title}</td>
+                          {qw.map(wn => (
+                            <td key={wn} style={{padding:'2px 1px'}}>
+                              <div style={{height:8, background:info[0], borderRadius:2, opacity:0.7}}/>
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                      // Step rows
+                      steps.forEach(s => {
+                        const sw = s.startWeek || qw[0];
+                        const ew = s.endWeek || sw;
+                        rows.push(
+                          <tr key={'s' + s.id} style={{borderTop:'1px solid #f0f0f0'}}>
+                            <td style={{...SH.td, paddingLeft:18, fontSize:9, color:'#555'}}>· {s.text}</td>
+                            {qw.map(wn => {
+                              const inRange = wn >= sw && wn <= ew;
+                              const done = isWkDone(s, wn) || s.done;
+                              return (
+                                <td key={wn} style={{padding:'2px 1px'}}>
+                                  {inRange && (
+                                    <div style={{height:8, borderRadius:2,
+                                                 background: done ? '#27ae60' : '#f0a500',
+                                                 opacity: done ? 1 : 0.55}}/>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      });
+                      return rows;
+                    })}
+                  </tbody>
+                </table>
+                <div style={{fontSize:9, color:'#888', marginTop:4, display:'flex', gap:14}}>
+                  <span><span style={{display:'inline-block', width:12, height:8, background:'#f0a500', borderRadius:2, opacity:0.55, verticalAlign:'middle', marginRight:4}}/>Pendiente</span>
+                  <span><span style={{display:'inline-block', width:12, height:8, background:'#27ae60', borderRadius:2, verticalAlign:'middle', marginRight:4}}/>Hecho</span>
+                </div>
               </div>
             )}
 
