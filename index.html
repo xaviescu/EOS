@@ -1569,12 +1569,12 @@ function App({bundle, onLogout}) {
       ['diario','Daily Summary'],
       ['month','Month']
     ]},
-    {label:'Planificar', items: [
+    {label:'Plan', items: [
       ['vision','Vision'],
       ['rocks_all','Rocks'],
       ['procesos','Processes']
     ]},
-    {label:'Hacer', items: [
+    {label:'Do', items: [
       ['projects','Projects'],
       ['scorecard','Scorecard'],
       ['todos','To-Dos']
@@ -1927,11 +1927,28 @@ function RocksTab({data, upd}) {
     <div>
       <h2 style={S.h2}>Rocks</h2>
       <QBtns selQ={selQ} onSelect={qk => { setSelQ(qk); setAddRock(false); }}/>
+      <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
+        <Btn onClick={() => setAddRock(true)} style={{fontSize:12}}>+ Rock</Btn>
+      </div>
+      {addRock && (
+        <InlineForm marginTop={0}>
+          <h3 style={S.h3}>Nueva Rock — {selQ.split('-')[1]}</h3>
+          <Fld label="Title" value={rockForm.title}
+            onChange={v => setRockForm(f => ({...f, title:v}))}
+            placeholder="What must be achieved this quarter?"/>
+          <div style={{display:'flex', gap:8}}>
+            <Btn onClick={() => {
+              if (!rockForm.title.trim()) return;
+              upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.push({id: uid(), title: rockForm.title, status:'on-track'}); });
+              setRockForm({title:''}); setAddRock(false);
+            }}>Save</Btn>
+            <Btn v="sec" onClick={() => setAddRock(false)}>Cancel</Btn>
+          </div>
+        </InlineForm>
+      )}
       <div>
         {rocks.length === 0 && !addRock &&
-          <div style={{...S.card, textAlign:'center', color:'var(--muted-soft)', padding:36, fontSize:15}}>
-            No rocks for {selQ.split('-')[1]}.
-          </div>}
+          <EmptyState icon="target" message={'Sin Rocks para ' + selQ.split('-')[1] + '. Añade la primera arriba.'}/>}
         {/* Single week header (W1..W13) at the top of the rock list */}
         {rocks.length > 0 && (
           <div style={{position:'sticky', top:0, zIndex:10, background:'var(--bg)',
@@ -2139,25 +2156,6 @@ function RocksTab({data, upd}) {
               </div>
             );
           })}
-          {addRock
-            ? (
-              <div style={{...S.card, border:'2px solid var(--brand)'}}>
-                <h3 style={S.h3}>New Rock - {selQ.split('-')[1]}</h3>
-                <Fld label="Title" value={rockForm.title}
-                  onChange={v => setRockForm(f => ({...f, title:v}))}
-                  placeholder="What must be achieved this quarter?"/>
-                <div style={{display:'flex', gap:8}}>
-                  <Btn onClick={() => {
-                    if (!rockForm.title.trim()) return;
-                    upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.push({id: uid(), title: rockForm.title, status:'on-track'}); });
-                    setRockForm({title:''}); setAddRock(false);
-                  }}>Save</Btn>
-                  <Btn v="sec" onClick={() => setAddRock(false)}>Cancel</Btn>
-                </div>
-              </div>
-            )
-            : <Btn onClick={() => setAddRock(true)} style={{marginTop:4}}>+ Rock</Btn>
-        }
       </div>
     </div>
   );
@@ -2593,6 +2591,22 @@ function TodosTab({data, upd}) {
   return (
     <div>
       <h2 style={S.h2}>To-Dos</h2>
+      <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
+        <Btn onClick={() => setShowF(true)} style={{fontSize:12}}>+ To-do</Btn>
+      </div>
+      {showF && (
+        <InlineForm marginTop={0}>
+          <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
+          <div style={S.g2}>
+            <Fld label="Start date" value={form.startDate} onChange={v => setForm(f => ({...f, startDate:v}))} type="date"/>
+            <Fld label="Due date (optional)" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
+          </div>
+          <div style={{display:'flex', gap:8}}>
+            <Btn onClick={add}>Save</Btn>
+            <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
+          </div>
+        </InlineForm>
+      )}
       {overdue.length > 0 &&
         <div style={{marginBottom:12}}>
           <div style={{fontSize:13, fontWeight:700, color:'var(--err-line)', marginBottom:6}}>Overdue ({overdue.length})</div>
@@ -2614,22 +2628,6 @@ function TodosTab({data, upd}) {
           {showDone && done.map(t => <TRow key={t.id} t={t}/>)}
         </div>
       )}
-      {!showF
-        ? <Btn onClick={() => setShowF(true)}>+ To-do</Btn>
-        : (
-          <div style={S.card}>
-            <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
-            <div style={S.g2}>
-              <Fld label="Start date" value={form.startDate} onChange={v => setForm(f => ({...f, startDate:v}))} type="date"/>
-              <Fld label="Due date (optional)" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
-            </div>
-            <div style={{display:'flex', gap:8}}>
-              <Btn onClick={add}>Save</Btn>
-              <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
-            </div>
-          </div>
-        )
-      }
     </div>
   );
 }
