@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#0d0d1f"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -16,7 +16,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.js"></script>
 <style>
-  html,body,#root{margin:0;padding:0;height:100%;background:#f5f6fa;font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden;}
+  html,body,#root{margin:0;padding:0;height:100%;width:100%;max-width:100vw;background:#f5f6fa;font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden;-webkit-text-size-adjust:100%;}
+  /* Prevent iOS Safari from auto-zooming on input focus (happens when
+     input font-size < 16px). Applies on touch devices only, so desktop
+     keeps its compact input font-size. */
+  @media (pointer: coarse){
+    input,textarea,select{font-size:16px !important;}
+  }
   /* Reserve scrollbar space so layout doesn't jump when content grows/shrinks
      - Only on devices with a fine pointer (desktop) where scrollbars take
        up layout width. On touch devices (mobile/tablet) scrollbars overlay
@@ -787,16 +793,16 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
             {qw.map((_, i) => <col key={i}/>)}
           </colgroup>
           <thead>
-            <tr style={{background:'#0d0d1f'}}>
-              <th style={{padding:'7px 14px', textAlign:'left', color:'rgba(255,255,255,0.6)', fontSize:13}}>Rock / Step</th>
+            <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
+              <th style={{padding:'8px 14px', textAlign:'left', color:'#1a1a2e', fontSize:14, fontWeight:700}}>Rock / Step</th>
               {qw.map(wn => {
                 const isCur = highlightWn && wn === highlightWn;
                 return (
                   <th key={wn}
-                    style={{padding:'5px 1px', textAlign:'center', fontSize:9,
-                            fontWeight: isCur ? 900 : 400,
-                            color: isCur ? '#f0a500' : 'rgba(255,255,255,0.35)',
-                            background: isCur ? 'rgba(240,165,0,0.18)' : 'transparent'}}>
+                    style={{padding:'6px 1px', textAlign:'center', fontSize:11,
+                            fontWeight: isCur ? 800 : 600,
+                            color: isCur ? '#f0a500' : '#666',
+                            background: isCur ? 'rgba(240,165,0,0.15)' : 'transparent'}}>
                     W{wn - fw + 1}
                   </th>
                 );
@@ -1161,7 +1167,8 @@ function App({bundle, onLogout}) {
 
   return (
     <div style={{display:'flex', fontFamily:"'Segoe UI',system-ui,sans-serif",
-                 minHeight:'100vh', background:'#f5f6fa', position:'relative'}}>
+                 minHeight:'100vh', width:'100%', maxWidth:'100vw', overflowX:'hidden',
+                 background:'#f5f6fa', position:'relative'}}>
       {isMobile && navOpen && (
         <div onClick={() => setNavOpen(false)}
           style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:99}}/>
@@ -1733,14 +1740,14 @@ function ScorecardTab({data, upd}) {
                   {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
                 </colgroup>
                 <thead>
-                  <tr style={{background:'#0d0d1f'}}>
-                    <th style={{padding:'6px 12px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Metric</th>
-                    <th style={{padding:'6px 4px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Goal</th>
+                  <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
+                    <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Metric</th>
+                    <th style={{padding:'8px 4px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Goal</th>
                     {DAYS.map((day, di) => (
-                      <th key={di} style={{padding:'6px 4px', textAlign:'center',
-                                           color:'rgba(255,255,255,0.7)', fontSize:11, fontWeight:600}}>
+                      <th key={di} style={{padding:'8px 4px', textAlign:'center',
+                                           color:'#1a1a2e', fontSize:12, fontWeight:700}}>
                         <div>{day.slice(0, 3)}</div>
-                        <div style={{fontSize:9, opacity:0.6, fontWeight:400}}>{dayShort(selWn, di)}</div>
+                        <div style={{fontSize:10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayShort(selWn, di)}</div>
                       </th>
                     ))}
                     <th/>
@@ -1827,14 +1834,14 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn}) {
         <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:500}}>
           <colgroup><col style={{width:170}}/>{qw.map((_, i) => <col key={i}/>)}</colgroup>
           <thead>
-            <tr style={{background:'#0d0d1f'}}>
-              <th style={{padding:'7px 12px', textAlign:'left', color:'white', fontSize:13}}>Metric</th>
+            <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
+              <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:14, fontWeight:700}}>Metric</th>
               {qw.map((wn, i) => (
                 <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
-                  style={{padding:'6px 2px', textAlign:'center',
-                          color: wn === selWn ? '#f0a500' : 'rgba(255,255,255,0.4)',
-                          fontSize:10, cursor: onSelectWn ? 'pointer' : 'default',
-                          fontWeight: wn === selWn ? 700 : 400}}>W{i + 1}</th>
+                  style={{padding:'8px 2px', textAlign:'center',
+                          color: wn === selWn ? '#f0a500' : '#666',
+                          fontSize:11, cursor: onSelectWn ? 'pointer' : 'default',
+                          fontWeight: wn === selWn ? 800 : 600}}>W{i + 1}</th>
               ))}
             </tr>
           </thead>
@@ -2611,13 +2618,13 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
           {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
         </colgroup>
         <thead>
-          <tr style={{background:'#0d0d1f'}}>
-            <th style={{padding:'6px 12px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Metric</th>
-            <th style={{padding:'6px 4px', textAlign:'left', color:'white', fontSize:12, fontWeight:600}}>Goal</th>
+          <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
+            <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Metric</th>
+            <th style={{padding:'8px 4px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Goal</th>
             {DAYS.map((day, di) => (
-              <th key={di} style={{padding:'6px 4px', textAlign:'center', color:'rgba(255,255,255,0.7)', fontSize:11, fontWeight:600}}>
+              <th key={di} style={{padding:'8px 4px', textAlign:'center', color:'#1a1a2e', fontSize:12, fontWeight:700}}>
                 <div>{day.slice(0, 3)}</div>
-                <div style={{fontSize:9, opacity:0.6, fontWeight:400}}>{dayShort(weekNum, di)}</div>
+                <div style={{fontSize:10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayShort(weekNum, di)}</div>
               </th>
             ))}
             <th/>
