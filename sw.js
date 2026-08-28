@@ -1,9 +1,10 @@
 // EOS XE Dashboard - Service Worker
-// Caches ONLY the local app shell (HTML, icons, manifest).
-// External resources (Supabase, unpkg, jsdelivr CDNs) ALWAYS go to network -
-// they must never be cached by the SW or stale/broken versions stick forever.
+// Auto-updates on every deploy without user intervention.
+// - Caches only local shell (HTML, icons, manifest); external CDNs go to network.
+// - New SW activates immediately on install (skipWaiting) and forces open tabs
+//   to reload so the new version takes effect without "clear cache" dance.
 
-const CACHE = 'eos-xe-v9';
+const CACHE = 'eos-xe-v10';
 const SHELL = [
   './',
   './index.html',
@@ -20,23 +21,25 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+  e.waitUntil((async () => {
+    // Delete old caches
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    // Take control of all open tabs immediately
+    await self.clients.claim();
+    // Tell any open clients that a new SW is active so they can reload
+    const clients = await self.clients.matchAll({type: 'window'});
+    for (const client of clients) client.postMessage({type: 'SW_UPDATED'});
+  })());
 });
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-
-  // ONLY handle requests for our own origin (the GitHub Pages site).
-  // Everything else (Supabase, unpkg, jsdelivr, etc.) is left untouched and
-  // goes through the network directly. This prevents stale CDN scripts from
-  // being cached forever by the SW.
+  // ONLY handle same-origin requests. External CDNs (Supabase, cdnjs, jsdelivr)
+  // go directly to network so stale scripts never get cached.
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML/navigation so updates always roll out immediately
+  // Network-first for HTML so updates always roll out immediately
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     e.respondWith(
       fetch(e.request).then(r => {
@@ -48,7 +51,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-first for local shell assets (icons, manifest, sw.js)
+  // Cache-first for local shell assets (icons, manifest)
   e.respondWith(
     caches.match(e.request).then(cached =>
       cached || fetch(e.request).then(r => {
