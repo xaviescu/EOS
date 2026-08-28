@@ -1532,9 +1532,9 @@ function RocksTab({data, upd}) {
                     const d2 = stepDone(step);
                     const isEd = editStep === rock.id + '-' + step.id;
                     return (
-                      <div key={step.id} style={{marginBottom:10, padding:'10px 12px',
+                      <div key={step.id} style={{marginBottom:3, padding:'5px 12px',
                                                  background: '#f8f9fa',
-                                                 borderRadius:8}}>
+                                                 borderRadius:6}}>
                         <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                           <input value={step.text}
                             onChange={e => upd(d => {
