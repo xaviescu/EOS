@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, viewport-fit=cover"/>
-<meta name="theme-color" content="#0d0d1f"/>
+<meta name="theme-color" content="#0f172a"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="EOS XE"/>
@@ -16,7 +16,57 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.js"></script>
 <style>
-  html,body,#root{margin:0;padding:0;height:100%;width:100%;max-width:100vw;background:#f5f6fa;font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden;-webkit-text-size-adjust:100%;}
+  /* =========================================================
+     Design tokens — cámbialos aquí y afectan a toda la app.
+     ========================================================= */
+  :root{
+    /* Marca / superficies */
+    --brand: #f0a500;
+    --brand-soft: rgba(240,165,0,0.10);
+    --brand-ring: rgba(240,165,0,0.25);
+    --bg: #f5f6fa;
+    --surface: #ffffff;
+    --surface-alt: #fafbfc;
+    --sidebar-bg: #0f172a;
+    --sidebar-fg: rgba(255,255,255,0.70);
+    --sidebar-fg-muted: rgba(255,255,255,0.45);
+    --sidebar-border: rgba(255,255,255,0.08);
+
+    /* Texto */
+    --text: #1a1a2e;
+    --text-2: #4b5563;
+    --muted: #6b7280;
+    --muted-soft: #9ca3af;
+
+    /* Bordes */
+    --border: #eef0f4;
+    --border-strong: #e0e4ea;
+
+    /* Estados (paleta moderna) */
+    --ok-bg: #ecfdf5;   --ok-fg: #065f46;   --ok-line: #10b981;
+    --warn-bg: #fffbeb; --warn-fg: #78350f; --warn-line: #f59e0b;
+    --err-bg: #fef2f2;  --err-fg: #7f1d1d;  --err-line: #ef4444;
+    --info-bg: #eff6ff; --info-fg: #1e3a8a; --info-line: #3b82f6;
+
+    /* Radios */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 16px;
+
+    /* Spacing (escala 4-base) */
+    --s-1: 4px;  --s-2: 8px;  --s-3: 12px;
+    --s-4: 16px; --s-5: 24px; --s-6: 32px;
+
+    /* Tipografía */
+    --f-xs: 11px; --f-sm: 13px; --f-md: 15px;
+    --f-lg: 18px; --f-xl: 24px; --f-2xl: 32px;
+
+    /* Elevación */
+    --elev-1: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+    --elev-2: 0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.04);
+    --elev-3: 0 20px 40px rgba(15,23,42,.15), 0 8px 16px rgba(15,23,42,.08);
+  }
+  html,body,#root{margin:0;padding:0;height:100%;width:100%;max-width:100vw;background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden;-webkit-text-size-adjust:100%;}
   /* Prevent iOS Safari from auto-zooming on input focus (happens when
      input font-size < 16px). Applies on touch devices only, so desktop
      keeps its compact input font-size. */
@@ -32,6 +82,59 @@
   }
   *{box-sizing:border-box;}
   input,textarea,select,button{font-family:inherit;}
+
+  /* =========================================================
+     Estados interactivos — hover, focus, active
+     ========================================================= */
+  /* Botones (consumido por el componente Btn y por botones ad-hoc con class="btn") */
+  .btn{transition:background .15s ease, color .15s ease, transform .05s ease, box-shadow .15s ease; user-select:none;}
+  .btn:hover{filter:brightness(1.05);}
+  .btn:active{transform:translateY(1px);}
+  .btn:focus-visible{outline:none; box-shadow:0 0 0 3px var(--brand-ring);}
+  .btn-sec:hover{background:#e6eaf0 !important;}
+
+  /* Nav item de la sidebar */
+  .nb-item{transition:background .12s ease, color .12s ease;}
+  .nb-item:hover{background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.95);}
+  .nb-item:focus-visible{outline:none; background:rgba(255,255,255,0.09); color:rgba(255,255,255,0.95);}
+  .nb-item.active:hover{background:var(--brand-soft);}
+
+  /* Inputs, textareas, selects — focus ring naranja global.
+     Se aplica a todos los form fields de la app (excepto los de la sidebar,
+     que no tiene ninguno). Usa :focus (no :focus-visible) para que también
+     funcione al hacer click con ratón, no solo con Tab. */
+  main.main-content input:focus,
+  main.main-content textarea:focus,
+  main.main-content select:focus{
+    border-color:var(--brand) !important;
+    box-shadow:0 0 0 3px var(--brand-ring);
+    transition:border-color .12s ease, box-shadow .12s ease;
+  }
+
+  /* Cards con hover opcional (elevación al pasar) */
+  .card-hover{transition:box-shadow .15s ease, transform .15s ease;}
+  .card-hover:hover{box-shadow:var(--elev-2); transform:translateY(-1px);}
+
+  /* Underline tabs — reemplaza los tabs "big pill" por una fila con
+     línea de 2px bajo el activo. Uso:
+       <div class="tabbar"><button class="tab-underline">A</button>
+                           <button class="tab-underline active">B</button></div>
+  */
+  .tabbar{
+    display:flex; gap:var(--s-1); align-items:stretch;
+    border-bottom:1px solid var(--border);
+    margin-bottom:var(--s-4); flex-wrap:wrap;
+  }
+  .tab-underline{
+    padding:10px 14px; border:none; background:transparent; cursor:pointer;
+    font-size:var(--f-sm); font-weight:600; color:var(--muted);
+    position:relative; margin-bottom:-1px;
+    border-bottom:2px solid transparent;
+    transition:color .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .tab-underline:hover{color:var(--text); background:var(--brand-soft);}
+  .tab-underline:focus-visible{outline:none; box-shadow:0 0 0 3px var(--brand-ring); border-radius:6px 6px 0 0;}
+  .tab-underline.active{color:var(--brand); border-bottom-color:var(--brand); font-weight:700;}
   /* iOS safe areas */
   body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
 
@@ -135,10 +238,10 @@ const SLOTS = Array.from({length:34}, (_,i) => ({
 }));
 const MONTHS_F = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const SI = {
-  'on-track': ['#d4edda','#155724','On Track'],
-  'at-risk':  ['#fff3cd','#856404','At Risk'],
-  'not-done': ['#fdecea','#b71c1c','Not Done'],
-  'done':     ['#d1ecf1','#0c5460','Done']
+  'on-track': ['var(--ok-bg)',   'var(--ok-fg)',   'On Track'],
+  'at-risk':  ['var(--warn-bg)', 'var(--warn-fg)', 'At Risk'],
+  'not-done': ['var(--err-bg)',  'var(--err-fg)',  'Not Done'],
+  'done':     ['var(--info-bg)', 'var(--info-fg)', 'Done']
 };
 const YEAR = 2026;
 const QS = ['Q1','Q2','Q3','Q4'];
@@ -203,10 +306,10 @@ const ensureQ = (d, qk) => {
 // New regular event with no color set displays as blue (next click -> green)
 const EVENT_COLOR_CYCLE = ['gray', 'blue', 'green', 'orange'];
 const EVENT_COLOR_STYLES = {
-  gray:   {bg:'#f5f5f5', text:'#1a1a2e', border:'#bbb'},
-  blue:   {bg:'#e8f4fd', text:'#1a1a2e', border:'#3498db'},
-  green:  {bg:'#d4edda', text:'#155724', border:'#27ae60'},
-  orange: {bg:'#ffe4b5', text:'#7a3a00', border:'#e67e22'}
+  gray:   {bg:'var(--surface-alt)', text:'var(--text)',    border:'var(--muted-soft)'},
+  blue:   {bg:'var(--info-bg)',     text:'var(--info-fg)', border:'var(--info-line)'},
+  green:  {bg:'var(--ok-bg)',       text:'var(--ok-fg)',   border:'var(--ok-line)'},
+  orange: {bg:'var(--warn-bg)',     text:'var(--warn-fg)', border:'var(--warn-line)'}
 };
 const effectiveEventColor = (ev) => {
   if (ev.color && EVENT_COLOR_STYLES[ev.color]) return ev.color;
@@ -293,13 +396,13 @@ function clearCfg() {
 // Style tokens
 // =====================================================================
 const S = {
-  card: {background:'white', borderRadius:12, padding:20, marginBottom:12, boxShadow:'0 2px 8px rgba(0,0,0,0.06)'},
-  h2:   {fontSize:24, fontWeight:800, color:'#1a1a2e', marginBottom:20, marginTop:0},
-  h3:   {fontSize:11, fontWeight:700, color:'#888', marginBottom:10, marginTop:0, textTransform:'uppercase', letterSpacing:0.6},
-  lbl:  {fontSize:11, color:'#999', display:'block', marginBottom:4, fontWeight:700, textTransform:'uppercase'},
-  inp:  {width:'100%', padding:'9px 12px', border:'1px solid #e8e8e8', borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none', fontFamily:'inherit', color:'#1a1a2e'},
-  ta:   {width:'100%', padding:'9px 12px', border:'1px solid #e8e8e8', borderRadius:8, fontSize:14, boxSizing:'border-box', minHeight:80, resize:'vertical', outline:'none', fontFamily:'inherit', color:'#1a1a2e'},
-  g2:   {display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}
+  card: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)'},
+  h2:   {fontSize:'var(--f-xl)', fontWeight:800, color:'var(--text)', marginBottom:'var(--s-5)', marginTop:0},
+  h3:   {fontSize:'var(--f-xs)', fontWeight:700, color:'var(--muted)', marginBottom:'var(--s-2)', marginTop:0, textTransform:'uppercase', letterSpacing:0.6},
+  lbl:  {fontSize:'var(--f-xs)', color:'var(--muted-soft)', display:'block', marginBottom:'var(--s-1)', fontWeight:700, textTransform:'uppercase'},
+  inp:  {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:14, boxSizing:'border-box', outline:'none', fontFamily:'inherit', color:'var(--text)'},
+  ta:   {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:14, boxSizing:'border-box', minHeight:80, resize:'vertical', outline:'none', fontFamily:'inherit', color:'var(--text)'},
+  g2:   {display:'grid', gridTemplateColumns:'1fr 1fr', gap:'var(--s-3)'}
 };
 
 // =====================================================================
@@ -360,7 +463,7 @@ function DatePicker({value, onChange, placeholder, style}) {
   const prevMonth = e => { e.stopPropagation(); setViewMonth(new Date(year, month - 1, 1)); };
   const nextMonth = e => { e.stopPropagation(); setViewMonth(new Date(year, month + 1, 1)); };
 
-  const navBtn = {width:26, height:26, border:'1px solid #eee', background:'white',
+  const navBtn = {width:26, height:26, border:'1px solid var(--border)', background:'white',
                   cursor:'pointer', borderRadius:5, fontSize:14, color:'#555', lineHeight:1};
 
   return (
@@ -371,10 +474,10 @@ function DatePicker({value, onChange, placeholder, style}) {
       {open && (
         <div style={{position:'absolute', top:'calc(100% + 4px)', left:0, background:'white',
                      borderRadius:10, boxShadow:'0 8px 28px rgba(0,0,0,0.18)', padding:10,
-                     zIndex:200, width:248, border:'1px solid #eee'}}>
+                     zIndex:200, width:248, border:'1px solid var(--border)'}}>
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
             <button onClick={prevMonth} style={navBtn}>‹</button>
-            <div style={{fontWeight:700, fontSize:13, color:'#1a1a2e'}}>{monthNames[month]} {year}</div>
+            <div style={{fontWeight:700, fontSize:13, color:'var(--text)'}}>{monthNames[month]} {year}</div>
             <button onClick={nextMonth} style={navBtn}>›</button>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:2}}>
@@ -389,17 +492,17 @@ function DatePicker({value, onChange, placeholder, style}) {
               return (
                 <button key={i} onClick={() => select(d)}
                   style={{height:30, border:'none', cursor:'pointer', borderRadius:5,
-                          background: isSel ? '#f0a500' : (isToday ? 'rgba(240,165,0,0.15)' : 'transparent'),
-                          color: isSel ? 'white' : (isToday ? '#f0a500' : '#1a1a2e'),
+                          background: isSel ? 'var(--brand)' : (isToday ? 'rgba(240,165,0,0.15)' : 'transparent'),
+                          color: isSel ? 'white' : (isToday ? 'var(--brand)' : 'var(--text)'),
                           fontWeight: (isSel || isToday) ? 700 : 400, fontSize:13}}>{d}</button>
               );
             })}
           </div>
           <div style={{display:'flex', gap:5, marginTop:8, justifyContent:'space-between'}}>
             <button onClick={() => { onChange(todayDS); setOpen(false); }}
-              style={{padding:'4px 12px', fontSize:11, background:'#f0f0f0', border:'none', borderRadius:5, cursor:'pointer', color:'#555'}}>Hoy</button>
+              style={{padding:'4px 12px', fontSize:11, background:'var(--border)', border:'none', borderRadius:5, cursor:'pointer', color:'#555'}}>Hoy</button>
             <button onClick={() => { onChange(''); setOpen(false); }}
-              style={{padding:'4px 12px', fontSize:11, background:'#f0f0f0', border:'none', borderRadius:5, cursor:'pointer', color:'#555'}}>Borrar</button>
+              style={{padding:'4px 12px', fontSize:11, background:'var(--border)', border:'none', borderRadius:5, cursor:'pointer', color:'#555'}}>Borrar</button>
           </div>
         </div>
       )}
@@ -425,30 +528,65 @@ function Fld({label, value, onChange, placeholder, multi, type}) {
 function Btn({onClick, children, v, style: sx, disabled}) {
   v = v || 'pri'; sx = sx || {};
   const C = {
-    pri: {background:'#f0a500', color:'white'},
-    sec: {background:'#f0f0f0', color:'#555'},
-    red: {background:'#e74c3c', color:'white'},
-    grn: {background:'#27ae60', color:'white'}
+    pri: {background:'var(--brand)',    color:'white'},
+    sec: {background:'#f1f3f6',         color:'var(--text-2)'},
+    red: {background:'var(--err-line)', color:'white'},
+    grn: {background:'var(--ok-line)',  color:'white'}
   };
   return (
-    <button onClick={onClick} disabled={disabled}
-      style={{padding:'8px 16px', borderRadius:8, border:'none', cursor: disabled ? 'not-allowed' : 'pointer',
-              fontSize:13, fontWeight:600, opacity: disabled ? 0.5 : 1, ...(C[v] || C.pri), ...sx}}>
+    <button onClick={onClick} disabled={disabled} className={'btn btn-' + v}
+      style={{padding:'8px 16px', borderRadius:'var(--r-md)', border:'none', cursor: disabled ? 'not-allowed' : 'pointer',
+              fontSize:'var(--f-sm)', fontWeight:600, opacity: disabled ? 0.5 : 1, ...(C[v] || C.pri), ...sx}}>
       {children}
     </button>
   );
 }
 
-function NB({active, onClick, children}) {
+// Icon set (Lucide-style, 20x20). currentColor => hereda color del padre.
+// Se usa en la sidebar (colapsada y expandida).
+function Icon({name, size}) {
+  const sz = size || 18;
+  const P = {fill:'none', stroke:'currentColor', strokeWidth:2, strokeLinecap:'round', strokeLinejoin:'round'};
+  const paths = {
+    // Daily — sol
+    diario: <g><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></g>,
+    // Vision — ojo
+    vision: <g><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g>,
+    // Month — calendario
+    month: <g><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g>,
+    // Rocks — montaña
+    rocks_all: <g><path d="M3 20l6-11 4 6 3-4 5 9z"/><path d="M13 15l-4 5"/></g>,
+    // Projects — capas
+    projects: <g><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17l9 5 9-5"/></g>,
+    // Scorecard — barras
+    scorecard: <g><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></g>,
+    // Todos — check en cuadrado
+    todos: <g><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12l3 3 5-6"/></g>,
+    // Processes — workflow / git-branch
+    procesos: <g><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M8 6h4a4 4 0 014 4v0"/></g>,
+    // L10 — users
+    l10_main: <g><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3 3-5 7-5s7 2 7 5"/><circle cx="17" cy="7" r="2"/><path d="M22 19c0-2-1.5-3.5-4-4"/></g>,
+    // Q Review — trofeo / award
+    qreview_main: <g><path d="M8 3h8v5a4 4 0 01-8 0V3z"/><path d="M8 5H5v2a3 3 0 003 3M16 5h3v2a3 3 0 01-3 3"/><path d="M10 15h4v2h-4z"/><path d="M8 21h8"/><path d="M12 17v4"/></g>,
+  };
   return (
-    <button onClick={onClick}
-      style={{display:'flex', alignItems:'center', gap:8, width:'100%',
+    <svg width={sz} height={sz} viewBox="0 0 24 24" {...P} style={{display:'block', flexShrink:0}}>
+      {paths[name] || null}
+    </svg>
+  );
+}
+
+function NB({active, onClick, icon, children}) {
+  return (
+    <button onClick={onClick} className={'nb-item' + (active ? ' active' : '')}
+      style={{display:'flex', alignItems:'center', gap:10, width:'100%',
               padding:'9px 14px', border:'none', cursor:'pointer', textAlign:'left',
-              background: active ? 'rgba(240,165,0,0.1)' : 'transparent',
-              borderLeft: active ? '3px solid #f0a500' : '3px solid transparent',
-              color: active ? '#f0a500' : 'rgba(255,255,255,0.55)',
+              background: active ? 'var(--brand-soft)' : 'transparent',
+              borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent',
+              color: active ? 'var(--brand)' : 'rgba(255,255,255,0.55)',
               fontSize:13, fontWeight: active ? 700 : 400}}>
-      {children}
+      {icon}
+      <span>{children}</span>
     </button>
   );
 }
@@ -477,13 +615,13 @@ function QBtns({selQ, onSelect}) {
         const isAct = qk === selQ;
         const isCur = qk === getCurQ();
         return (
-          <button key={q} onClick={() => onSelect(qk)}
-            style={{padding:'10px 20px', borderRadius:9,
-                    border:'2px solid ' + (isAct ? '#f0a500' : isCur ? 'rgba(240,165,0,0.4)' : '#e0e0e0'),
+          <button key={q} onClick={() => onSelect(qk)} className="btn"
+            style={{padding:'7px 16px', borderRadius:'var(--r-md)',
+                    border:'1px solid ' + (isAct ? 'var(--brand)' : isCur ? 'var(--brand-ring)' : 'var(--border)'),
                     cursor:'pointer',
-                    background: isAct ? '#f0a500' : 'white',
-                    color: isAct ? 'white' : isCur ? '#f0a500' : '#555',
-                    fontWeight:700, fontSize:14, position:'relative'}}>
+                    background: isAct ? 'var(--brand)' : 'var(--surface)',
+                    color: isAct ? 'white' : isCur ? 'var(--brand)' : 'var(--text-2)',
+                    fontWeight:700, fontSize:'var(--f-sm)', position:'relative'}}>
             {q} {YEAR}
           </button>
         );
@@ -504,10 +642,10 @@ function WkBtns({selQ, selWn, onSelect}) {
         return (
           <button key={wn} onClick={() => onSelect(wn)} title={wDates(wn)}
             style={{padding:'6px 8px', borderRadius:7,
-                    border:'1px solid ' + (isSel ? '#f0a500' : isCur ? 'rgba(240,165,0,0.5)' : '#e8e8e8'),
+                    border:'1px solid ' + (isSel ? 'var(--brand)' : isCur ? 'rgba(240,165,0,0.5)' : 'var(--border)'),
                     cursor:'pointer',
-                    background: isSel ? '#f0a500' : isCur ? 'rgba(240,165,0,0.08)' : 'white',
-                    color: isSel ? 'white' : isCur ? '#f0a500' : '#666',
+                    background: isSel ? 'var(--brand)' : isCur ? 'rgba(240,165,0,0.08)' : 'white',
+                    color: isSel ? 'white' : isCur ? 'var(--brand)' : '#666',
                     fontWeight: (isSel || isCur) ? 700 : 400,
                     fontSize:11, textAlign:'center', minWidth:44}}>
             <div style={{fontWeight:700, fontSize:12}}>W{wn - qw[0] + 1}</div>
@@ -551,7 +689,7 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
   return (
     <button onClick={toggle}
       style={{padding:'2px 8px', borderRadius:10,
-              border:'1px solid ' + (active ? '#e74c3c' : '#e0e0e0'),
+              border:'1px solid ' + (active ? '#e74c3c' : 'var(--border-strong)'),
               cursor:'pointer', fontSize:10, fontWeight:700, flexShrink:0,
               background: active ? '#fdecea' : 'white',
               color: active ? '#b71c1c' : '#bbb', whiteSpace:'nowrap'}}>
@@ -584,25 +722,25 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compa
           {DAYS.map((_, i) => <col key={i}/>)}
         </colgroup>
         <thead>
-          <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
+          <tr style={{background:'#fafafa', borderBottom:'2px solid var(--brand)'}}>
             <th style={{padding: compact ? '3px 2px' : '5px 6px', color:'#bbb', fontSize:9, textAlign:'right', fontFamily:'inherit'}}>h</th>
             {DAYS.map((day, di) => (
               <th key={di}
                 onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
-                style={{padding: compact ? '6px 1px' : '8px 4px', color:'#1a1a2e',
+                style={{padding: compact ? '6px 1px' : '8px 4px', color:'var(--text)',
                         fontSize: compact ? 10 : 13, fontWeight:700, textAlign:'center',
                         fontFamily:'inherit', letterSpacing:0.3,
                         cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
                 <div>{compact ? day[0] : day.slice(0, 3)}</div>
                 {dayLabels && dayLabels[di] && dayLabels[di].sub &&
-                  <div style={{fontSize: compact ? 9 : 10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayLabels[di].sub}</div>}
+                  <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2}}>{dayLabels[di].sub}</div>}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {SLOTS.map(slot => (
-            <tr key={slot.h + '-' + slot.m} style={{borderTop:'1px solid #f5f5f5'}}>
+            <tr key={slot.h + '-' + slot.m} style={{borderTop:'1px solid var(--surface-alt)'}}>
               <td style={{padding: compact ? '0 3px' : '1px 6px', fontSize: compact ? 7 : 8, color:'#aaa', fontWeight:700,
                           background:'#fafafa', textAlign:'right', whiteSpace:'nowrap'}}>{slot.lbl}</td>
               {DAYS.map((_, di) => {
@@ -619,7 +757,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compa
                       style={{padding:2, verticalAlign:'top',
                               background: st.bg,
                               borderLeft:'3px solid ' + st.border,
-                              borderTop:'1px solid #f5f5f5', position:'relative',
+                              borderTop:'1px solid var(--surface-alt)', position:'relative',
                               cursor: onCycleColor ? 'pointer' : 'default'}}>
                       <div style={{padding:'2px 18px 2px 5px', boxSizing:'border-box'}}>
                         <div style={{fontWeight:700, color: st.text,
@@ -638,7 +776,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, dayLabels, compa
                 }
                 return (
                   <td key={di} onClick={() => onCellClick(di, slot.h, slot.m)}
-                    style={{padding:0, cursor:'pointer', borderTop:'1px solid #f5f5f5'}}>
+                    style={{padding:0, cursor:'pointer', borderTop:'1px solid var(--surface-alt)'}}>
                     <div style={{height: compact ? 18 : 22}}/>
                   </td>
                 );
@@ -791,15 +929,15 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth}) {
             {rightGutterWidth && <col style={{width: rightGutterWidth}}/>}
           </colgroup>
           <thead>
-            <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
-              <th style={{padding:'8px 14px', textAlign:'left', color:'#1a1a2e', fontSize:14, fontWeight:700}}>Rock / Step</th>
+            <tr style={{background:'#fafafa', borderBottom:'2px solid var(--brand)'}}>
+              <th style={{padding:'8px 14px', textAlign:'left', color:'var(--text)', fontSize:14, fontWeight:700}}>Rock / Step</th>
               {qw.map(wn => {
                 const isCur = highlightWn && wn === highlightWn;
                 return (
                   <th key={wn}
                     style={{padding:'6px 1px', textAlign:'center', fontSize:11,
                             fontWeight: isCur ? 800 : 600,
-                            color: isCur ? '#f0a500' : '#666',
+                            color: isCur ? 'var(--brand)' : '#666',
                             background: isCur ? 'rgba(240,165,0,0.15)' : 'transparent'}}>
                     W{wn - fw + 1}
                   </th>
@@ -814,8 +952,8 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth}) {
               const info = SI[rock.status] || SI['on-track'];
               const bg = info[0];
               const rockRow = (
-                <tr key={'r' + rock.id} style={{background:'#f5f5f5', borderTop:'2px solid #e0e0e0'}}>
-                  <td style={{padding:'6px 14px', fontSize:13, fontWeight:700, color:'#1a1a2e',
+                <tr key={'r' + rock.id} style={{background:'var(--surface-alt)', borderTop:'2px solid var(--border-strong)'}}>
+                  <td style={{padding:'6px 14px', fontSize:13, fontWeight:700, color:'var(--text)',
                               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                       title={rock.title}>{rock.title}</td>
                   {qw.map(wn => {
@@ -832,7 +970,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth}) {
                 const sw = step.startWeek || step.weekNum || fw;
                 const ew = step.endWeek || step.weekNum || fw;
                 return (
-                  <tr key={'s' + step.id} style={{borderTop:'1px solid #f0f0f0'}}>
+                  <tr key={'s' + step.id} style={{borderTop:'1px solid var(--border)'}}>
                     <td style={{padding:'3px 14px 3px 24px', fontSize:12, color:'#666',
                                 overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                         title={step.text}>{step.text}</td>
@@ -845,7 +983,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth}) {
                                              background: isCur ? 'rgba(240,165,0,0.08)' : 'transparent'}}>
                           {inR && (
                             <div onClick={() => toggle(rock.id, step.id, wn)}
-                              style={{height:10, background: chk ? '#27ae60' : '#f0a500',
+                              style={{height:10, background: chk ? '#27ae60' : 'var(--brand)',
                                       borderRadius:2, margin:'0 1px',
                                       opacity: chk ? 1 : 0.5,
                                       cursor: upd ? 'pointer' : 'default',
@@ -864,7 +1002,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth}) {
         </table>
       </div>
       {highlightWn && (
-        <div style={{marginTop:8, textAlign:'right', color:'#f0a500', fontWeight:700, fontSize:10}}>
+        <div style={{marginTop:8, textAlign:'right', color:'var(--brand)', fontWeight:700, fontSize:10}}>
           W{highlightWn - fw + 1} = current week
         </div>
       )}
@@ -949,14 +1087,14 @@ function SetupGate({onReady}) {
 
   return (
     <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center',
-                 background:'linear-gradient(135deg,#0d0d1f,#1a1a3e)', padding:16}}>
+                 background:'linear-gradient(135deg,var(--sidebar-bg),#1a1a3e)', padding:16}}>
       <div style={{background:'white', borderRadius:16, padding:'28px 26px', maxWidth:460, width:'100%',
                    boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
         <div style={{textAlign:'center', marginBottom:18}}>
           <div style={{display:'inline-block', width:56, height:56, borderRadius:14,
-                       background:'#f0a500', color:'#0d0d1f', fontWeight:900, fontSize:24,
+                       background:'var(--brand)', color:'var(--sidebar-bg)', fontWeight:900, fontSize:24,
                        lineHeight:'56px', marginBottom:10}}>XE</div>
-          <div style={{fontSize:20, fontWeight:800, color:'#1a1a2e'}}>EOS XE</div>
+          <div style={{fontSize:20, fontWeight:800, color:'var(--text)'}}>EOS XE</div>
           <div style={{fontSize:12, color:'#888'}}>{step === 'config' ? 'Configura tu Supabase' : 'Desbloquea tu dashboard'}</div>
         </div>
 
@@ -972,7 +1110,7 @@ function SetupGate({onReady}) {
             </div>
             {err && <div style={{color:'#e74c3c', fontSize:13, marginBottom:10}}>{err}</div>}
             <button type="submit" style={{width:'100%', padding:'8px 16px', borderRadius:8, border:'none',
-                    cursor:'pointer', fontSize:13, fontWeight:600, background:'#f0a500', color:'white'}}>Continuar</button>
+                    cursor:'pointer', fontSize:13, fontWeight:600, background:'var(--brand)', color:'white'}}>Continuar</button>
           </form>
         )}
 
@@ -992,7 +1130,7 @@ function SetupGate({onReady}) {
             <button type="submit" disabled={busy}
               style={{width:'100%', padding:'8px 16px', borderRadius:8, border:'none',
                       cursor: busy ? 'not-allowed' : 'pointer', fontSize:13, fontWeight:600,
-                      background:'#f0a500', color:'white', opacity: busy ? 0.5 : 1}}>
+                      background:'var(--brand)', color:'white', opacity: busy ? 0.5 : 1}}>
               {busy ? 'Verificando...' : (needsPin2 ? 'Crear y entrar' : 'Desbloquear')}
             </button>
             <button type="button" onClick={reset}
@@ -1011,7 +1149,7 @@ function SetupGate({onReady}) {
 // Sync indicator
 // =====================================================================
 function SyncBadge({status, lastSavedAt}) {
-  const colors = {idle:'#27ae60', saving:'#f0a500', error:'#e74c3c', loading:'#3498db'};
+  const colors = {idle:'#27ae60', saving:'var(--brand)', error:'#e74c3c', loading:'#3498db'};
   const labels = {idle:'Sincronizado', saving:'Guardando...', error:'Error', loading:'Cargando...'};
   const c = colors[status] || colors.idle;
   return (
@@ -1161,13 +1299,13 @@ function App({bundle, onLogout}) {
   return (
     <div style={{display:'flex', fontFamily:"'Segoe UI',system-ui,sans-serif",
                  minHeight:'100dvh', width:'100%', maxWidth:'100vw', overflowX:'hidden',
-                 background:'#f5f6fa', position:'relative'}}>
+                 background:'var(--bg)', position:'relative'}}>
       {isMobile && navOpen && (
         <div onClick={() => setNavOpen(false)}
           style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:99}}/>
       )}
       <nav className="sidebar no-print" style={{width: navOpen ? 210 : (isMobile ? 0 : 48),
-                   background:'#0d0d1f', flexShrink:0,
+                   background:'var(--sidebar-bg)', flexShrink:0,
                    display:'flex', flexDirection:'column',
                    position: isMobile ? 'fixed' : 'sticky', top:0, left:0,
                    height:'100vh', overflowY:'auto',
@@ -1176,7 +1314,7 @@ function App({bundle, onLogout}) {
         <div style={{padding:'12px 8px', borderBottom:'1px solid rgba(255,255,255,0.07)',
                      display:'flex', alignItems:'center',
                      justifyContent: navOpen ? 'space-between' : 'center'}}>
-          {navOpen && <div style={{fontSize:17, fontWeight:800, color:'#f0a500'}}>EOS XE</div>}
+          {navOpen && <div style={{fontSize:17, fontWeight:800, color:'var(--brand)'}}>EOS XE</div>}
           <button onClick={() => setNavOpen(o => !o)}
             style={{background:'none', border:'none', color:'rgba(255,255,255,0.5)',
                     cursor:'pointer', fontSize:16, padding:4, borderRadius:6, lineHeight:1}}>
@@ -1185,15 +1323,17 @@ function App({bundle, onLogout}) {
         </div>
         <div style={{padding:'4px 0', flex:1}}>
           {GNAV.map(([id, ic, l]) => navOpen
-            ? <NB key={id} active={tab === id} onClick={() => { setTab(id); if (isMobile) setNavOpen(false); }}>{l}</NB>
+            ? <NB key={id} active={tab === id} icon={<Icon name={id}/>}
+                  onClick={() => { setTab(id); if (isMobile) setNavOpen(false); }}>{l}</NB>
             : <button key={id} onClick={() => { setTab(id); setNavOpen(true); }} title={l}
+                className={'nb-item' + (tab === id ? ' active' : '')}
                 style={{display:'flex', alignItems:'center', justifyContent:'center',
                         width:'100%', padding:'11px 0', border:'none',
-                        background: tab === id ? 'rgba(240,165,0,0.1)' : 'transparent',
-                        color: tab === id ? '#f0a500' : 'rgba(255,255,255,0.55)',
-                        cursor:'pointer', fontSize:13, fontWeight:600,
-                        borderLeft: tab === id ? '3px solid #f0a500' : '3px solid transparent'}}>
-                {ic}
+                        background: tab === id ? 'var(--brand-soft)' : 'transparent',
+                        color: tab === id ? 'var(--brand)' : 'rgba(255,255,255,0.55)',
+                        cursor:'pointer',
+                        borderLeft: tab === id ? '3px solid var(--brand)' : '3px solid transparent'}}>
+                <Icon name={id} size={20}/>
               </button>
           )}
         </div>
@@ -1238,7 +1378,7 @@ function App({bundle, onLogout}) {
                     left:'calc(env(safe-area-inset-left, 0px) + 10px)',
                     zIndex:50,
                     width:42, height:42, borderRadius:10, border:'none',
-                    background:'#0d0d1f', color:'#f0a500', fontSize:20,
+                    background:'var(--sidebar-bg)', color:'var(--brand)', fontSize:20,
                     boxShadow:'0 4px 12px rgba(0,0,0,0.2)', cursor:'pointer'}}>☰</button>
         )}
         <div style={{paddingTop: isMobile ? 60 : 0}}>
@@ -1268,13 +1408,10 @@ function VisionTab({data, upd}) {
   return (
     <div>
       <h2 style={S.h2}>Vision {YEAR}</h2>
-      <div style={{display:'flex', gap:6, marginBottom:18, flexWrap:'wrap'}}>
+      <div className="tabbar">
         {VTABS.map(([id, lbl]) => (
           <button key={id} onClick={() => setVTab(id)}
-            style={{padding:'9px 16px', borderRadius:9,
-                    border:'2px solid ' + (vTab === id ? '#f0a500' : '#e0e0e0'), cursor:'pointer',
-                    background: vTab === id ? '#f0a500' : 'white',
-                    color: vTab === id ? 'white' : '#555', fontWeight:700, fontSize:13}}>{lbl}</button>
+            className={'tab-underline' + (vTab === id ? ' active' : '')}>{lbl}</button>
         ))}
       </div>
       {vTab === 'values' && (
@@ -1340,12 +1477,12 @@ function MonthTab({data, upd, goToDay}) {
       <h2 style={S.h2}>Month View - {YEAR}</h2>
       <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:20}}>
         {MONTHS_F.map((m, i) => (
-          <button key={i} onClick={() => setSelM(i)}
-            style={{padding:'8px 14px', borderRadius:8,
-                    border:'2px solid ' + (i === selM ? '#f0a500' : '#e0e0e0'), cursor:'pointer',
-                    background: i === selM ? '#f0a500' : 'white',
-                    color: i === selM ? 'white' : i === new Date().getMonth() ? '#f0a500' : '#555',
-                    fontWeight: i === selM ? 700 : 400, fontSize:13}}>
+          <button key={i} onClick={() => setSelM(i)} className="btn"
+            style={{padding:'6px 12px', borderRadius:'var(--r-md)',
+                    border:'1px solid ' + (i === selM ? 'var(--brand)' : 'var(--border)'), cursor:'pointer',
+                    background: i === selM ? 'var(--brand)' : 'var(--surface)',
+                    color: i === selM ? 'white' : i === new Date().getMonth() ? 'var(--brand)' : 'var(--text-2)',
+                    fontWeight: i === selM ? 700 : 400, fontSize:'var(--f-sm)'}}>
             {m.slice(0, 3)}
           </button>
         ))}
@@ -1361,14 +1498,14 @@ function MonthTab({data, upd, goToDay}) {
                                   background: we ? 'rgba(0,0,0,0.02)' : 'transparent'}}>
               <div onClick={() => goToDay(ds)}
                 style={{display:'flex', alignItems:'center', gap:6, cursor:'pointer', flexShrink:0, width:50}}>
-                <span style={{fontSize:11, fontWeight:700, color: we ? '#bbb' : '#f0a500', width:14}}>{dow}</span>
-                <span style={{fontSize:14, fontWeight:700, color: we ? '#aaa' : '#1a1a2e'}}>{n}</span>
+                <span style={{fontSize:11, fontWeight:700, color: we ? '#bbb' : 'var(--brand)', width:14}}>{dow}</span>
+                <span style={{fontSize:14, fontWeight:700, color: we ? '#aaa' : 'var(--text)'}}>{n}</span>
               </div>
               <input value={(data.monthNotes && data.monthNotes[ds]) || ''}
                 onChange={e => setNote(ds, e.target.value)} placeholder="Add highlight..."
-                style={{flex:1, border:'none', borderBottom:'1px solid #f0f0f0',
+                style={{flex:1, border:'none', borderBottom:'1px solid var(--border)',
                         outline:'none', fontSize:13, padding:'3px 4px',
-                        background:'transparent', color: we ? '#bbb' : '#1a1a2e', fontFamily:'inherit'}}/>
+                        background:'transparent', color: we ? '#bbb' : 'var(--text)', fontFamily:'inherit'}}/>
             </div>
           );
         })}
@@ -1437,7 +1574,7 @@ function RocksTab({data, upd}) {
           </div>}
         {/* Single week header (W1..W13) at the top of the rock list */}
         {rocks.length > 0 && (
-          <div style={{position:'sticky', top:0, zIndex:10, background:'#f5f6fa',
+          <div style={{position:'sticky', top:0, zIndex:10, background:'var(--bg)',
                        padding:'6px 30px 10px 42px', marginBottom:2}}>
             <div style={{display:'flex', alignItems:'center', gap:8}}>
               <div style={{flex:'0 1 200px', minWidth:120}}/>
@@ -1448,7 +1585,7 @@ function RocksTab({data, upd}) {
                     <div key={wn}
                       style={{width:22, height:16, display:'flex', alignItems:'center', justifyContent:'center',
                               fontSize:9, fontWeight: isCur ? 800 : 700,
-                              color: isCur ? '#f0a500' : '#888',
+                              color: isCur ? 'var(--brand)' : '#888',
                               background: isCur ? 'rgba(240,165,0,0.15)' : 'transparent',
                               borderRadius:3}}>
                       W{wn - qw[0] + 1}
@@ -1474,7 +1611,7 @@ function RocksTab({data, upd}) {
                       const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
                       if (idx >= 0) d.quarters[selQ].rocks[idx].title = e.target.value;
                     })}
-                    style={{flex:1, minWidth:130, fontWeight:700, color:'#1a1a2e', fontSize:15,
+                    style={{flex:1, minWidth:130, fontWeight:700, color:'var(--text)', fontSize:15,
                             border:'none', outline:'none', fontFamily:'inherit',
                             background:'transparent', padding:0}} placeholder="Rock title..."/>
                   <span style={{fontSize:12, color:'#bbb'}}>
@@ -1489,8 +1626,8 @@ function RocksTab({data, upd}) {
                         {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
                           <button key={q} onClick={() => setCopyRock(s => ({...s, [rock.id]: q}))}
                             style={{padding:'4px 10px', borderRadius:6, border:'1px solid',
-                                    borderColor: cr === q ? '#f0a500' : '#eee',
-                                    background: cr === q ? '#f0a500' : 'white',
+                                    borderColor: cr === q ? 'var(--brand)' : 'var(--border)',
+                                    background: cr === q ? 'var(--brand)' : 'white',
                                     color: cr === q ? 'white' : '#555',
                                     cursor:'pointer', fontSize:12, fontWeight: cr === q ? 700 : 400}}>{q}</button>
                         ))}
@@ -1540,7 +1677,7 @@ function RocksTab({data, upd}) {
                               const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
                               if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
                             })}
-                            style={{flex:'0 1 200px', minWidth:120, fontSize:14, fontWeight:600, color:'#1a1a2e',
+                            style={{flex:'0 1 200px', minWidth:120, fontSize:14, fontWeight:600, color:'var(--text)',
                                     textDecoration: 'none',
                                     border:'none', outline:'none', fontFamily:'inherit',
                                     background:'transparent', padding:0}}/>
@@ -1553,15 +1690,15 @@ function RocksTab({data, upd}) {
                                   style={{width:22, height:22, borderRadius:4, border:'1px solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: inR ? 'pointer' : 'default',
-                                          borderColor: !inR ? '#f0f0f0' : chk ? '#27ae60' : '#f0a500',
+                                          borderColor: !inR ? 'var(--border)' : chk ? '#27ae60' : 'var(--brand)',
                                           background: !inR ? '#fafafa' : chk ? '#d4edda' : 'rgba(240,165,0,0.12)',
-                                          color: !inR ? '#ddd' : chk ? '#155724' : '#f0a500'}}>
+                                          color: !inR ? '#ddd' : chk ? '#155724' : 'var(--brand)'}}>
                                   {wn - qw[0] + 1}
                                 </div>
                               );
                             })}
                           </div>
-                          <span style={{fontSize:11, color:'#f0a500', fontWeight:700, marginLeft:'auto'}}>
+                          <span style={{fontSize:11, color:'var(--brand)', fontWeight:700, marginLeft:'auto'}}>
                             W{sw2 - qw[0] + 1}{sw2 !== ew2 ? '-' + String(ew2 - qw[0] + 1) : ''}
                           </span>
                           <button onClick={() => setEditStep(isEd ? null : rock.id + '-' + step.id)}
@@ -1593,7 +1730,7 @@ function RocksTab({data, upd}) {
                         {isEd && (
                           <div style={{display:'flex', alignItems:'center', gap:8, marginTop:8,
                                        padding:'7px 10px', background:'white', borderRadius:6,
-                                       border:'1px solid #e8e8e8', flexWrap:'wrap'}}>
+                                       border:'1px solid var(--border)', flexWrap:'wrap'}}>
                             <span style={{fontSize:12, color:'#888'}}>From Wk</span>
                             <select value={sw2}
                               onChange={e => { const v = parseInt(e.target.value); updRange(rock.id, step.id, v, Math.max(v, ew2)); }}
@@ -1612,7 +1749,7 @@ function RocksTab({data, upd}) {
                     );
                   })}
                   <div style={{display:'flex', gap:7, flexWrap:'wrap', alignItems:'center',
-                               paddingTop:10, borderTop:'1px solid #f0f0f0'}}>
+                               paddingTop:10, borderTop:'1px solid var(--border)'}}>
                     <input value={sf.text}
                       onChange={e => setStepForms(f => ({...f, [rock.id]: {...(f[rock.id] || {}), text: e.target.value}}))}
                       style={{...S.inp, flex:1, minWidth:130}} placeholder="Add step..."/>
@@ -1648,7 +1785,7 @@ function RocksTab({data, upd}) {
           })}
           {addRock
             ? (
-              <div style={{...S.card, border:'2px solid #f0a500'}}>
+              <div style={{...S.card, border:'2px solid var(--brand)'}}>
                 <h3 style={S.h3}>New Rock - {selQ.split('-')[1]}</h3>
                 <Fld label="Title" value={rockForm.title}
                   onChange={v => setRockForm(f => ({...f, title:v}))}
@@ -1715,7 +1852,7 @@ function ScorecardTab({data, upd}) {
     setShowCopyQ(false);
   };
   const DST = {ok:['#f0f7f2','#6b9c7d','✓'], nok:['#faf1f1','#b58686','X']};
-  const getDST = st => DST[st] || ['#f0f0f0','#ccc','.'];
+  const getDST = st => DST[st] || ['var(--border)','#ccc','.'];
 
   return (
     <div>
@@ -1732,8 +1869,8 @@ function ScorecardTab({data, upd}) {
                 <span style={{fontSize:12, color:'#888'}}>Copy to:</span>
                 {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
                   <button key={q} onClick={() => copyToQ(YEAR + '-' + q)}
-                    style={{padding:'4px 10px', borderRadius:6, border:'1px solid #f0a500',
-                            background:'#f0a500', color:'white', cursor:'pointer', fontSize:12, fontWeight:700}}>{q}</button>
+                    style={{padding:'4px 10px', borderRadius:6, border:'1px solid var(--brand)',
+                            background:'var(--brand)', color:'white', cursor:'pointer', fontSize:12, fontWeight:700}}>{q}</button>
                 ))}
                 <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:11, padding:'4px 8px'}}>X</Btn>
               </div>
@@ -1749,14 +1886,14 @@ function ScorecardTab({data, upd}) {
                   {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
                 </colgroup>
                 <thead>
-                  <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
-                    <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Metric</th>
-                    <th style={{padding:'8px 4px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Goal</th>
+                  <tr style={{background:'#fafafa', borderBottom:'2px solid var(--brand)'}}>
+                    <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
+                    <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
                     {DAYS.map((day, di) => (
                       <th key={di} style={{padding:'8px 4px', textAlign:'center',
-                                           color:'#1a1a2e', fontSize:12, fontWeight:700}}>
+                                           color:'var(--text)', fontSize:12, fontWeight:700}}>
                         <div>{day.slice(0, 3)}</div>
-                        <div style={{fontSize:10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayShort(selWn, di)}</div>
+                        <div style={{fontSize:10, color:'var(--brand)', fontWeight:600, marginTop:2}}>{dayShort(selWn, di)}</div>
                       </th>
                     ))}
                     <th/>
@@ -1764,19 +1901,19 @@ function ScorecardTab({data, upd}) {
                 </thead>
                 <tbody>
                   {scorecard.map((m, mi) => (
-                    <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
+                    <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
                       <td style={{padding:'6px 12px'}}>
                         <input value={m.metric}
                           onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].metric = e.target.value; })}
                           style={{width:'100%', border:'none', outline:'none', fontWeight:600,
-                                  fontSize:14, fontFamily:'inherit', color:'#1a1a2e',
+                                  fontSize:14, fontFamily:'inherit', color:'var(--text)',
                                   background:'transparent', padding:0}} placeholder="Metric..."/>
                       </td>
                       <td style={{padding:'6px 4px'}}>
                         <input value={m.goal || ''}
                           onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].goal = e.target.value; })}
                           style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                                  fontFamily:'inherit', color:'#f0a500', fontWeight:600,
+                                  fontFamily:'inherit', color:'var(--brand)', fontWeight:600,
                                   background:'transparent', padding:0}} placeholder="Goal..."/>
                       </td>
                       {DAYS.map((_, di) => {
@@ -1795,10 +1932,10 @@ function ScorecardTab({data, upd}) {
                       <td style={{padding:'4px 6px', textAlign:'center'}}>
                         <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'center'}}>
                           <button onClick={() => move(mi, -1)} disabled={mi === 0}
-                            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                            style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                                     borderRadius:3, padding:'1px 5px', fontSize:11, opacity: mi === 0 ? 0.3 : 1}}>↑</button>
                           <button onClick={() => move(mi, +1)} disabled={mi === scorecard.length - 1}
-                            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                            style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                                     borderRadius:3, padding:'1px 5px', fontSize:11,
                                     opacity: mi === scorecard.length - 1 ? 0.3 : 1}}>↓</button>
                           <button onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard.splice(mi, 1); })}
@@ -1847,12 +1984,12 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
             {renderMetricExtra && <col style={{width:70}}/>}
           </colgroup>
           <thead>
-            <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
-              <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:14, fontWeight:700}}>Metric</th>
+            <tr style={{background:'#fafafa', borderBottom:'2px solid var(--brand)'}}>
+              <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:14, fontWeight:700}}>Metric</th>
               {qw.map((wn, i) => (
                 <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                   style={{padding:'8px 2px', textAlign:'center',
-                          color: wn === selWn ? '#f0a500' : '#666',
+                          color: wn === selWn ? 'var(--brand)' : '#666',
                           fontSize:11, cursor: onSelectWn ? 'pointer' : 'default',
                           fontWeight: wn === selWn ? 800 : 600}}>W{i + 1}</th>
               ))}
@@ -1861,8 +1998,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
           </thead>
           <tbody>
             {scorecard.map(m => (
-              <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
-                <td style={{padding:'7px 12px', fontSize:14, fontWeight:600, color:'#1a1a2e'}}>
+              <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
+                <td style={{padding:'7px 12px', fontSize:14, fontWeight:600, color:'var(--text)'}}>
                   {m.metric}
                   {m.goal && <span style={{fontSize:11, color:'#aaa', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
                 </td>
@@ -1942,7 +2079,7 @@ function ProjectsTab({data, upd}) {
         <div style={S.card}>
           <table style={{width:'100%', borderCollapse:'collapse'}}>
             <thead>
-              <tr style={{borderBottom:'2px solid #f0f0f0'}}>
+              <tr style={{borderBottom:'2px solid var(--border)'}}>
                 <th style={{fontSize:10, fontWeight:700, color:'#aaa', textTransform:'uppercase',
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width:'45%'}}>Project</th>
                 <th style={{fontSize:10, fontWeight:700, color:'#aaa', textTransform:'uppercase',
@@ -1953,13 +2090,13 @@ function ProjectsTab({data, upd}) {
             </thead>
             <tbody>
               {projects.map((proj, pi) => (
-                <tr key={proj.id} style={{borderBottom:'1px solid #f5f5f5'}}>
+                <tr key={proj.id} style={{borderBottom:'1px solid var(--surface-alt)'}}>
                   <td style={{padding:'7px 12px 7px 0', verticalAlign:'middle'}}>
                     <input value={proj.name || ''}
                       onChange={e => upd(d => { d.weeklyProjects[wk][pi].name = e.target.value; })}
                       placeholder="Project name..."
                       style={{width:'100%', border:'none', outline:'none', fontSize:14,
-                              fontWeight:700, fontFamily:'inherit', color:'#1a1a2e',
+                              fontWeight:700, fontFamily:'inherit', color:'var(--text)',
                               background:'transparent', padding:0}}/>
                   </td>
                   <td style={{padding:'7px 0', verticalAlign:'middle'}}>
@@ -1972,7 +2109,7 @@ function ProjectsTab({data, upd}) {
                   </td>
                   <td style={{textAlign:'center', verticalAlign:'middle', padding:'4px 6px'}}>
                     <button onClick={() => createTodoFromProject(proj)}
-                      style={{padding:'2px 8px', borderRadius:10, border:'1px solid #e0e0e0', cursor:'pointer',
+                      style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
                               fontSize:10, fontWeight:700, background:'white', color:'#666',
                               whiteSpace:'nowrap'}}>+ To-do</button>
                   </td>
@@ -1983,7 +2120,7 @@ function ProjectsTab({data, upd}) {
                           const arr = d.weeklyProjects[wk];
                           const tmp = arr[pi]; arr[pi] = arr[pi-1]; arr[pi-1] = tmp;
                         })} disabled={pi === 0}
-                        style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                        style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                                 borderRadius:3, padding:'1px 5px', fontSize:11,
                                 opacity: pi === 0 ? 0.3 : 1}}>↑</button>
                       <button onClick={() => upd(d => {
@@ -1991,7 +2128,7 @@ function ProjectsTab({data, upd}) {
                           const arr = d.weeklyProjects[wk];
                           const tmp = arr[pi]; arr[pi] = arr[pi+1]; arr[pi+1] = tmp;
                         })} disabled={pi === projects.length - 1}
-                        style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                        style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                                 borderRadius:3, padding:'1px 5px', fontSize:11,
                                 opacity: pi === projects.length - 1 ? 0.3 : 1}}>↓</button>
                       <button onClick={() => upd(d => { d.weeklyProjects[wk].splice(pi, 1); })}
@@ -2046,7 +2183,7 @@ function TodosTab({data, upd}) {
           <input value={t.task}
             onChange={e => upd(d => { d.todos[ri].task = e.target.value; })}
             style={{width:'100%', border:'none', outline:'none', fontWeight:500,
-                    color:'#1a1a2e', textDecoration: 'none',
+                    color:'var(--text)', textDecoration: 'none',
                     fontSize:14, marginBottom:4, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'#bbb', display:'flex', gap:12, flexWrap:'wrap'}}>
@@ -2080,14 +2217,14 @@ function TodosTab({data, upd}) {
               if (ri <= 0) return;
               const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
             })} disabled={ri <= 0}
-            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+            style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                     borderRadius:3, padding:'1px 6px', fontSize:11,
                     opacity: ri <= 0 ? 0.3 : 1}}>↑</button>
           <button onClick={() => upd(d => {
               if (ri >= d.todos.length - 1) return;
               const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
             })} disabled={ri >= data.todos.length - 1}
-            style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+            style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                     borderRadius:3, padding:'1px 6px', fontSize:11,
                     opacity: ri >= data.todos.length - 1 ? 0.3 : 1}}>↓</button>
           <button onClick={() => upd(d => { d.todos.splice(ri, 1); })}
@@ -2178,7 +2315,7 @@ function ProcessesTab({data, upd}) {
                     onChange={e => { e.stopPropagation(); upd(d => { d.processes[i].name = e.target.value; }); }}
                     onClick={e => e.stopPropagation()} placeholder="Process name..."
                     style={{width:'100%', border:'none', outline:'none', fontWeight:600,
-                            fontSize:14, fontFamily:'inherit', color:'#1a1a2e',
+                            fontSize:14, fontFamily:'inherit', color:'var(--text)',
                             background:'transparent', cursor:'text', padding:0}}/>
                 </div>
                 <span style={{display:'inline-block', padding:'3px 10px', borderRadius:10,
@@ -2189,7 +2326,7 @@ function ProcessesTab({data, upd}) {
                 </span>
               </div>
               {exp === i && (
-                <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
+                <div style={{padding:'0 18px 16px', borderTop:'1px solid var(--surface-alt)'}}>
                   <Fld label="Steps" value={p.steps}
                     onChange={v => upd(d => { d.processes[i].steps = v; })} placeholder="Step 1..." multi/>
                   <div style={{display:'flex', alignItems:'center', gap:14}}>
@@ -2329,20 +2466,20 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         <div style={{display:'flex', gap:4, alignItems:'center', marginLeft: isMobile ? 'auto' : 0}}>
           <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
             style={{height:34, width:34, boxSizing:'border-box', borderRadius:8,
-                    border:'1px solid #e0e0e0', background:'white', cursor:'pointer',
+                    border:'1px solid var(--border-strong)', background:'white', cursor:'pointer',
                     fontSize:14, color:'#555', padding:0, display:'flex',
                     alignItems:'center', justifyContent:'center'}}>&lt;</button>
           <button onClick={() => setShowCal(s => !s)}
             style={{height:34, boxSizing:'border-box', borderRadius:8,
-                    border:'1px solid ' + (showCal ? '#f0a500' : '#e0e0e0'),
-                    background: showCal ? '#f0a500' : 'white',
+                    border:'1px solid ' + (showCal ? 'var(--brand)' : 'var(--border-strong)'),
+                    background: showCal ? 'var(--brand)' : 'white',
                     cursor:'pointer', fontSize:12, fontWeight:700,
                     color: showCal ? 'white' : '#555',
                     padding:'0 14px', display:'flex',
                     alignItems:'center', justifyContent:'center'}}>Calendar</button>
           <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
             style={{height:34, width:34, boxSizing:'border-box', borderRadius:8,
-                    border:'1px solid #e0e0e0', background:'white', cursor:'pointer',
+                    border:'1px solid var(--border-strong)', background:'white', cursor:'pointer',
                     fontSize:14, color:'#555', padding:0, display:'flex',
                     alignItems:'center', justifyContent:'center'}}>&gt;</button>
         </div>
@@ -2358,8 +2495,8 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             <button key={di} onClick={() => handleDayClick(ds)}
               style={{flex:'1 1 0', minWidth:0, padding: isMobile ? '6px 2px' : '8px 6px',
                       borderRadius:8, border:'none', cursor:'pointer',
-                      background: isActive ? '#f0a500' : isToday ? 'rgba(240,165,0,0.15)' : '#f0f0f0',
-                      color: isActive ? 'white' : isToday ? '#f0a500' : '#555',
+                      background: isActive ? 'var(--brand)' : isToday ? 'rgba(240,165,0,0.15)' : 'var(--border)',
+                      color: isActive ? 'white' : isToday ? 'var(--brand)' : '#555',
                       fontWeight: (isActive || isToday) ? 700 : 400,
                       fontSize: isMobile ? 11 : 12, lineHeight:1.3, textAlign:'center'}}>
               <div>{day.slice(0, 3)}</div>
@@ -2375,7 +2512,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           placeholder="Add today's highlight..."
           style={{flex:1, border:'none', borderBottom:'2px solid #f0e0b0',
                   outline:'none', fontSize:14, padding:'4px 6px',
-                  background:'transparent', color:'#1a1a2e', fontFamily:'inherit'}}/>
+                  background:'transparent', color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
       {/* Meetings */}
       <div style={S.card}>
@@ -2437,7 +2574,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               const tmp = d.todos[a]; d.todos[a] = d.todos[b]; d.todos[b] = tmp;
             });
             return (
-              <div key={t.id} style={{padding:'6px 0', borderBottom:'1px solid #f5f5f5',
+              <div key={t.id} style={{padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
                                       opacity: donOnDay ? 0.5 : 1}}>
                 <div style={{display:'flex', alignItems:'center', gap:9}}>
                   <input type="checkbox" checked={!!donOnDay}
@@ -2451,7 +2588,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
                   <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
                     style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
-                            color:'#1a1a2e', textDecoration: 'none',
+                            color:'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
                   {t.due && <span style={{fontSize:11, color: t.due < today ? '#e74c3c' : '#aaa', flexShrink:0}}>{t.due}</span>}
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
@@ -2461,11 +2598,11 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                       {isEd ? 'Close' : 'Edit'}
                     </button>
                     <button onClick={() => swapWithNeighbor(-1)} disabled={dti === 0}
-                      style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                      style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                               borderRadius:3, padding:'1px 6px', fontSize:11,
                               opacity: dti === 0 ? 0.3 : 1}}>↑</button>
                     <button onClick={() => swapWithNeighbor(+1)} disabled={dti === dayTodos.length - 1}
-                      style={{border:'1px solid #eee', background:'white', cursor:'pointer',
+                      style={{border:'1px solid var(--border)', background:'white', cursor:'pointer',
                               borderRadius:3, padding:'1px 6px', fontSize:11,
                               opacity: dti === dayTodos.length - 1 ? 0.3 : 1}}>↓</button>
                     <button onClick={() => upd(d => {
@@ -2514,7 +2651,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           ? <div style={{color:'#aaa', fontSize:14}}>No steps this week.</div>
           : wrThisWeek.map(({rock, steps}) => (
             <div key={rock.id} style={{marginBottom:10}}>
-              <div style={{fontSize:13, fontWeight:700, color:'#1a1a2e', marginBottom:4}}>{rock.title}</div>
+              <div style={{fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:4}}>{rock.title}</div>
               {steps.map(step => {
                 const done = isWkDone(step, wn);
                 return (
@@ -2530,7 +2667,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                         }
                       })}
                       style={{width:15, height:15, cursor:'pointer'}}/>
-                    <span style={{fontSize:14, color:'#1a1a2e'}}>{step.text}</span>
+                    <span style={{fontSize:14, color:'var(--text)'}}>{step.text}</span>
                   </div>
                 );
               })}
@@ -2551,31 +2688,31 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                 {DAYS.map((_, i) => <col key={i}/>)}
               </colgroup>
               <thead>
-                <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
-                  <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Metric</th>
-                  <th style={{padding:'8px 4px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Goal</th>
+                <tr style={{background:'#fafafa', borderBottom:'2px solid var(--brand)'}}>
+                  <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
+                  <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
                   {DAYS.map((day, di) => (
-                    <th key={di} style={{padding:'8px 2px', textAlign:'center', color:'#1a1a2e', fontSize: isMobile ? 10 : 12, fontWeight:700}}>
+                    <th key={di} style={{padding:'8px 2px', textAlign:'center', color:'var(--text)', fontSize: isMobile ? 10 : 12, fontWeight:700}}>
                       <div>{isMobile ? day[0] : day.slice(0, 3)}</div>
-                      <div style={{fontSize: isMobile ? 9 : 10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayShort(wn, di)}</div>
+                      <div style={{fontSize: isMobile ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2}}>{dayShort(wn, di)}</div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {scorecard.map((m, mi) => (
-                  <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
+                  <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
                     <td style={{padding:'4px 12px'}}>
-                      <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
+                      <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
                     </td>
                     <td style={{padding:'4px 4px'}}>
-                      <div style={{fontSize:13, fontWeight:600, color:'#f0a500'}}>{m.goal || ''}</div>
+                      <div style={{fontSize:13, fontWeight:600, color:'var(--brand)'}}>{m.goal || ''}</div>
                     </td>
                     {DAYS.map((_, di) => {
                       const date = dayStr(wn, di);
                       const st = m.dayData && m.dayData[date];
                       const DST2 = {ok:['#f0f7f2','#6b9c7d','✓'], nok:['#faf1f1','#b58686','X']};
-                      const info = DST2[st] || ['#f0f0f0','#ccc','.'];
+                      const info = DST2[st] || ['var(--border)','#ccc','.'];
                       return (
                         <td key={di} style={{padding:2, textAlign:'center'}}>
                           <button onClick={() => upd(d => {
@@ -2651,7 +2788,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         <div style={{...S.card, display:'flex', alignItems:'center', justifyContent:'space-between',
                      padding:'10px 16px', marginBottom:12, background:'#f8f9fa'}}>
           <div style={{fontSize:13, color:'#888'}}>Week {localWn} of {qKey.split('-')[1]} - {wDates(weekNum)}</div>
-          {wData.rating && <div style={{background:'#f0a500', color:'white', borderRadius:8,
+          {wData.rating && <div style={{background:'var(--brand)', color:'white', borderRadius:8,
                                         padding:'6px 14px', fontWeight:800, fontSize:16}}>{wData.rating}/10</div>}
         </div>
       )}
@@ -2660,7 +2797,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
           placeholder="Headlines this week..."
           style={{flex:1, border:'none', borderBottom:'2px solid #f0e0b0',
                   outline:'none', fontSize:14, padding:'4px 6px',
-                  background:'transparent', color:'#1a1a2e', fontFamily:'inherit'}}/>
+                  background:'transparent', color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
@@ -2671,7 +2808,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
             <span style={{color:'#bbb', fontSize:11}}>{open[seg.k] ? '^' : 'v'}</span>
           </div>
           {open[seg.k] && (
-            <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
+            <div style={{padding:'0 18px 16px', borderTop:'1px solid var(--surface-alt)'}}>
               {seg.k === 'todos' && <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues}/>}
               {seg.k === 'scorecard' && <L10Scorecard scorecard={qData.scorecard || []} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues}/>}
               {seg.k === 'rocks' && <L10Rocks rocks={qData.rocks || []} wr={qData.weeklyRocks || {}} qw={weeks} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} upd={upd}/>}
@@ -2684,9 +2821,9 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
                   <div style={{display:'flex', gap:6, marginTop:6, flexWrap:'wrap'}}>
                     {[1,2,3,4,5,6,7,8,9,10].map(n => (
                       <button key={n} onClick={() => setWD('rating', wData.rating === n ? null : n)}
-                        style={{width:36, height:36, borderRadius:7, border:'1px solid #eee',
+                        style={{width:36, height:36, borderRadius:7, border:'1px solid var(--border)',
                                 cursor:'pointer', fontWeight:700, fontSize:14,
-                                background: wData.rating === n ? '#f0a500' : 'white',
+                                background: wData.rating === n ? 'var(--brand)' : 'white',
                                 color: wData.rating === n ? 'white' : '#555'}}>{n}</button>
                     ))}
                   </div>
@@ -2707,8 +2844,8 @@ function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd}) {
       <div style={{marginBottom:12}}>
         {rocks.map(r => (
           <div key={r.id} style={{display:'flex', alignItems:'center', gap:8,
-                                  padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
-            <div style={{flex:1, fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{r.title}</div>
+                                  padding:'7px 0', borderBottom:'1px solid var(--surface-alt)'}}>
+            <div style={{flex:1, fontSize:14, fontWeight:700, color:'var(--text)'}}>{r.title}</div>
             <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
               weekNum={weekNum} upd={upd} qKey={qKey}/>
           </div>
@@ -2728,7 +2865,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
     d.quarters[qKey].scorecard[mi].dayData[date] = cur === st ? null : st;
   });
   const DST = {ok:['#f0f7f2','#6b9c7d','✓'], nok:['#faf1f1','#b58686','X']};
-  const getDST = st => DST[st] || ['#f0f0f0','#ccc','.'];
+  const getDST = st => DST[st] || ['var(--border)','#ccc','.'];
   return (
     <div style={{overflowX:'auto'}}>
       <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:560}}>
@@ -2737,13 +2874,13 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
           {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
         </colgroup>
         <thead>
-          <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
-            <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Metric</th>
-            <th style={{padding:'8px 4px', textAlign:'left', color:'#1a1a2e', fontSize:13, fontWeight:700}}>Goal</th>
+          <tr style={{background:'#fafafa', borderBottom:'2px solid var(--brand)'}}>
+            <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
+            <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
             {DAYS.map((day, di) => (
-              <th key={di} style={{padding:'8px 4px', textAlign:'center', color:'#1a1a2e', fontSize:12, fontWeight:700}}>
+              <th key={di} style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:12, fontWeight:700}}>
                 <div>{day.slice(0, 3)}</div>
-                <div style={{fontSize:10, color:'#f0a500', fontWeight:600, marginTop:2}}>{dayShort(weekNum, di)}</div>
+                <div style={{fontSize:10, color:'var(--brand)', fontWeight:600, marginTop:2}}>{dayShort(weekNum, di)}</div>
               </th>
             ))}
             <th/>
@@ -2751,9 +2888,9 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
         </thead>
         <tbody>
           {scorecard.map((m, mi) => (
-            <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
-              <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div></td>
-              <td style={{padding:'4px 4px'}}><div style={{fontSize:13, fontWeight:600, color:'#f0a500'}}>{m.goal || ''}</div></td>
+            <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
+              <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
+              <td style={{padding:'4px 4px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--brand)'}}>{m.goal || ''}</div></td>
               {DAYS.map((_, di) => {
                 const date = dayStr(weekNum, di);
                 const st = m.dayData && m.dayData[date];
@@ -2811,7 +2948,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
         const late = !t.done && t.due && t.due < today;
         return (
           <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
-                                  padding:'6px 0', borderBottom:'1px solid #f5f5f5', opacity: t.done ? 0.45 : 1}}>
+                                  padding:'6px 0', borderBottom:'1px solid var(--surface-alt)', opacity: t.done ? 0.45 : 1}}>
             <input type="checkbox" checked={t.done}
               onChange={e => upd(d => {
                 const idx = d.todos.findIndex(x => x.id === t.id);
@@ -2827,7 +2964,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
                 if (idx >= 0) d.todos[idx].task = ev.target.value;
               })}
               style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
-                      textDecoration: 'none', color:'#1a1a2e',
+                      textDecoration: 'none', color:'var(--text)',
                       background:'transparent', fontFamily:'inherit', padding:0}}/>
             {t.due && <span style={{fontSize:11, color: late ? '#e74c3c' : '#aaa'}}>{t.due}</span>}
             <IssueBtn idsIssues={idsIssues} sourceId={t.id} sourceName={'Todo: ' + t.task}
@@ -2876,15 +3013,15 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues}) {
     <div>
       {projects.map(proj => (
         <div key={proj.id} style={{display:'flex', alignItems:'center', gap:10,
-                                   padding:'8px 0', borderBottom:'1px solid #f5f5f5', flexWrap:'wrap'}}>
-          <div style={{fontSize:14, fontWeight:700, color:'#1a1a2e', flexShrink:0}}>{proj.name || '(unnamed)'}</div>
+                                   padding:'8px 0', borderBottom:'1px solid var(--surface-alt)', flexWrap:'wrap'}}>
+          <div style={{fontSize:14, fontWeight:700, color:'var(--text)', flexShrink:0}}>{proj.name || '(unnamed)'}</div>
           <input value={proj.textStatus || ''} onChange={e => setStatus(proj.id, e.target.value)}
             placeholder="Status..."
-            style={{flex:1, minWidth:80, border:'none', borderBottom:'1px solid #f0f0f0',
+            style={{flex:1, minWidth:80, border:'none', borderBottom:'1px solid var(--border)',
                     outline:'none', fontSize:12, color:'#666', background:'transparent',
                     fontFamily:'inherit', padding:'2px 4px'}}/>
           <button onClick={() => createTodoFromProject(proj)}
-            style={{padding:'2px 8px', borderRadius:10, border:'1px solid #e0e0e0', cursor:'pointer',
+            style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
                     fontSize:10, fontWeight:700, flexShrink:0, background:'white', color:'#666',
                     whiteSpace:'nowrap'}}>+ To-do</button>
           <IssueBtn idsIssues={idsIssues} sourceId={proj.id} sourceName={'Project: ' + (proj.name || '(unnamed)')}
@@ -2942,12 +3079,12 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
         <div key={issue.id}
           style={{padding:'9px 12px', marginBottom:6,
                   background: issue.solved ? '#f0f9f0' : '#fff8f0',
-                  borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? '#27ae60' : '#f0a500')}}>
+                  borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? '#27ae60' : 'var(--brand)')}}>
           <div style={{display:'flex', alignItems:'flex-start', gap:10}}>
             <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
               style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
             <div style={{flex:1}}>
-              <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e',
+              <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
                            textDecoration: 'none', marginBottom:5}}>
                 {issue.sourceName}
               </div>
@@ -2962,7 +3099,7 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
             </div>
             <div style={{display:'flex', flexDirection:'column', gap:4, alignItems:'flex-end', flexShrink:0}}>
               <button onClick={() => createTodoFromIssue(issue)}
-                style={{padding:'2px 8px', borderRadius:10, border:'1px solid #e0e0e0', cursor:'pointer',
+                style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
                         fontSize:10, fontWeight:700, background:'white', color:'#666',
                         whiteSpace:'nowrap'}}>+ To-do</button>
               <button onClick={() => deleteIssue(issue.id)}
@@ -3063,7 +3200,7 @@ function QReview({data, upd, qKey, qData}) {
             <span style={{color:'#bbb', fontSize:11}}>{open[seg.k] ? '^' : 'v'}</span>
           </div>
           {open[seg.k] && (
-            <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
+            <div style={{padding:'0 18px 16px', borderTop:'1px solid var(--surface-alt)'}}>
               {seg.k === 'scorecard' && (
                 <ScorecardSummary scorecard={sc} qw={qw}
                   renderMetricExtra={m => (
@@ -3079,8 +3216,8 @@ function QReview({data, upd, qKey, qData}) {
                       <div style={{marginBottom:12}}>
                         {rocks.map(r => (
                           <div key={r.id} style={{display:'flex', alignItems:'center', gap:8,
-                                                  padding:'7px 0', borderBottom:'1px solid #f5f5f5'}}>
-                            <div style={{flex:1, fontSize:14, fontWeight:700, color:'#1a1a2e'}}>{r.title}</div>
+                                                  padding:'7px 0', borderBottom:'1px solid var(--surface-alt)'}}>
+                            <div style={{flex:1, fontSize:14, fontWeight:700, color:'var(--text)'}}>{r.title}</div>
                             <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
                               weekNum={lastWk} upd={upd} qKey={qKey}/>
                           </div>
@@ -3100,12 +3237,12 @@ function QReview({data, upd, qKey, qData}) {
                     <div key={issue.id}
                       style={{padding:'9px 12px', marginBottom:6,
                               background: issue.solved ? '#f0f9f0' : '#fff8f0',
-                              borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? '#27ae60' : '#f0a500')}}>
+                              borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? '#27ae60' : 'var(--brand)')}}>
                       <div style={{display:'flex', alignItems:'flex-start', gap:10}}>
                         <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
                           style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
                         <div style={{flex:1}}>
-                          <div style={{fontSize:13, fontWeight:600, color:'#1a1a2e',
+                          <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
                                        textDecoration: 'none', marginBottom:5}}>
                             {issue.sourceName}
                           </div>
@@ -3150,9 +3287,9 @@ function QReview({data, upd, qKey, qData}) {
                   <div style={{display:'flex', gap:6, marginTop:6, flexWrap:'wrap'}}>
                     {[1,2,3,4,5,6,7,8,9,10].map(n => (
                       <button key={n} onClick={() => setR('rating', rev.rating === n ? null : n)}
-                        style={{width:36, height:36, borderRadius:7, border:'1px solid #eee', cursor:'pointer',
+                        style={{width:36, height:36, borderRadius:7, border:'1px solid var(--border)', cursor:'pointer',
                                 fontWeight:700, fontSize:14,
-                                background: rev.rating === n ? '#f0a500' : 'white',
+                                background: rev.rating === n ? 'var(--brand)' : 'white',
                                 color: rev.rating === n ? 'white' : '#555'}}>{n}</button>
                     ))}
                   </div>
@@ -3191,16 +3328,16 @@ function PrintView({data, onBack}) {
   const ps = (data.processes || []).filter(p => p.name || p.steps);
 
   const SH = {
-    page: {background:'white', padding:20, color:'#1a1a2e', fontSize:13, lineHeight:1.5, maxWidth:900, margin:'0 auto'},
-    h1: {fontSize:26, fontWeight:900, color:'#0d0d1f', marginBottom:6, marginTop:0, borderBottom:'3px solid #f0a500', paddingBottom:8},
+    page: {background:'white', padding:20, color:'var(--text)', fontSize:13, lineHeight:1.5, maxWidth:900, margin:'0 auto'},
+    h1: {fontSize:26, fontWeight:900, color:'var(--sidebar-bg)', marginBottom:6, marginTop:0, borderBottom:'3px solid var(--brand)', paddingBottom:8},
     sub: {fontSize:12, color:'#888', marginBottom:24},
-    h2: {fontSize:19, fontWeight:800, color:'#0d0d1f', marginTop:26, marginBottom:12, paddingBottom:5, borderBottom:'2px solid #f0a500'},
-    h3: {fontSize:15, fontWeight:700, color:'#0d0d1f', marginTop:16, marginBottom:8},
+    h2: {fontSize:19, fontWeight:800, color:'var(--sidebar-bg)', marginTop:26, marginBottom:12, paddingBottom:5, borderBottom:'2px solid var(--brand)'},
+    h3: {fontSize:15, fontWeight:700, color:'var(--sidebar-bg)', marginTop:16, marginBottom:8},
     h4: {fontSize:12, fontWeight:700, color:'#555', marginTop:12, marginBottom:5, textTransform:'uppercase', letterSpacing:0.5},
     p: {fontSize:13, lineHeight:1.55, marginBottom:8, whiteSpace:'pre-wrap'},
     table: {width:'100%', borderCollapse:'collapse', fontSize:12, marginTop:8, marginBottom:12},
-    th: {background:'#f0a500', color:'white', padding:'7px 9px', textAlign:'left', fontWeight:700, fontSize:13},
-    td: {padding:'6px 9px', borderBottom:'1px solid #eee', verticalAlign:'top', fontSize:12},
+    th: {background:'var(--brand)', color:'white', padding:'7px 9px', textAlign:'left', fontWeight:700, fontSize:13},
+    td: {padding:'6px 9px', borderBottom:'1px solid var(--border)', verticalAlign:'top', fontSize:12},
     pill: (bg, c) => ({display:'inline-block', padding:'3px 10px', borderRadius:10, fontSize:11, fontWeight:700, background:bg, color:c}),
     empty: {color:'#aaa', fontStyle:'italic', fontSize:12}
   };
@@ -3213,7 +3350,7 @@ function PrintView({data, onBack}) {
         </span>
         <button onClick={triggerPrint}
           style={{padding:'8px 18px', borderRadius:8, border:'none',
-                  background:'#f0a500', color:'white', fontSize:13, fontWeight:700, cursor:'pointer'}}>Imprimir / PDF</button>
+                  background:'var(--brand)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer'}}>Imprimir / PDF</button>
         <button onClick={onBack}
           style={{padding:'8px 16px', borderRadius:8, border:'1px solid #ddd',
                   background:'white', color:'#555', fontSize:13, cursor:'pointer'}}>← Volver</button>
@@ -3245,8 +3382,8 @@ function PrintView({data, onBack}) {
               <div key={mk} className="print-section" style={{marginBottom:14}}>
                 <h3 style={SH.h3}>{MONTHS_F[parseInt(m) - 1]} {y}</h3>
                 {monthsByKey[mk].sort((a, b) => a.ds.localeCompare(b.ds)).map(({ds, note}) => (
-                  <div key={ds} style={{display:'flex', gap:10, padding:'3px 0', borderBottom:'1px solid #f5f5f5'}}>
-                    <span style={{fontWeight:700, color:'#f0a500', minWidth:30}}>{ds.slice(8, 10)}</span>
+                  <div key={ds} style={{display:'flex', gap:10, padding:'3px 0', borderBottom:'1px solid var(--surface-alt)'}}>
+                    <span style={{fontWeight:700, color:'var(--brand)', minWidth:30}}>{ds.slice(8, 10)}</span>
                     <span style={{flex:1}}>{note}</span>
                   </div>
                 ))}
@@ -3301,9 +3438,9 @@ function PrintView({data, onBack}) {
                       const rows = [];
                       // Rock row (header): title + step counter (no bar)
                       rows.push(
-                        <tr key={'r' + r.id} style={{background:'#f5f5f5', borderTop:'2px solid #ddd'}}>
+                        <tr key={'r' + r.id} style={{background:'var(--surface-alt)', borderTop:'2px solid #ddd'}}>
                           <td style={{...SH.td, fontWeight:700, fontSize:12}}>{r.title}</td>
-                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>{doneCount}/{steps.length}</td>
+                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'var(--brand)'}}>{doneCount}/{steps.length}</td>
                           {qw.map(wn => <td key={wn}/>)}
                         </tr>
                       );
@@ -3313,7 +3450,7 @@ function PrintView({data, onBack}) {
                         const ew = s.endWeek || sw;
                         const dn = stepDone(s);
                         rows.push(
-                          <tr key={'s' + s.id} style={{borderTop:'1px solid #f0f0f0'}}>
+                          <tr key={'s' + s.id} style={{borderTop:'1px solid var(--border)'}}>
                             <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'#555'}}>{s.text}</td>
                             <td style={{...SH.td, textAlign:'center', fontSize:10, color:'#888'}}>W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''}</td>
                             {qw.map(wn => {
@@ -3323,7 +3460,7 @@ function PrintView({data, onBack}) {
                                 <td key={wn} style={{padding:'3px 1px'}}>
                                   {inRange && (
                                     <div style={{height:10, borderRadius:2,
-                                                 background: done ? '#27ae60' : '#f0a500',
+                                                 background: done ? '#27ae60' : 'var(--brand)',
                                                  opacity: done ? 1 : 0.55}}/>
                                   )}
                                 </td>
@@ -3362,7 +3499,7 @@ function PrintView({data, onBack}) {
                       return (
                         <tr key={m.id}>
                           <td style={{...SH.td, fontSize:11, color:'#555'}}>{m.metric}</td>
-                          <td style={{...SH.td, fontWeight:700, color:'#f0a500', textAlign:'center'}}>{m.goal || ''}</td>
+                          <td style={{...SH.td, fontWeight:700, color:'var(--brand)', textAlign:'center'}}>{m.goal || ''}</td>
                           {qw.map(wn => {
                             const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
                             const ok = hasGoal && cnt >= goal;
@@ -3403,7 +3540,7 @@ function PrintView({data, onBack}) {
                           <td style={{...SH.td, fontWeight:700}}>W{parseInt(wn) - qw[0] + 1}</td>
                           <td style={SH.td}>{w.headlines || '—'}</td>
                           <td style={SH.td}>{w.conclusionNotes || '—'}</td>
-                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>
+                          <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'var(--brand)'}}>
                             {w.rating ? w.rating + '/10' : '—'}
                           </td>
                         </tr>
@@ -3436,7 +3573,7 @@ function PrintView({data, onBack}) {
                 {qReview.vision && (<><h4 style={SH.h4}>Vision Alignment</h4><div style={SH.p}>{qReview.vision}</div></>)}
                 {qReview.nextrocks && (<><h4 style={SH.h4}>Next Quarter Rocks</h4><div style={SH.p}>{qReview.nextrocks}</div></>)}
                 {qReview.notes && (<><h4 style={SH.h4}>Closing Notes</h4><div style={SH.p}>{qReview.notes}</div></>)}
-                {qReview.rating && (<div style={{marginTop:6, fontWeight:700, color:'#f0a500'}}>Quarter rating: {qReview.rating}/10</div>)}
+                {qReview.rating && (<div style={{marginTop:6, fontWeight:700, color:'var(--brand)'}}>Quarter rating: {qReview.rating}/10</div>)}
               </div>
             )}
           </section>
