@@ -209,10 +209,13 @@
     .print-section{page-break-inside:avoid;}
     .print-area{padding:0 !important;max-height:none !important;overflow:visible !important;}
     nav.sidebar{display:none !important;}
-    main.main-content{padding:0 !important;max-height:none !important;overflow:visible !important;scrollbar-gutter:auto !important;}
+    main.main-content{padding:0 !important;max-height:none !important;
+      overflow:visible !important;overflow-x:visible !important;overflow-y:visible !important;
+      scrollbar-gutter:auto !important;height:auto !important;}
     /* Ocultar cualquier scrollbar en modo impresión */
-    html,body{overflow:visible !important;scrollbar-gutter:auto !important;}
-    html::-webkit-scrollbar,body::-webkit-scrollbar,main::-webkit-scrollbar{display:none !important;}
+    html,body{overflow:visible !important;overflow-y:visible !important;
+      scrollbar-gutter:auto !important;height:auto !important;}
+    html::-webkit-scrollbar,body::-webkit-scrollbar,main::-webkit-scrollbar{display:none !important;width:0 !important;}
     .print-view{padding:0 !important;}
     .print-view h1{font-size:22pt;}
     .print-view h2{font-size:16pt;page-break-after:avoid;}
@@ -1576,10 +1579,10 @@ function App({bundle, onLogout}) {
     ]},
     {label:'Do', items: [
       ['projects','Projects'],
-      ['scorecard','Scorecard'],
       ['todos','To-Dos']
     ]},
     {label:'Review', items: [
+      ['scorecard','Scorecard'],
       ['l10_main','L10 Meetings'],
       ['qreview_main','Q Review']
     ]}
@@ -3730,27 +3733,27 @@ function PrintView({data, onBack}) {
         </div>
         <div style={{fontSize:20, color:'var(--text)', fontWeight:600}}>{today}</div>
 
-        {/* Índice */}
+        {/* Índice — hipervínculos a cada sección */}
         <div style={{marginTop:48, textAlign:'left', display:'inline-block', minWidth:280}}>
           <div style={{fontSize:11, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, textAlign:'center'}}>Contenido</div>
           {(() => {
-            let secs = ['Vision ' + YEAR];
-            if (sortedMonths.length > 0) secs.push('Notas mensuales');
-            sortedQs.forEach(qk => secs.push(qk.split('-')[1] + ' ' + YEAR));
-            if (openTodos.length > 0 || doneTodos.length > 0) secs.push('To-Dos');
-            if (ps.length > 0) secs.push('Procesos');
-            return secs.map((s, i) => (
-              <div key={i} style={{display:'flex', justifyContent:'space-between', gap:12,
-                                   padding:'5px 0', borderBottom:'1px dotted var(--border)',
-                                   fontSize:13, color:'var(--text)'}}>
+            let secs = [['sec-vision', 'Vision ' + YEAR]];
+            if (sortedMonths.length > 0) secs.push(['sec-notes', 'Notas mensuales']);
+            sortedQs.forEach(qk => secs.push(['sec-' + qk, qk.split('-')[1] + ' ' + YEAR]));
+            if (ps.length > 0) secs.push(['sec-processes', 'Processes']);
+            return secs.map(([id, s], i) => (
+              <a key={id} href={'#' + id}
+                style={{display:'flex', justifyContent:'space-between', gap:12,
+                        padding:'5px 0', borderBottom:'1px dotted var(--border)',
+                        fontSize:13, color:'var(--text)', textDecoration:'none'}}>
                 <span>{i + 1}. {s}</span>
-              </div>
+              </a>
             ));
           })()}
         </div>
       </section>
 
-      <section className="print-section print-page-break">
+      <section id="sec-vision" className="print-section print-page-break">
         <h2 style={SH.h2}>Vision {YEAR}</h2>
         <h3 style={SH.h3}>Core Values</h3>
         {(v.values || []).length === 0
@@ -3765,7 +3768,7 @@ function PrintView({data, onBack}) {
       </section>
 
       {sortedMonths.length > 0 && (
-        <section className="print-page-break">
+        <section id="sec-notes" className="print-page-break">
           <h2 style={SH.h2}>Notas mensuales</h2>
           {sortedMonths.map(mk => {
             const [y, m] = mk.split('-');
@@ -3806,7 +3809,7 @@ function PrintView({data, onBack}) {
         if (!hasContent) return null;
 
         return (
-          <section key={qKey} className="print-page-break">
+          <section key={qKey} id={'sec-' + qKey} className="print-page-break">
             <h2 style={SH.h2}>{qKey.split('-')[1]} {YEAR}</h2>
 
             {rocks.length > 0 && (
@@ -3977,7 +3980,7 @@ function PrintView({data, onBack}) {
       })}
 
       {ps.length > 0 && (
-        <section className="print-page-break">
+        <section id="sec-processes" className="print-page-break">
           <h2 style={SH.h2}>Processes</h2>
           {ps.map((p, i) => (
             <div key={p.id || i} className="print-section" style={{marginBottom:14}}>
