@@ -485,9 +485,6 @@ function QBtns({selQ, onSelect}) {
                     color: isAct ? 'white' : isCur ? '#f0a500' : '#555',
                     fontWeight:700, fontSize:14, position:'relative'}}>
             {q} {YEAR}
-            {isCur && <span style={{position:'absolute', top:-7, right:-7, fontSize:8,
-                                    background:'#0d0d1f', color:'white', borderRadius:4,
-                                    padding:'2px 5px', fontWeight:700}}>NOW</span>}
           </button>
         );
       })}
@@ -864,17 +861,11 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn}) {
           </tbody>
         </table>
       </div>
-      <div style={{display:'flex', gap:14, marginTop:10, fontSize:12, color:'#888'}}>
-        <span><span style={{display:'inline-block', width:14, height:10, background:'#f0a500',
-                            borderRadius:2, marginRight:5, opacity:0.6, verticalAlign:'middle'}}/>Pending</span>
-        <span><span style={{display:'inline-block', width:12, height:10, background:'#27ae60',
-                            borderRadius:2, marginRight:5, verticalAlign:'middle'}}/>Done</span>
-        {highlightWn && (
-          <span style={{marginLeft:'auto', color:'#f0a500', fontWeight:700, fontSize:10}}>
-            W{highlightWn - fw + 1} = current week
-          </span>
-        )}
-      </div>
+      {highlightWn && (
+        <div style={{marginTop:8, textAlign:'right', color:'#f0a500', fontWeight:700, fontSize:10}}>
+          W{highlightWn - fw + 1} = current week
+        </div>
+      )}
     </div>
   );
 }
@@ -1824,7 +1815,7 @@ function ScorecardTab({data, upd}) {
   );
 }
 
-function ScorecardSummary({scorecard, qw, selWn, onSelectWn}) {
+function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra}) {
   const weekCount = (m, wn) => DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
   if (!scorecard || !scorecard.length) return null;
   return (
@@ -1832,7 +1823,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn}) {
       <h3 style={S.h3}>13-Week Summary</h3>
       <div style={{overflowX:'auto'}}>
         <table style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:500}}>
-          <colgroup><col style={{width:170}}/>{qw.map((_, i) => <col key={i}/>)}</colgroup>
+          <colgroup><col style={{width: renderMetricExtra ? 200 : 170}}/>{qw.map((_, i) => <col key={i}/>)}</colgroup>
           <thead>
             <tr style={{background:'#fafafa', borderBottom:'2px solid #f0a500'}}>
               <th style={{padding:'8px 12px', textAlign:'left', color:'#1a1a2e', fontSize:14, fontWeight:700}}>Metric</th>
@@ -1849,8 +1840,13 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn}) {
             {scorecard.map(m => (
               <tr key={m.id} style={{borderTop:'1px solid #f5f5f5'}}>
                 <td style={{padding:'7px 12px', fontSize:14, fontWeight:600, color:'#1a1a2e'}}>
-                  {m.metric}
-                  {m.goal && <span style={{fontSize:11, color:'#aaa', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <span style={{flex:1}}>
+                      {m.metric}
+                      {m.goal && <span style={{fontSize:11, color:'#aaa', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
+                    </span>
+                    {renderMetricExtra && renderMetricExtra(m)}
+                  </div>
                 </td>
                 {qw.map(wn => {
                   const cnt = weekCount(m, wn);
@@ -2524,7 +2520,6 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         </div>
       )}
       <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
-        <span style={{fontSize:16, flexShrink:0}}>📰</span>
         <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
           placeholder="Headlines this week..."
           style={{flex:1, border:'none', borderBottom:'2px solid #f0e0b0',
@@ -2536,12 +2531,9 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
                        padding:'13px 18px', cursor:'pointer'}}
             onClick={() => setOpen(o => ({...o, [seg.k]: !o[seg.k]}))}>
-            <div style={{display:'flex', alignItems:'center', gap:12}}>
-              <span style={{fontSize:18}}>{seg.icon}</span>
-              <div>
-                <div style={{fontWeight:600, color:'#1a1a2e', fontSize:14}}>{seg.label}</div>
-                <div style={{fontSize:11, color:'#bbb'}}>{seg.min} min</div>
-              </div>
+            <div style={{...S.h3, marginBottom:0, display:'flex', alignItems:'baseline', gap:10}}>
+              <span>{seg.label}</span>
+              <span style={{fontSize:10, color:'#bbb', textTransform:'none', letterSpacing:0, fontWeight:400}}>{seg.min} min</span>
             </div>
             <span style={{color:'#bbb', fontSize:11}}>{open[seg.k] ? '^' : 'v'}</span>
           </div>
@@ -2944,30 +2936,17 @@ function QReview({data, upd, qKey, qData}) {
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
                        padding:'12px 18px', cursor:'pointer'}}
             onClick={() => setOpen(o => ({...o, [seg.k]: !o[seg.k]}))}>
-            <div style={{display:'flex', alignItems:'center', gap:12}}>
-              <span style={{fontSize:18}}>{seg.icon}</span>
-              <div style={{fontWeight:600, color:'#1a1a2e', fontSize:14}}>{seg.label}</div>
-            </div>
+            <div style={{...S.h3, marginBottom:0}}>{seg.label}</div>
             <span style={{color:'#bbb', fontSize:11}}>{open[seg.k] ? '^' : 'v'}</span>
           </div>
           {open[seg.k] && (
             <div style={{padding:'0 18px 16px', borderTop:'1px solid #f5f5f5'}}>
               {seg.k === 'scorecard' && (
-                <div>
-                  <ScorecardSummary scorecard={sc} qw={qw}/>
-                  {sc.length > 0 && (
-                    <div style={{marginTop:6}}>
-                      {sc.map(m => (
-                        <div key={m.id} style={{display:'flex', alignItems:'center', gap:10,
-                                                padding:'6px 0', borderBottom:'1px solid #f5f5f5'}}>
-                          <div style={{flex:1, fontSize:13, fontWeight:600, color:'#1a1a2e'}}>{m.metric}</div>
-                          <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
-                            weekNum={lastWk} upd={upd} qKey={qKey}/>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ScorecardSummary scorecard={sc} qw={qw}
+                  renderMetricExtra={m => (
+                    <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
+                      weekNum={lastWk} upd={upd} qKey={qKey}/>
+                  )}/>
               )}
               {seg.k === 'rocks' && (
                 rocks.length === 0
@@ -3251,10 +3230,6 @@ function PrintView({data, onBack}) {
                     })}
                   </tbody>
                 </table>
-                <div style={{fontSize:11, color:'#888', marginTop:6, display:'flex', gap:16}}>
-                  <span><span style={{display:'inline-block', width:14, height:10, background:'#f0a500', borderRadius:2, opacity:0.55, verticalAlign:'middle', marginRight:5}}/>Pendiente</span>
-                  <span><span style={{display:'inline-block', width:14, height:10, background:'#27ae60', borderRadius:2, verticalAlign:'middle', marginRight:5}}/>Hecho</span>
-                </div>
               </div>
             )}
 
