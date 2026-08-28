@@ -90,6 +90,31 @@
 <script type="text/babel" data-presets="react">
 const {useState, useEffect, useRef, useCallback} = React;
 
+// Reactive isMobile hook — uses matchMedia (respects CSS media queries and
+// updates on resize/orientation change). More reliable than window.innerWidth
+// which can return the wrong value on iOS standalone PWA before the viewport
+// meta is parsed.
+function useIsMobile() {
+  const mq = () => window.matchMedia('(max-width: 700px)');
+  const [isMobile, setIsMobile] = useState(() => {
+    try { return mq().matches; } catch (e) { return false; }
+  });
+  useEffect(() => {
+    const m = mq();
+    const on = e => setIsMobile(e.matches);
+    if (m.addEventListener) m.addEventListener('change', on);
+    else m.addListener(on);
+    // Force one recheck after layout settles (iOS PWA quirk)
+    const t = setTimeout(() => setIsMobile(m.matches), 100);
+    return () => {
+      if (m.removeEventListener) m.removeEventListener('change', on);
+      else m.removeListener(on);
+      clearTimeout(t);
+    };
+  }, []);
+  return isMobile;
+}
+
 // =====================================================================
 // Constants & helpers
 // =====================================================================
@@ -1010,10 +1035,13 @@ function Root() {
 
 function App({bundle, onLogout}) {
   const {client, key, state: initial} = bundle;
+  const isMobile = useIsMobile();
   const [d, setD] = useState(initial);
   const [tab, setTab] = useState('diario');
   const [selDay, setSelDay] = useState(todayStr());
-  const [navOpen, setNavOpen] = useState(window.innerWidth > 700);
+  const [navOpen, setNavOpen] = useState(false);
+  // Auto-open nav on desktop, keep closed on mobile
+  useEffect(() => { setNavOpen(!isMobile); }, [isMobile]);
   const [syncStatus, setSyncStatus] = useState('idle');
   const importRef = useRef();
   const saveTimer = useRef(null);
@@ -1116,7 +1144,7 @@ function App({bundle, onLogout}) {
     e.target.value = '';
   };
 
-  const goToDay = day => { setSelDay(day); setTab('diario'); if (window.innerWidth <= 700) setNavOpen(false); };
+  const goToDay = day => { setSelDay(day); setTab('diario'); if (isMobile) setNavOpen(false); };
 
   const GNAV = [
     ['diario','📆','Daily Summary'],
@@ -1130,8 +1158,6 @@ function App({bundle, onLogout}) {
     ['l10_main','📋','L10 Meetings'],
     ['qreview_main','🔍','Q Review']
   ];
-
-  const isMobile = window.innerWidth <= 700;
 
   return (
     <div style={{display:'flex', fontFamily:"'Segoe UI',system-ui,sans-serif",
@@ -2181,7 +2207,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
   });
   const handleDayClick = ds => { setSelDay(ds); setDispWn(dateToWn(ds)); setShowCal(false); };
   const scorecard = qData.scorecard || [];
-  const isMobile = window.innerWidth <= 700;
+  const isMobile = useIsMobile();
 
   // Meeting management for Daily Summary
   const [meetingForm, setMeetingForm] = useState(null);
