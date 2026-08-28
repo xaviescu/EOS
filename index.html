@@ -1437,6 +1437,31 @@ function RocksTab({data, upd}) {
           <div style={{...S.card, textAlign:'center', color:'#aaa', padding:36, fontSize:15}}>
             No rocks for {selQ.split('-')[1]}.
           </div>}
+        {/* Single week header (W1..W13) at the top of the rock list */}
+        {rocks.length > 0 && (
+          <div style={{position:'sticky', top:0, zIndex:10, background:'#f5f6fa',
+                       padding:'6px 30px 10px 42px', marginBottom:2}}>
+            <div style={{display:'flex', alignItems:'center', gap:8}}>
+              <div style={{flex:'0 1 200px', minWidth:120}}/>
+              <div style={{display:'flex', gap:3, flexWrap:'nowrap'}}>
+                {qw.map(wn => {
+                  const isCur = wn === curWn;
+                  return (
+                    <div key={wn}
+                      style={{width:22, height:16, display:'flex', alignItems:'center', justifyContent:'center',
+                              fontSize:9, fontWeight: isCur ? 800 : 700,
+                              color: isCur ? '#f0a500' : '#888',
+                              background: isCur ? 'rgba(240,165,0,0.15)' : 'transparent',
+                              borderRadius:3}}>
+                      W{wn - qw[0] + 1}
+                    </div>
+                  );
+                })}
+              </div>
+              <span style={{marginLeft:'auto', width:200}}/>
+            </div>
+          </div>
+        )}
           {rocks.map((rock, ri) => {
             const steps = wr[rock.id] || [];
             const sf = stepForms[rock.id] || {text:'', sw: qw[0], ew: qw[0]};
@@ -1500,28 +1525,6 @@ function RocksTab({data, upd}) {
                   </div>
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
-                  {/* Week header (W1..W13) — right-aligned above the step boxes */}
-                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8, paddingRight:2}}>
-                    <div style={{flex:'0 1 200px', minWidth:120}}/>
-                    <div style={{display:'flex', gap:3, flexWrap:'nowrap'}}>
-                      {qw.map(wn => {
-                        const isCur = wn === curWn;
-                        return (
-                          <div key={wn}
-                            style={{width:22, height:14, display:'flex', alignItems:'center', justifyContent:'center',
-                                    fontSize:8, fontWeight:isCur ? 800 : 600,
-                                    color: isCur ? '#f0a500' : '#aaa',
-                                    background: isCur ? 'rgba(240,165,0,0.12)' : 'transparent',
-                                    borderRadius:3}}>
-                            W{wn - qw[0] + 1}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <span style={{marginLeft:'auto', fontSize:10, color:'#aaa', fontWeight:600}}>
-                      {steps.filter(s => stepDone(s)).length}/{steps.length}
-                    </span>
-                  </div>
                   {steps.length === 0 && <div style={{color:'#bbb', fontSize:13, marginBottom:10}}>No weekly steps yet.</div>}
                   {steps.map((step, si) => {
                     const sw2 = step.startWeek || step.weekNum || qw[0];
