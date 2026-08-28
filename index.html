@@ -3161,18 +3161,16 @@ function PrintView({data, onBack}) {
 
             {rocks.length > 0 && (
               <div className="print-section">
-                <h3 style={SH.h3}>🪨 Rocks - Gantt (13 semanas)</h3>
+                <h3 style={SH.h3}>Rocks</h3>
                 <table style={{...SH.table, tableLayout:'fixed'}}>
                   <colgroup>
-                    <col style={{width:210}}/>
-                    <col style={{width:90}}/>
+                    <col style={{width:190}}/>
                     <col style={{width:50}}/>
                     {qw.map((_, i) => <col key={i}/>)}
                   </colgroup>
                   <thead>
                     <tr>
                       <th style={SH.th}>Rock / Step</th>
-                      <th style={{...SH.th, textAlign:'center'}}>Status</th>
                       <th style={{...SH.th, textAlign:'center'}}>Steps</th>
                       {qw.map((_, i) => (
                         <th key={i} style={{...SH.th, textAlign:'center', padding:'6px 1px', fontSize:11}}>W{i + 1}</th>
@@ -3185,13 +3183,10 @@ function PrintView({data, onBack}) {
                       const doneCount = steps.filter(s => stepDone(s)).length;
                       const info = SI[r.status] || SI['on-track'];
                       const rows = [];
-                      // Rock row (header): title + status pill + step counter + colored bar per week
+                      // Rock row (header): title + step counter + colored bar per week
                       rows.push(
                         <tr key={'r' + r.id} style={{background:'#f5f5f5', borderTop:'2px solid #ddd'}}>
-                          <td style={{...SH.td, fontWeight:700, fontSize:12}}>🪨 {r.title}</td>
-                          <td style={{...SH.td, textAlign:'center'}}>
-                            <span style={SH.pill(info[0], info[1])}>{info[2]}</span>
-                          </td>
+                          <td style={{...SH.td, fontWeight:700, fontSize:12}}>{r.title}</td>
                           <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'#f0a500'}}>{doneCount}/{steps.length}</td>
                           {qw.map(wn => (
                             <td key={wn} style={{padding:'3px 1px'}}>
@@ -3207,9 +3202,8 @@ function PrintView({data, onBack}) {
                         const dn = stepDone(s);
                         rows.push(
                           <tr key={'s' + s.id} style={{borderTop:'1px solid #f0f0f0'}}>
-                            <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'#555', textDecoration: dn ? 'line-through' : 'none'}}>{dn ? '☑' : '☐'} {s.text}</td>
+                            <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'#555'}}>{dn ? '☑' : '☐'} {s.text}</td>
                             <td style={{...SH.td, textAlign:'center', fontSize:10, color:'#888'}}>W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''}</td>
-                            <td/>
                             {qw.map(wn => {
                               const inRange = wn >= sw && wn <= ew;
                               const done = isWkDone(s, wn) || s.done;
@@ -3235,13 +3229,18 @@ function PrintView({data, onBack}) {
 
             {sc.length > 0 && (
               <div className="print-section">
-                <h3 style={SH.h3}>📊 Scorecard 13 semanas</h3>
-                <table style={SH.table}>
+                <h3 style={SH.h3}>Scorecard</h3>
+                <table style={{...SH.table, tableLayout:'fixed'}}>
+                  <colgroup>
+                    <col style={{width:140}}/>
+                    <col style={{width:40}}/>
+                    {qw.map((_, i) => <col key={i}/>)}
+                  </colgroup>
                   <thead>
                     <tr>
                       <th style={SH.th}>Metric</th>
-                      <th style={{...SH.th, width:40}}>Goal</th>
-                      {qw.map((_, i) => <th key={i} style={{...SH.th, width:22, textAlign:'center', padding:'5px 1px', fontSize:9}}>W{i + 1}</th>)}
+                      <th style={{...SH.th, textAlign:'center'}}>Goal</th>
+                      {qw.map((_, i) => <th key={i} style={{...SH.th, textAlign:'center', padding:'6px 1px', fontSize:11}}>W{i + 1}</th>)}
                     </tr>
                   </thead>
                   <tbody>
@@ -3251,7 +3250,7 @@ function PrintView({data, onBack}) {
                       return (
                         <tr key={m.id}>
                           <td style={SH.td}>{m.metric}</td>
-                          <td style={{...SH.td, fontWeight:700, color:'#f0a500'}}>{m.goal || ''}</td>
+                          <td style={{...SH.td, fontWeight:700, color:'#f0a500', textAlign:'center'}}>{m.goal || ''}</td>
                           {qw.map(wn => {
                             const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
                             const ok = hasGoal && cnt >= goal;
