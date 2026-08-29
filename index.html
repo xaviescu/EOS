@@ -1292,7 +1292,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
           </colgroup>
           <thead>
             <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
-              <th style={{padding: '8px ' + labelPadX + 'px', textAlign:'left', color:'var(--text)', fontSize: isMobile ? 12 : 14, fontWeight:700}}></th>
+              <th style={{padding: '10px ' + labelPadX + 'px', textAlign:'left', color:'var(--text)', fontSize: isMobile ? 12 : 14, fontWeight:700}}></th>
               {qw.map(wn => {
                 const isCur = highlightWn && wn === highlightWn;
                 return (
@@ -1318,7 +1318,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
               const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
               const rockRow = (
                 <tr key={'r' + rock.id} style={{background:'var(--surface-alt)', borderTop:'2px solid var(--border-strong)'}}>
-                  <td style={{padding: '6px ' + labelPadX + 'px', fontSize: isMobile ? 11 : 13, color:'var(--text)',
+                  <td style={{padding: '9px ' + labelPadX + 'px', fontSize: isMobile ? 11 : 13, color:'var(--text)',
                               fontWeight:600,
                               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                       title={rock.title}>{rock.title}</td>
@@ -1341,7 +1341,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                 const ew = step.endWeek || step.weekNum || fw;
                 return (
                   <tr key={'s' + step.id} style={{borderTop:'1px solid var(--border)'}}>
-                    <td style={{padding: '3px ' + labelPadX + 'px 3px ' + stepIndent + 'px', fontSize: isMobile ? 10 : 12, color:'var(--text-2)',
+                    <td style={{padding: '6px ' + labelPadX + 'px 6px ' + stepIndent + 'px', fontSize: isMobile ? 10 : 12, color:'var(--text-2)',
                                 overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                         title={step.text}>{step.text}</td>
                     {qw.map(wn => {
@@ -1349,11 +1349,11 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                       const chk = isWkDone(step, wn) || step.done;
                       const isCur = highlightWn && wn === highlightWn;
                       return (
-                        <td key={wn} style={{padding:'2px 1px',
+                        <td key={wn} style={{padding:'5px 1px',
                                              background: isCur ? 'rgba(94,106,210,0.08)' : 'transparent'}}>
                           {inR && (
                             <div onClick={() => toggle(rock.id, step.id, wn)}
-                              style={{height:10, background: chk ? 'var(--ok-line)' : 'var(--brand)',
+                              style={{height:11, background: chk ? 'var(--ok-line)' : 'var(--brand)',
                                       borderRadius:2, margin:'0 1px',
                                       opacity: chk ? 1 : 0.5,
                                       cursor: upd ? 'pointer' : 'default',
@@ -1371,11 +1371,6 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
           </tbody>
         </table>
       </div>
-      {highlightWn && (
-        <div style={{marginTop:8, textAlign:'right', color:'var(--brand)', fontWeight:700, fontSize:10}}>
-          Week {highlightWn - fw + 1} = current
-        </div>
-      )}
     </div>
   );
 }
