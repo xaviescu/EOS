@@ -64,7 +64,7 @@
     --s-4: 16px; --s-5: 24px; --s-6: 32px;
 
     /* Tipografía */
-    --f-xs: 11px; --f-sm: 13px; --f-md: 15px;
+    --f-xs: 12px; --f-sm: 14px; --f-md: 16px;
     --f-lg: 18px; --f-xl: 24px; --f-2xl: 32px;
 
     /* Elevación */
@@ -554,8 +554,8 @@ const S = {
   h3:   {fontSize:'var(--f-xs)', fontWeight:700, color:'var(--muted)', marginBottom:'var(--s-2)', marginTop:0, textTransform:'uppercase', letterSpacing:0.6, display:'flex', alignItems:'center', gap:8},
   h3Dot: {width:5, height:5, borderRadius:'50%', background:'var(--brand)', flexShrink:0, display:'inline-block'},
   lbl:  {fontSize:'var(--f-xs)', color:'var(--muted-soft)', display:'block', marginBottom:'var(--s-1)', fontWeight:700, textTransform:'uppercase'},
-  inp:  {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:14, boxSizing:'border-box', outline:'none', fontFamily:'inherit', color:'var(--text)'},
-  ta:   {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:14, boxSizing:'border-box', minHeight:80, resize:'vertical', outline:'none', fontFamily:'inherit', color:'var(--text)'},
+  inp:  {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:'var(--f-md)', boxSizing:'border-box', outline:'none', fontFamily:'inherit', color:'var(--text)'},
+  ta:   {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:'var(--f-md)', boxSizing:'border-box', minHeight:80, resize:'vertical', outline:'none', fontFamily:'inherit', color:'var(--text)'},
   g2:   {display:'grid', gridTemplateColumns:'1fr 1fr', gap:'var(--s-3)'}
 };
 
@@ -706,7 +706,7 @@ function EmptyState({icon, message, cta, compact}) {
            style={{opacity:0.55}}>
         {iconMap[icon] || iconMap.inbox}
       </svg>
-      <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>{message}</div>
+      <div style={{fontSize:14, color:'var(--muted)', fontWeight:500}}>{message}</div>
       {cta && <div style={{marginTop:'var(--s-1)'}}>{cta}</div>}
     </div>
   );
@@ -841,7 +841,7 @@ function NB({active, onClick, icon, children}) {
               padding:'7px 12px', margin:'1px 6px', border:'none', cursor:'pointer', textAlign:'left',
               background: active ? 'var(--brand-soft)' : 'transparent',
               color: active ? 'var(--brand)' : 'rgba(255,255,255,0.72)',
-              fontSize:13, fontWeight: active ? 600 : 400, borderRadius:'var(--r-sm)'}}>
+              fontSize:14, fontWeight: active ? 600 : 400, borderRadius:'var(--r-sm)'}}>
       {icon}
       <span>{children}</span>
     </button>
@@ -1167,7 +1167,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
   return (
     <div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-        <div style={{fontSize:13, color:'var(--muted)'}}>Week {selWn} - {wDates(selWn)}</div>
+        <div style={{fontSize:14, color:'var(--muted)'}}>Week {selWn} - {wDates(selWn)}</div>
         <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
       </div>
@@ -1462,8 +1462,8 @@ function SetupGate({onReady}) {
                        background:'var(--brand)', color:'var(--sidebar-bg)', fontWeight:700, fontSize:15,
                        letterSpacing:0.5, marginBottom:14}}>XE</div>
           <div style={{fontSize:18, fontWeight:600, color:'var(--text)', letterSpacing:-0.2}}>EOS XE</div>
-          <div style={{fontSize:13, color:'var(--muted)', marginTop:4}}>
-            {step === 'config' ? 'Configura tu Supabase' : (needsPin2 ? 'Crea tu PIN' : 'Desbloquea tu dashboard')}
+          <div style={{fontSize:14, color:'var(--muted)', marginTop:4}}>
+            {step === 'config' ? 'Configure your Supabase' : (needsPin2 ? 'Create your PIN' : 'Unlock your dashboard')}
           </div>
         </div>
 
@@ -2156,7 +2156,7 @@ function RocksTab({data, upd}) {
                               const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
                               if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
                             })}
-                            style={{flex:'0 1 200px', minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
+                            style={{flex:'0 1 200px', minWidth:120, fontSize:16, fontWeight:500, color:'var(--text)',
                                     textDecoration: 'none',
                                     border:'none', outline:'none', fontFamily:'inherit',
                                     background:'transparent', padding:0}}/>
@@ -2592,7 +2592,7 @@ function ProjectsTab({data, upd}) {
                     <input value={proj.name || ''}
                       onChange={e => upd(d => { d.weeklyProjects[wk][pi].name = e.target.value; })}
                       placeholder="Project name..."
-                      style={{width:'100%', border:'none', outline:'none', fontSize:14,
+                      style={{width:'100%', border:'none', outline:'none', fontSize:16,
                               fontWeight:700, fontFamily:'inherit', color:'var(--text)',
                               background:'transparent', padding:0}}/>
                   </td>
@@ -2673,12 +2673,12 @@ function TodosTab({data, upd}) {
             onChange={e => upd(d => { d.todos[ri].task = e.target.value; })}
             style={{width:'100%', border:'none', outline:'none', fontWeight:500,
                     color:'var(--text)', textDecoration: 'none',
-                    fontSize:14, marginBottom:4, background:'transparent',
+                    fontSize:16, marginBottom:4, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'var(--muted-soft)', display:'flex', gap:12, flexWrap:'wrap'}}>
             {t.startDate && <span>Start: {t.startDate}</span>}
             {t.done && t.completedDate &&
-              <span style={{color:'var(--ok-line)', fontWeight:600}}>Hecha: {t.completedDate}</span>}
+              <span style={{color:'var(--ok-line)', fontWeight:600}}>Done: {t.completedDate}</span>}
           </div>
           {isEd && (
             <div style={{marginTop:8, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
@@ -2726,14 +2726,14 @@ function TodosTab({data, upd}) {
         </InlineForm>
       )}
       <div style={{marginBottom:12}}>
-        <div style={{fontSize:13, fontWeight:700, color:'var(--text-2)', marginBottom:6}}>In Progress ({pending.length})</div>
-        {pending.length === 0 && <EmptyState icon="check" message="No hay tareas pendientes. Bien hecho."/>}
+        <div style={{fontSize:14, fontWeight:700, color:'var(--text-2)', marginBottom:6}}>In Progress ({pending.length})</div>
+        {pending.length === 0 && <EmptyState icon="check" message="No pending tasks. Well done."/>}
         {pending.map(t => <TRow key={t.id} t={t}/>)}
       </div>
       {done.length > 0 && (
         <div style={{marginBottom:12}}>
           <button onClick={() => setShowDone(s => !s)}
-            style={{display:'flex', alignItems:'center', gap:8, fontSize:13,
+            style={{display:'flex', alignItems:'center', gap:8, fontSize:14,
                     fontWeight:700, color:'var(--ok-line)', background:'none', border:'none',
                     cursor:'pointer', marginBottom:6, padding:0}}>
             Completed ({done.length}) {showDone ? '^' : 'v'}
@@ -2953,7 +2953,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         <H3 style={{marginBottom:8}}>Daily Highlight</H3>
         <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
           placeholder="Add today's highlight..."
-          style={{width:'100%', border:'none', outline:'none', fontSize:15,
+          style={{width:'100%', border:'none', outline:'none', fontSize:16,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
@@ -2977,7 +2977,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                         background: st.bg,
                         borderLeft:'4px solid ' + st.border,
                         position:'relative'}}>
-                <div style={{fontSize:13, fontWeight:700, color: st.text, flexShrink:0, minWidth:90}}>
+                <div style={{fontSize:14, fontWeight:700, color: st.text, flexShrink:0, minWidth:90}}>
                   {fmtTime(e.h, e.m)} - {fmtTime(end.h, end.m)}
                 </div>
                 <div style={{flex:1}}>
@@ -3030,7 +3030,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     })}
                     style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
                   <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
-                    style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
+                    style={{flex:1, border:'none', outline:'none', fontSize:16, fontWeight:500,
                             color:'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
@@ -3099,7 +3099,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   return (
                   <tr key={m.id}>
                     <td style={{padding:'4px 12px'}}>
-                      <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
+                      <div style={{fontSize:14, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
                     </td>
                     <td style={{padding:'4px 4px', textAlign:'center'}}>
                       <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
@@ -3204,7 +3204,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
       {embedded && (
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
                      marginBottom:12, gap:10, flexWrap:'wrap'}}>
-          <div style={{fontSize:13, color:'var(--muted)', letterSpacing:0.2}}>
+          <div style={{fontSize:14, color:'var(--muted)', letterSpacing:0.2}}>
             Week {localWn} · {qKey.split('-')[1]} · {wDates(weekNum)}
           </div>
           {wData.rating && <div style={{background:'var(--brand)', color:'white', borderRadius:'var(--r-sm)',
@@ -3217,7 +3217,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         <H3 style={{marginBottom:8}}>Weekly Headlines</H3>
         <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
           placeholder="What stands out this week?"
-          style={{width:'100%', border:'none', outline:'none', fontSize:15,
+          style={{width:'100%', border:'none', outline:'none', fontSize:16,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
@@ -3307,7 +3307,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
             const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(weekNum, di)] === 'ok' ? acc + 1 : acc), 0);
             return (
             <tr key={m.id}>
-              <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
+              <td style={{padding:'4px 12px'}}><div style={{fontSize:14, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
               <td style={{padding:'4px 4px', textAlign:'center'}}>
                 <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
                   <span style={{width:14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
@@ -3389,7 +3389,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
                 const idx = d.todos.findIndex(x => x.id === t.id);
                 if (idx >= 0) d.todos[idx].task = ev.target.value;
               })}
-              style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
+              style={{flex:1, border:'none', outline:'none', fontSize:16, fontWeight:500,
                       textDecoration: 'none', color:'var(--text)',
                       background:'transparent', fontFamily:'inherit', padding:0}}/>
             {t.due && <span style={{fontSize:11, color: late ? 'var(--err-line)' : 'var(--muted-soft)'}}>{t.due}</span>}
@@ -3402,7 +3402,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
           </div>
         );
       })}
-      {!visibleTodos.length && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'4px 0'}}>No to-dos yet.</div>}
+      {!visibleTodos.length && <div style={{fontSize:14, color:'var(--muted-soft)', padding:'4px 0'}}>No to-dos yet.</div>}
       {!showF
         ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:12, padding:'6px 12px'}}>+ Task</Btn>
         : (
@@ -3521,7 +3521,7 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
             <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
               style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
             <div style={{flex:1}}>
-              <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
+              <div style={{fontSize:14, fontWeight:600, color:'var(--text)',
                            textDecoration: 'none', marginBottom:5}}>
                 {issue.sourceName}
               </div>
@@ -3632,7 +3632,7 @@ function QReview({data, upd, qKey, qData}) {
         <H3 style={{marginBottom:8}}>Quarter Headlines</H3>
         <input value={rev.headlines || ''} onChange={e => setR('headlines', e.target.value)}
           placeholder="What stands out this quarter?"
-          style={{width:'100%', border:'none', outline:'none', fontSize:15,
+          style={{width:'100%', border:'none', outline:'none', fontSize:16,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
