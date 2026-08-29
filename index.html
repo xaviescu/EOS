@@ -2002,7 +2002,7 @@ function MonthTab({data, upd, goToDay}) {
               </div>
               <input value={(data.monthNotes && data.monthNotes[ds]) || ''}
                 onChange={e => setNote(ds, e.target.value)} placeholder="Add highlight..."
-                style={{flex:1, border:'none', borderBottom:'1px solid var(--border)',
+                style={{flex:1, border:'none',
                         outline:'none', fontSize:13, padding:'3px 4px',
                         background:'transparent', color:'var(--text)', fontFamily:'inherit'}}/>
             </div>
@@ -2988,11 +2988,13 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       {/* Note como primera card */}
       <div className="card-hover" style={S.card}>
         <H3 style={{marginBottom:8}}>Daily Highlight</H3>
-        <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
+        <textarea value={monthNote} onChange={e => setMonthNote(e.target.value)}
           placeholder="Add today's highlight..."
+          rows={1}
+          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
           style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                  padding:'2px 0', background:'transparent',
-                  color:'var(--text)', fontFamily:'inherit'}}/>
+                  padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5}}/>
       </div>
       {/* Meetings */}
       <div className="card-hover" style={S.card}>
