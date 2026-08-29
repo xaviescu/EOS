@@ -215,6 +215,10 @@
     position:relative; margin-bottom:-1px;
     border-bottom:2px solid transparent;
     transition:color .12s ease, border-color .12s ease, background .12s ease;
+    white-space:nowrap;
+  }
+  @media (max-width: 768px){
+    .tab-underline{padding:10px 10px;}
   }
   .tab-underline:hover{color:var(--text); background:var(--brand-soft);}
   .tab-underline:focus-visible{outline:none; box-shadow:0 0 0 3px var(--brand-ring); border-radius:6px 6px 0 0;}
@@ -1893,11 +1897,14 @@ function App({bundle, onLogout}) {
 }
 
 function VisionTab({data, upd}) {
+  const isMobile = useIsMobile();
   const v = data.vision || INIT_V;
   const sv = (key, val) => upd(d => { d.vision[key] = val; });
   const [nv, setNv] = useState('');
   const [vTab, setVTab] = useState('values');
-  const VTABS = [['values','Core Values'], ['lt','Long Term'], ['3y','3 Year View'], ['1y','1 Year View']];
+  const VTABS = isMobile
+    ? [['values','Values'], ['lt','Long-Term'], ['3y','3-Year'], ['1y','1-Year']]
+    : [['values','Core Values'], ['lt','Long Term'], ['3y','3 Year View'], ['1y','1 Year View']];
   return (
     <div>
       <PageTitle icon="vision">Vision {YEAR}</PageTitle>
