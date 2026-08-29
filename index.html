@@ -23,12 +23,12 @@
      ========================================================= */
   :root{
     /* Marca / superficies */
-    --brand: #f59e0b;
-    --brand-soft: rgba(245,158,11,0.10);
-    --brand-ring: rgba(245,158,11,0.25);
+    --brand: #3b82f6;
+    --brand-soft: rgba(59,130,246,0.10);
+    --brand-ring: rgba(59,130,246,0.25);
     --bg: #f5f6fa;
     --surface: #ffffff;
-    --surface-alt: #fafbfc;
+    --surface-alt: #edeff4;
     --sidebar-bg: #0f172a;
     --sidebar-fg: rgba(255,255,255,0.70);
     --sidebar-fg-muted: rgba(255,255,255,0.45);
@@ -48,7 +48,7 @@
     --ok-bg: #ecfdf5;   --ok-fg: #065f46;   --ok-line: #10b981;
     --warn-bg: #fffbeb; --warn-fg: #78350f; --warn-line: #f59e0b;
     --err-bg: #fef2f2;  --err-fg: #7f1d1d;  --err-line: #ef4444;
-    --info-bg: #eff6ff; --info-fg: #1e3a8a; --info-line: #3b82f6;
+    --info-bg: #f0f9ff; --info-fg: #0c4a6e; --info-line: #0ea5e9;
 
     /* Radios */
     --r-sm: 6px;
@@ -87,7 +87,7 @@
     --ok-bg: rgba(16,185,129,0.15);   --ok-fg: #6ee7b7;
     --warn-bg: rgba(245,158,11,0.15); --warn-fg: #fcd34d;
     --err-bg: rgba(239,68,68,0.15);   --err-fg: #fca5a5;
-    --info-bg: rgba(59,130,246,0.15); --info-fg: #93c5fd;
+    --info-bg: rgba(14,165,233,0.15); --info-fg: #7dd3fc;
     --elev-1: 0 1px 2px rgba(0,0,0,.5), 0 1px 1px rgba(0,0,0,.35);
     --elev-2: 0 4px 12px rgba(0,0,0,.55), 0 2px 4px rgba(0,0,0,.35);
     --elev-3: 0 20px 40px rgba(0,0,0,.65), 0 8px 16px rgba(0,0,0,.45);
@@ -843,9 +843,9 @@ function WkBtns({selQ, selWn, onSelect}) {
         return (
           <button key={wn} onClick={() => onSelect(wn)} title={wDates(wn)}
             style={{padding:'6px 8px', borderRadius:7,
-                    border:'1px solid ' + (isSel ? 'var(--brand)' : isCur ? 'rgba(245,158,11,0.5)' : 'var(--border)'),
+                    border:'1px solid ' + (isSel ? 'var(--brand)' : isCur ? 'rgba(59,130,246,0.5)' : 'var(--border)'),
                     cursor:'pointer',
-                    background: isSel ? 'var(--brand)' : isCur ? 'rgba(245,158,11,0.08)' : 'white',
+                    background: isSel ? 'var(--brand)' : isCur ? 'rgba(59,130,246,0.08)' : 'white',
                     color: isSel ? 'white' : isCur ? 'var(--brand)' : 'var(--text-2)',
                     fontWeight: (isSel || isCur) ? 700 : 400,
                     fontSize:11, textAlign:'center', minWidth:44}}>
@@ -1112,7 +1112,7 @@ function StdWeekCalendar({data, upd}) {
   return (
     <div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-        <div style={{fontSize:13, color:'var(--muted)'}}>Template - click any slot to add · click en un evento para editar</div>
+        <div style={{fontSize:13, color:'var(--muted)'}}>Template - click any slot to add</div>
         <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
       </div>
@@ -1169,7 +1169,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                     style={{padding:'6px 1px', textAlign:'center', fontSize:11,
                             fontWeight: isCur ? 800 : 600,
                             color: isCur ? 'var(--brand)' : 'var(--text-2)',
-                            background: isCur ? 'rgba(245,158,11,0.15)' : 'transparent'}}>
+                            background: isCur ? 'rgba(59,130,246,0.15)' : 'transparent'}}>
                     W{wn - fw + 1}
                   </th>
                 );
@@ -1209,7 +1209,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                     const isCur = highlightWn && wn === highlightWn;
                     return (
                       <td key={wn} style={{padding:'2px 1px',
-                                           background: isCur ? 'rgba(245,158,11,0.08)' : 'transparent'}}/>
+                                           background: isCur ? 'rgba(59,130,246,0.08)' : 'transparent'}}/>
                     );
                   })}
                   {rightGutterWidth && (
@@ -1233,7 +1233,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                       const isCur = highlightWn && wn === highlightWn;
                       return (
                         <td key={wn} style={{padding:'2px 1px',
-                                             background: isCur ? 'rgba(245,158,11,0.08)' : 'transparent'}}>
+                                             background: isCur ? 'rgba(59,130,246,0.08)' : 'transparent'}}>
                           {inR && (
                             <div onClick={() => toggle(rock.id, step.id, wn)}
                               style={{height:10, background: chk ? 'var(--ok-line)' : 'var(--brand)',
@@ -1569,17 +1569,17 @@ function App({bundle, onLogout}) {
 
   const GNAV = [
     {label:null, items: [
-      ['diario','Daily Summary'],
-      ['month','Month']
+      ['diario','Daily Summary']
     ]},
     {label:'Plan', items: [
       ['vision','Vision'],
       ['rocks_all','Rocks'],
       ['procesos','Processes']
     ]},
-    {label:'Do', items: [
+    {label:'Do / Capture', items: [
       ['projects','Projects'],
-      ['todos','To-Dos']
+      ['todos','To-Dos'],
+      ['month','Month']
     ]},
     {label:'Review', items: [
       ['scorecard','Scorecard'],
@@ -1966,7 +1966,7 @@ function RocksTab({data, upd}) {
                       style={{width:22, height:16, display:'flex', alignItems:'center', justifyContent:'center',
                               fontSize:9, fontWeight: isCur ? 800 : 700,
                               color: isCur ? 'var(--brand)' : 'var(--muted)',
-                              background: isCur ? 'rgba(245,158,11,0.15)' : 'transparent',
+                              background: isCur ? 'rgba(59,130,246,0.15)' : 'transparent',
                               borderRadius:3}}>
                       W{wn - qw[0] + 1}
                     </div>
@@ -2072,7 +2072,7 @@ function RocksTab({data, upd}) {
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: inR ? 'pointer' : 'default',
                                           borderColor: !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)',
-                                          background: !inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(245,158,11,0.12)',
+                                          background: !inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(59,130,246,0.12)',
                                           color: !inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)'}}>
                                   {wn - qw[0] + 1}
                                 </div>
@@ -2382,8 +2382,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                       style={{padding:2, textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
-                              background: isSel ? 'rgba(245,158,11,0.1)' : 'transparent',
-                              outline: isSel ? '2px solid rgba(245,158,11,0.5)' : 'none', outlineOffset:-1}}>
+                              background: isSel ? 'rgba(59,130,246,0.1)' : 'transparent',
+                              outline: isSel ? '2px solid rgba(59,130,246,0.5)' : 'none', outlineOffset:-1}}>
                       <div style={{width:30, height:28, background:bg, borderRadius:4,
                                    display:'flex', alignItems:'center', justifyContent:'center',
                                    fontSize:13, color:col, fontWeight:700, margin:'0 auto'}}>
@@ -2852,7 +2852,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             <button key={di} onClick={() => handleDayClick(ds)}
               style={{flex:'1 1 0', minWidth:0, padding: isMobile ? '6px 2px' : '8px 6px',
                       borderRadius:8, border:'none', cursor:'pointer',
-                      background: isActive ? 'var(--brand)' : isToday ? 'rgba(245,158,11,0.15)' : 'var(--border)',
+                      background: isActive ? 'var(--brand)' : isToday ? 'rgba(59,130,246,0.15)' : 'var(--border)',
                       color: isActive ? 'white' : isToday ? 'var(--brand)' : 'var(--text-2)',
                       fontWeight: (isActive || isToday) ? 700 : 400,
                       fontSize: isMobile ? 11 : 12, lineHeight:1.3, textAlign:'center'}}>
