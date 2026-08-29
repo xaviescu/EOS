@@ -8,8 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="EOS XE"/>
 <link rel="manifest" href="./manifest.json"/>
-<link rel="icon" type="image/svg+xml" href="./icon.svg"/>
-<link rel="apple-touch-icon" href="./icon-192.png"/>
+<link rel="icon" type="image/svg+xml" href="./icon.svg?v=3"/>
+<link rel="apple-touch-icon" href="./icon-192.png?v=3"/>
 <link rel="preconnect" href="https://rsms.me/"/>
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css"/>
 <title>EOS XE Dashboard</title>
@@ -23,9 +23,9 @@
      ========================================================= */
   :root{
     /* Marca / superficies */
-    --brand: #3b82f6;
-    --brand-soft: rgba(59,130,246,0.10);
-    --brand-ring: rgba(59,130,246,0.25);
+    --brand: #5e6ad2;
+    --brand-soft: rgba(94,106,210,0.10);
+    --brand-ring: rgba(94,106,210,0.25);
     --bg: #f5f6fa;
     --surface: #ffffff;
     --surface-alt: #edeff4;
@@ -843,9 +843,9 @@ function WkBtns({selQ, selWn, onSelect}) {
         return (
           <button key={wn} onClick={() => onSelect(wn)} title={wDates(wn)}
             style={{padding:'6px 8px', borderRadius:7,
-                    border:'1px solid ' + (isSel ? 'var(--brand)' : isCur ? 'rgba(59,130,246,0.5)' : 'var(--border)'),
+                    border:'1px solid ' + (isSel ? 'var(--brand)' : isCur ? 'rgba(94,106,210,0.5)' : 'var(--border)'),
                     cursor:'pointer',
-                    background: isSel ? 'var(--brand)' : isCur ? 'rgba(59,130,246,0.08)' : 'white',
+                    background: isSel ? 'var(--brand)' : isCur ? 'rgba(94,106,210,0.08)' : 'white',
                     color: isSel ? 'white' : isCur ? 'var(--brand)' : 'var(--text-2)',
                     fontWeight: (isSel || isCur) ? 700 : 400,
                     fontSize:11, textAlign:'center', minWidth:44}}>
@@ -904,103 +904,152 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
 // =====================================================================
 function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabels, compact}) {
   compact = compact || false;
-  const occupied = {};
-  events.forEach(e => {
-    const slots = Math.max(1, Math.round((e.duration || 1) * 2));
-    for (let s = 1; s < slots; s++) {
-      const tm = e.h * 60 + (e.m || 0) + s * 30;
-      const h = Math.floor(tm / 60); const m = tm % 60;
-      if (h <= 22) occupied[e.day + '-' + h + '-' + m] = true;
-    }
-  });
+  const HOUR_W = compact ? 30 : 44;
+  const SLOT_H = compact ? 18 : 22;
+  const HEADER_H = compact ? 30 : 42;
+  const slotIdx = (h, m) => (h - 6) * 2 + (m >= 30 ? 1 : 0);
+
+  // Column assignment per day (interval graph coloring) — permite overlaps.
+  const dayLayouts = {};
+  for (let di = 0; di < 7; di++) {
+    const dayEvts = events
+      .filter(e => e.day === di)
+      .map(e => {
+        const start = e.h * 60 + (e.m || 0);
+        const end = start + Math.max(30, Math.round((e.duration || 1) * 60));
+        return {ev: e, start, end};
+      })
+      .sort((a, b) => a.start - b.start || a.end - b.end);
+    const colEnds = [];
+    const colMap = new Map();
+    dayEvts.forEach(({ev, start, end}) => {
+      let col = 0;
+      while (col < colEnds.length && colEnds[col] > start) col++;
+      colEnds[col] = end;
+      colMap.set(ev.id, col);
+    });
+    dayLayouts[di] = {cols: Math.max(1, colEnds.length), colMap};
+  }
+
   return (
     <div style={{overflowX: compact ? 'hidden' : 'auto'}}>
-      <table style={{tableLayout:'fixed', borderCollapse:'collapse', background:'var(--surface)',
-                     borderRadius:10, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
-                     width:'100%', minWidth: compact ? 0 : 680}}>
-        <colgroup>
-          <col style={{width: compact ? 30 : 44}}/>
-          {DAYS.map((_, i) => <col key={i}/>)}
-        </colgroup>
-        <thead>
-          <tr style={{background:'var(--surface-alt)', borderBottom:'2px solid var(--brand)'}}>
-            <th style={{padding: compact ? '3px 2px' : '5px 6px', color:'var(--muted-soft)', fontSize:9, textAlign:'right', fontFamily:'inherit'}}>h</th>
-            {DAYS.map((day, di) => (
-              <th key={di}
-                onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
-                style={{padding: compact ? '6px 1px' : '8px 4px', color:'var(--text)',
-                        fontSize: compact ? 10 : 13, fontWeight:700, textAlign:'center',
-                        fontFamily:'inherit', letterSpacing:0.3,
-                        cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
-                <div>{compact ? day[0] : day.slice(0, 3)}</div>
-                {dayLabels && dayLabels[di] && dayLabels[di].sub &&
-                  <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2}}>{dayLabels[di].sub}</div>}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {SLOTS.map(slot => (
-            <tr key={slot.h + '-' + slot.m} style={{borderTop:'1px solid var(--surface-alt)'}}>
-              <td style={{padding: compact ? '0 3px' : '1px 6px', fontSize: compact ? 7 : 8, color:'var(--muted-soft)', fontWeight:700,
-                          background:'var(--surface-alt)', textAlign:'right', whiteSpace:'nowrap'}}>{slot.lbl}</td>
-              {DAYS.map((_, di) => {
-                const ck = di + '-' + slot.h + '-' + slot.m;
-                if (occupied[ck]) return null;
-                const ev = events.find(e => e.day === di && e.h === slot.h && (e.m || 0) === slot.m);
-                if (ev) {
-                  const rSpan = Math.max(1, Math.round((ev.duration || 1) * 2));
-                  const st = eventStyle(ev);
-                  const end = eventEndTime(ev);
-                  const emptyTitle = !ev.title || !ev.title.trim();
-                  return (
-                    <td key={di} rowSpan={rSpan}
-                      onClick={() => onEdit ? onEdit(ev) : (onCycleColor && onCycleColor(ev.id))}
-                      title={onEdit ? 'Click para editar' : ''}
-                      style={{padding:2, verticalAlign:'top',
-                              background: st.bg,
-                              borderLeft:'3px solid ' + st.border,
-                              borderTop:'1px solid var(--surface-alt)', position:'relative',
-                              cursor: (onEdit || onCycleColor) ? 'pointer' : 'default'}}>
-                      <div style={{padding:'2px 32px 2px 5px', boxSizing:'border-box'}}>
-                        <div style={{fontWeight:700, color: st.text,
-                                     fontSize:10, overflow:'hidden', textOverflow:'ellipsis',
-                                     whiteSpace:'nowrap',
-                                     fontStyle: emptyTitle ? 'italic' : 'normal',
-                                     opacity: emptyTitle ? 0.5 : 1}}>
-                          {emptyTitle ? '(sin título)' : ev.title}
-                        </div>
-                        <div style={{color: st.text, opacity:0.75, fontSize:9}}>
-                          {fmtTime(ev.h, ev.m)}-{fmtTime(end.h, end.m)}
-                        </div>
-                      </div>
-                      <div style={{position:'absolute', top:2, right:3, display:'flex', gap:2, alignItems:'center'}}>
-                        {onCycleColor && (
-                          <button onClick={(e) => { e.stopPropagation(); onCycleColor(ev.id); }}
-                            title="Cambiar color"
-                            style={{border:'1px solid ' + st.border, borderRadius:'50%',
-                                    background:'transparent', width:11, height:11, padding:0,
-                                    cursor:'pointer'}}/>
-                        )}
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
-                          title="Eliminar"
-                          style={{border:'none', background:'none', cursor:'pointer', color: st.text,
-                                  opacity:0.5, fontSize:12, padding:'0 2px', lineHeight:1}}>×</button>
-                      </div>
-                    </td>
-                  );
-                }
-                return (
-                  <td key={di} onClick={() => onCellClick(di, slot.h, slot.m)}
-                    style={{padding:0, cursor:'pointer', borderTop:'1px solid var(--surface-alt)'}}>
-                    <div style={{height: compact ? 18 : 22}}/>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: HOUR_W + 'px repeat(7, minmax(0, 1fr))',
+        gridTemplateRows: HEADER_H + 'px repeat(' + SLOTS.length + ', ' + SLOT_H + 'px)',
+        background:'var(--surface)', borderRadius:10, overflow:'hidden',
+        boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
+        width:'100%', minWidth: compact ? 0 : 680, position:'relative'
+      }}>
+        {/* Header — hora */}
+        <div style={{gridRow:1, gridColumn:1, background:'var(--surface-alt)',
+                     borderBottom:'2px solid var(--brand)',
+                     padding: compact ? '3px 4px' : '5px 6px',
+                     color:'var(--muted-soft)', fontSize:9, fontWeight:700,
+                     display:'flex', alignItems:'flex-end', justifyContent:'flex-end'}}>h</div>
+        {/* Header — días */}
+        {DAYS.map((day, di) => (
+          <div key={'h-'+di}
+            onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
+            style={{gridRow:1, gridColumn: di+2, background:'var(--surface-alt)',
+                    borderBottom:'2px solid var(--brand)',
+                    padding: compact ? '6px 1px' : '6px 4px', color:'var(--text)',
+                    fontSize: compact ? 10 : 13, fontWeight:700, textAlign:'center',
+                    letterSpacing:0.3,
+                    display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
+                    cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
+            <div>{compact ? day[0] : day.slice(0, 3)}</div>
+            {dayLabels && dayLabels[di] && dayLabels[di].sub &&
+              <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2}}>{dayLabels[di].sub}</div>}
+          </div>
+        ))}
+        {/* Hour labels (fila por cada slot) */}
+        {SLOTS.map((slot, si) => (
+          <div key={'l-'+si}
+            style={{gridRow: si+2, gridColumn: 1,
+                    background:'var(--surface-alt)', textAlign:'right',
+                    padding: compact ? '0 4px' : '1px 6px', fontSize: compact ? 7 : 8,
+                    color:'var(--muted-soft)', fontWeight:700, whiteSpace:'nowrap',
+                    borderTop: si > 0 ? '1px solid var(--border)' : 'none',
+                    lineHeight:1, display:'flex', alignItems:'flex-start', justifyContent:'flex-end'}}>{slot.lbl}</div>
+        ))}
+        {/* Celdas vacías clicables por día × slot */}
+        {SLOTS.map((slot, si) =>
+          DAYS.map((_, di) => (
+            <div key={'c-'+si+'-'+di}
+              onClick={() => onCellClick(di, slot.h, slot.m)}
+              style={{gridRow: si+2, gridColumn: di+2, cursor:'pointer',
+                      borderTop: si > 0 ? '1px solid var(--surface-alt)' : 'none',
+                      borderLeft: di === 0 ? '1px solid var(--surface-alt)' : 'none'}}/>
+          ))
+        )}
+        {/* Eventos superpuestos con column-assignment */}
+        {events.map(ev => {
+          const si = slotIdx(ev.h, ev.m || 0);
+          if (si < 0 || si >= SLOTS.length) return null;
+          const durSlots = Math.max(1, Math.round((ev.duration || 1) * 2));
+          const layout = dayLayouts[ev.day];
+          if (!layout) return null;
+          const col = layout.colMap.get(ev.id) || 0;
+          const cols = layout.cols;
+          const st = eventStyle(ev);
+          const end = eventEndTime(ev);
+          const emptyTitle = !ev.title || !ev.title.trim();
+          return (
+            <div key={ev.id}
+              style={{gridRow: (si+2) + ' / span ' + durSlots,
+                      gridColumn: (ev.day+2),
+                      display:'flex', pointerEvents:'none', zIndex: 2, padding: '1px 1px 0 0'}}>
+              <div onClick={() => onEdit ? onEdit(ev) : (onCycleColor && onCycleColor(ev.id))}
+                title={onEdit ? 'Click para editar' : ''}
+                style={{marginLeft: (col * 100 / cols) + '%',
+                        width: 'calc(' + (100 / cols) + '% - 1px)',
+                        background: st.bg,
+                        borderLeft: '3px solid ' + st.border,
+                        position:'relative', overflow:'hidden',
+                        cursor: (onEdit || onCycleColor) ? 'pointer' : 'default',
+                        pointerEvents:'auto', borderRadius:'2px'}}>
+                <div style={{padding: cols > 1 ? '2px 4px 2px 4px' : '2px 32px 2px 5px', boxSizing:'border-box'}}>
+                  <div style={{fontWeight:700, color: st.text,
+                               fontSize: cols > 1 ? 9 : 10, overflow:'hidden', textOverflow:'ellipsis',
+                               whiteSpace:'nowrap',
+                               fontStyle: emptyTitle ? 'italic' : 'normal',
+                               opacity: emptyTitle ? 0.5 : 1}}>
+                    {emptyTitle ? '(sin título)' : ev.title}
+                  </div>
+                  {durSlots > 1 && cols === 1 && (
+                    <div style={{color: st.text, opacity:0.75, fontSize:9}}>
+                      {fmtTime(ev.h, ev.m)}-{fmtTime(end.h, end.m)}
+                    </div>
+                  )}
+                </div>
+                {cols === 1 && (
+                  <div style={{position:'absolute', top:2, right:3, display:'flex', gap:2, alignItems:'center'}}>
+                    {onCycleColor && (
+                      <button onClick={(e) => { e.stopPropagation(); onCycleColor(ev.id); }}
+                        title="Cambiar color"
+                        style={{border:'1px solid ' + st.border, borderRadius:'50%',
+                                background:'transparent', width:11, height:11, padding:0,
+                                cursor:'pointer'}}/>
+                    )}
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
+                      title="Eliminar"
+                      style={{border:'none', background:'none', cursor:'pointer', color: st.text,
+                              opacity:0.5, fontSize:12, padding:'0 2px', lineHeight:1}}>×</button>
+                  </div>
+                )}
+                {cols > 1 && (
+                  <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
+                    title="Eliminar"
+                    style={{position:'absolute', top:1, right:1, border:'none', background:'none',
+                            cursor:'pointer', color: st.text, opacity:0.5, fontSize:11,
+                            padding:'0 3px', lineHeight:1}}>×</button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1169,7 +1218,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                     style={{padding:'6px 1px', textAlign:'center', fontSize:11,
                             fontWeight: isCur ? 800 : 600,
                             color: isCur ? 'var(--brand)' : 'var(--text-2)',
-                            background: isCur ? 'rgba(59,130,246,0.15)' : 'transparent'}}>
+                            background: isCur ? 'rgba(94,106,210,0.15)' : 'transparent'}}>
                     W{wn - fw + 1}
                   </th>
                 );
@@ -1209,7 +1258,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                     const isCur = highlightWn && wn === highlightWn;
                     return (
                       <td key={wn} style={{padding:'2px 1px',
-                                           background: isCur ? 'rgba(59,130,246,0.08)' : 'transparent'}}/>
+                                           background: isCur ? 'rgba(94,106,210,0.08)' : 'transparent'}}/>
                     );
                   })}
                   {rightGutterWidth && (
@@ -1233,7 +1282,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                       const isCur = highlightWn && wn === highlightWn;
                       return (
                         <td key={wn} style={{padding:'2px 1px',
-                                             background: isCur ? 'rgba(59,130,246,0.08)' : 'transparent'}}>
+                                             background: isCur ? 'rgba(94,106,210,0.08)' : 'transparent'}}>
                           {inR && (
                             <div onClick={() => toggle(rock.id, step.id, wn)}
                               style={{height:10, background: chk ? 'var(--ok-line)' : 'var(--brand)',
@@ -1599,11 +1648,14 @@ function App({bundle, onLogout}) {
         <div onClick={() => setNavOpen(false)}
           style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:99}}/>
       )}
-      <nav className="sidebar no-print" style={{width: navOpen ? 210 : (isMobile ? 0 : 48),
+      <nav className="sidebar no-print" style={{width: navOpen ? 240 : (isMobile ? 0 : 48),
                    background:'var(--sidebar-bg)', flexShrink:0,
                    display:'flex', flexDirection:'column',
                    position: isMobile ? 'fixed' : 'sticky', top:0, left:0,
-                   height:'100vh', overflowY:'auto',
+                   height:'100dvh',
+                   paddingTop: isMobile ? 'env(safe-area-inset-top, 0px)' : 0,
+                   paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 0,
+                   overflowY:'auto',
                    transition:'width 0.15s', zIndex:100,
                    boxShadow:'1px 0 0 rgba(0,0,0,0.15)',
                    transform: (isMobile && !navOpen) ? 'translateX(-100%)' : 'translateX(0)'}}>
@@ -1724,7 +1776,9 @@ function App({bundle, onLogout}) {
           </div>
         )}
       </nav>
-      <main className="main-content print-area" style={{flex:1, padding: isMobile ? '14px 14px 14px' : 26, overflowY:'auto', maxHeight:'100dvh', minHeight:'100dvh', minWidth:0}}>
+      <main className="main-content print-area" style={{flex:1,
+                   padding: isMobile ? '58px 14px 14px' : 26,
+                   overflowY:'auto', maxHeight:'100dvh', minHeight:'100dvh', minWidth:0}}>
         {isMobile && (
           <button onClick={() => setNavOpen(true)} className="btn" title="Menú"
             style={{position:'fixed',
@@ -1743,7 +1797,7 @@ function App({bundle, onLogout}) {
             </svg>
           </button>
         )}
-        <div style={{paddingTop: isMobile ? 60 : 0}}>
+        <div>
           {tab === 'diario' && <DailyTab data={d} upd={upd} selDay={selDay} setSelDay={setSelDay} goToDay={goToDay}/>}
           {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
           {tab === 'month' && <MonthTab data={d} upd={upd} goToDay={goToDay}/>}
@@ -1878,6 +1932,7 @@ function MonthTab({data, upd, goToDay}) {
 }
 
 function RocksTab({data, upd}) {
+  const isMobile = useIsMobile();
   const [selQ, setSelQ] = useState(getCurQ());
   const [editStep, setEditStep] = useState(null);
   const [addRock, setAddRock] = useState(false);
@@ -1952,8 +2007,10 @@ function RocksTab({data, upd}) {
       <div>
         {rocks.length === 0 && !addRock &&
           <EmptyState icon="target" message={'Sin Rocks para ' + selQ.split('-')[1] + '. Añade la primera arriba.'}/>}
-        {/* Single week header (W1..W13) at the top of the rock list */}
-        {rocks.length > 0 && (
+        {/* Single week header (W1..W13) at the top of the rock list.
+            Se oculta en móvil porque los steps se representan como cajitas numeradas
+            1-13 (no como columnas fijas) y el header no se alinea. */}
+        {rocks.length > 0 && !isMobile && (
           <div style={{position:'sticky', top:0, zIndex:10, background:'var(--bg)',
                        padding:'6px 30px 10px 42px', marginBottom:2}}>
             <div style={{display:'flex', alignItems:'center', gap:8}}>
@@ -1966,7 +2023,7 @@ function RocksTab({data, upd}) {
                       style={{width:22, height:16, display:'flex', alignItems:'center', justifyContent:'center',
                               fontSize:9, fontWeight: isCur ? 800 : 700,
                               color: isCur ? 'var(--brand)' : 'var(--muted)',
-                              background: isCur ? 'rgba(59,130,246,0.15)' : 'transparent',
+                              background: isCur ? 'rgba(94,106,210,0.15)' : 'transparent',
                               borderRadius:3}}>
                       W{wn - qw[0] + 1}
                     </div>
@@ -2072,7 +2129,7 @@ function RocksTab({data, upd}) {
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: inR ? 'pointer' : 'default',
                                           borderColor: !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)',
-                                          background: !inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(59,130,246,0.12)',
+                                          background: !inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(94,106,210,0.12)',
                                           color: !inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)'}}>
                                   {wn - qw[0] + 1}
                                 </div>
@@ -2270,7 +2327,7 @@ function ScorecardTab({data, upd}) {
                 <thead>
                   <tr style={{background:'var(--surface-alt)', borderBottom:'2px solid var(--brand)'}}>
                     <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
-                    <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
+                    <th style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
                     {DAYS.map((day, di) => (
                       <th key={di} style={{padding:'8px 4px', textAlign:'center',
                                            color:'var(--text)', fontSize:12, fontWeight:700}}>
@@ -2291,12 +2348,12 @@ function ScorecardTab({data, upd}) {
                                   fontSize:14, fontFamily:'inherit', color:'var(--text)',
                                   background:'transparent', padding:0}} placeholder="Metric..."/>
                       </td>
-                      <td style={{padding:'6px 4px'}}>
+                      <td style={{padding:'6px 4px', textAlign:'center'}}>
                         <input value={m.goal || ''}
                           onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].goal = e.target.value; })}
                           style={{width:'100%', border:'none', outline:'none', fontSize:13,
                                   fontFamily:'inherit', color:'var(--brand)', fontWeight:600,
-                                  background:'transparent', padding:0}} placeholder="Goal..."/>
+                                  background:'transparent', padding:0, textAlign:'center'}} placeholder="Goal..."/>
                       </td>
                       {DAYS.map((_, di) => {
                         const date = dayStr(selWn, di);
@@ -2382,8 +2439,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                       style={{padding:2, textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
-                              background: isSel ? 'rgba(59,130,246,0.1)' : 'transparent',
-                              outline: isSel ? '2px solid rgba(59,130,246,0.5)' : 'none', outlineOffset:-1}}>
+                              background: isSel ? 'rgba(94,106,210,0.1)' : 'transparent',
+                              outline: isSel ? '2px solid rgba(94,106,210,0.5)' : 'none', outlineOffset:-1}}>
                       <div style={{width:30, height:28, background:bg, borderRadius:4,
                                    display:'flex', alignItems:'center', justifyContent:'center',
                                    fontSize:13, color:col, fontWeight:700, margin:'0 auto'}}>
@@ -2852,7 +2909,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             <button key={di} onClick={() => handleDayClick(ds)}
               style={{flex:'1 1 0', minWidth:0, padding: isMobile ? '6px 2px' : '8px 6px',
                       borderRadius:8, border:'none', cursor:'pointer',
-                      background: isActive ? 'var(--brand)' : isToday ? 'rgba(59,130,246,0.15)' : 'var(--border)',
+                      background: isActive ? 'var(--brand)' : isToday ? 'rgba(94,106,210,0.15)' : 'var(--border)',
                       color: isActive ? 'white' : isToday ? 'var(--brand)' : 'var(--text-2)',
                       fontWeight: (isActive || isToday) ? 700 : 400,
                       fontSize: isMobile ? 11 : 12, lineHeight:1.3, textAlign:'center'}}>
