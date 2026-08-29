@@ -108,13 +108,6 @@
   }
   tr.th-brand th > div{color:var(--brand) !important;}
 
-  /* Dot indigo delante de h3 uppercase (section headers).
-     Se ancla al display:flex ya definido en S.h3. */
-  h3[style*="text-transform"]::before,
-  h3[style*="textTransform"]::before{
-    content:''; display:inline-block; width:5px; height:5px; border-radius:50%;
-    background:var(--brand); flex-shrink:0;
-  }
   /* Prevent iOS Safari from auto-zooming on input focus (happens when
      input font-size < 16px). Applies on touch devices only, so desktop
      keeps its compact input font-size. */
@@ -772,6 +765,17 @@ function Btn({onClick, children, v, style: sx, disabled}) {
   );
 }
 
+// Section header con dot indigo delante. Reemplaza <H3>.
+function H3({children, style}) {
+  return (
+    <h3 style={{...S.h3, ...(style || {})}}>
+      <span style={{width:5, height:5, borderRadius:'50%', background:'var(--brand)',
+                    flexShrink:0, display:'inline-block'}}/>
+      <span>{children}</span>
+    </h3>
+  );
+}
+
 // Título de página estándar — badge cuadrado indigo con el icono + título.
 function PageTitle({icon, children}) {
   return (
@@ -1092,9 +1096,9 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
 function EventModal({form, setForm, onSave, onClose, dayLabels}) {
   return (
     <Modal onClose={onClose}>
-      <h3 style={{...S.h3, marginBottom:16}}>
+      <H3 style={{marginBottom:16}}>
         New Event - {DAYS[form.day]} at {form.h}:{String(form.m).padStart(2, '0')}
-      </h3>
+      </H3>
       <Fld label="Title" value={form.title} onChange={v => setForm(f => ({...f, title:v}))} placeholder="Event name"/>
       <div style={S.g2}>
         <div>
@@ -1899,7 +1903,7 @@ function VisionTab({data, upd}) {
       </div>
       {vTab === 'values' && (
         <div style={S.card}>
-          <h3 style={S.h3}>Core Values</h3>
+          <H3>Core Values</H3>
           <div style={{marginBottom:10}}>
             {(v.values || []).map((val, i) => (
               <span key={i} style={{display:'inline-flex', alignItems:'center', gap:5,
@@ -1923,21 +1927,21 @@ function VisionTab({data, upd}) {
       )}
       {vTab === 'lt' && (
         <div style={S.card}>
-          <h3 style={S.h3}>Long Term View</h3>
+          <H3>Long Term View</H3>
           <textarea style={{...S.ta, minHeight:320}} value={v.ltView || ''}
             onChange={e => sv('ltView', e.target.value)} placeholder="Where do you want to be long term?"/>
         </div>
       )}
       {vTab === '3y' && (
         <div style={S.card}>
-          <h3 style={S.h3}>3 Year View</h3>
+          <H3>3 Year View</H3>
           <textarea style={{...S.ta, minHeight:320}} value={v.threeYearView || ''}
             onChange={e => sv('threeYearView', e.target.value)} placeholder="What does success look like in 3 years?"/>
         </div>
       )}
       {vTab === '1y' && (
         <div style={S.card}>
-          <h3 style={S.h3}>1 Year View</h3>
+          <H3>1 Year View</H3>
           <textarea style={{...S.ta, minHeight:320}} value={v.oneYearView || ''}
             onChange={e => sv('oneYearView', e.target.value)} placeholder="What must be accomplished this year?"/>
         </div>
@@ -1971,7 +1975,7 @@ function MonthTab({data, upd, goToDay}) {
         })}
       </div>
       <div style={S.card}>
-        <h3 style={S.h3}>{MONTHS_F[selM]} {YEAR}</h3>
+        <H3>{MONTHS_F[selM]} {YEAR}</H3>
         {days.map(({n, ds}) => {
           const dow = getDayOfWeek(ds);
           const we = dow === 'S';
@@ -2057,7 +2061,7 @@ function RocksTab({data, upd}) {
       </div>
       {addRock && (
         <InlineForm marginTop={0}>
-          <h3 style={S.h3}>Nueva Rock — {selQ.split('-')[1]}</h3>
+          <H3>Nueva Rock — {selQ.split('-')[1]}</H3>
           <Fld label="Title" value={rockForm.title}
             onChange={v => setRockForm(f => ({...f, title:v}))}
             placeholder="What must be achieved this quarter?"/>
@@ -2339,7 +2343,7 @@ function ScorecardTab({data, upd}) {
       </div>
       {showF && (
         <InlineForm marginTop={0}>
-          <h3 style={S.h3}>Nueva métrica — {selQ.split('-')[1]}</h3>
+          <H3>Nueva métrica — {selQ.split('-')[1]}</H3>
           <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
           <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
           <div style={{display:'flex', gap:8}}>
@@ -2356,7 +2360,7 @@ function ScorecardTab({data, upd}) {
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <div style={S.card}>
         <div style={{marginBottom:10}}>
-          <h3 style={{...S.h3, marginBottom:0}}>W{selWn - qw[0] + 1} - {wDates(selWn)}</h3>
+          <H3 style={{marginBottom:0}}>W{selWn - qw[0] + 1} - {wDates(selWn)}</H3>
         </div>
         {scorecard.length === 0
           ? <EmptyState icon="chart" message={'Sin métricas para ' + selQ.split('-')[1] + '. Añade la primera abajo.'}/>
@@ -2446,7 +2450,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
   const wrapProps = bare ? {} : {style: S.card};
   return (
     <Wrapper {...wrapProps}>
-      {!renderMetricExtra && <h3 style={S.h3}>13-Week Summary</h3>}
+      {!renderMetricExtra && <H3>13-Week Summary</H3>}
       <div style={{overflowX:'auto'}}>
         <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:500}}>
           <colgroup>
@@ -2613,17 +2617,16 @@ function ProjectsTab({data, upd}) {
 function TodosTab({data, upd}) {
   const [showF, setShowF] = useState(false);
   const [showDone, setShowDone] = useState(false);
-  const [form, setForm] = useState({task:'', due:'', startDate: todayStr()});
+  const [form, setForm] = useState({task:'', startDate: todayStr()});
   const [editingId, setEditingId] = useState(null);
   const today = todayStr();
   const curWn = getCurWn();
   const add = () => {
     if (!form.task) return;
     upd(d => { d.todos.push({id: uid(), ...form, done:false, completedDate:null}); });
-    setForm({task:'', due:'', startDate: todayStr()}); setShowF(false);
+    setForm({task:'', startDate: todayStr()}); setShowF(false);
   };
-  const overdue = data.todos.filter(t => !t.done && t.due && t.due < today);
-  const pending = data.todos.filter(t => !t.done && !(t.due && t.due < today));
+  const pending = data.todos.filter(t => !t.done);
   // Completed: only those completed during the CURRENT week
   const done = data.todos.filter(t => {
     if (!t.done || !t.completedDate) return false;
@@ -2631,7 +2634,6 @@ function TodosTab({data, upd}) {
   });
   const TRow = ({t}) => {
     const ri = data.todos.indexOf(t);
-    const late = !t.done && t.due && t.due < today;
     const isEd = editingId === t.id;
     const updField = (field, val) => upd(d => {
       const idx = d.todos.findIndex(x => x.id === t.id);
@@ -2652,22 +2654,14 @@ function TodosTab({data, upd}) {
                     fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'var(--muted-soft)', display:'flex', gap:12, flexWrap:'wrap'}}>
             {t.startDate && <span>Inicio: {t.startDate}</span>}
-            {t.due && <span style={{color: late ? 'var(--err-line)' : 'inherit'}}>Vence: {t.due}{late ? ' !!' : ''}</span>}
             {t.done && t.completedDate &&
               <span style={{color:'var(--ok-line)', fontWeight:600}}>Hecha: {t.completedDate}</span>}
           </div>
           {isEd && (
             <div style={{marginTop:8, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
-                <div>
-                  <label style={S.lbl}>Inicio</label>
-                  <DatePicker value={t.startDate || ''} onChange={v => updField('startDate', v)}/>
-                </div>
-                <div>
-                  <label style={S.lbl}>Vence</label>
-                  <DatePicker value={t.due || ''} onChange={v => updField('due', v)}/>
-                </div>
-              </div>
+              <label style={S.lbl}>Fecha de inicio</label>
+              <DatePicker value={t.startDate || ''}
+                onChange={v => { updField('startDate', v); setEditingId(null); }}/>
             </div>
           )}
         </div>
@@ -2701,21 +2695,13 @@ function TodosTab({data, upd}) {
       {showF && (
         <InlineForm marginTop={0}>
           <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
-          <div style={S.g2}>
-            <Fld label="Start date" value={form.startDate} onChange={v => setForm(f => ({...f, startDate:v}))} type="date"/>
-            <Fld label="Due date (optional)" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
-          </div>
+          <Fld label="Fecha de inicio" value={form.startDate} onChange={v => setForm(f => ({...f, startDate:v}))} type="date"/>
           <div style={{display:'flex', gap:8}}>
             <Btn onClick={add}>Save</Btn>
             <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
           </div>
         </InlineForm>
       )}
-      {overdue.length > 0 &&
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:13, fontWeight:700, color:'var(--err-line)', marginBottom:6}}>Overdue ({overdue.length})</div>
-          {overdue.map(t => <TRow key={t.id} t={t}/>)}
-        </div>}
       <div style={{marginBottom:12}}>
         <div style={{fontSize:13, fontWeight:700, color:'var(--text-2)', marginBottom:6}}>In Progress ({pending.length})</div>
         {pending.length === 0 && <EmptyState icon="check" message="No hay tareas pendientes. Bien hecho."/>}
@@ -2879,7 +2865,6 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         id: uid(),
         task: todoForm.task,
         startDate: selDay,
-        due: todoForm.due || '',
         done: false,
         completedDate: null
       });
@@ -2942,7 +2927,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
 
       {/* Note como primera card */}
       <div className="card-hover" style={S.card}>
-        <h3 style={{...S.h3, marginBottom:8}}>Highlight del día</h3>
+        <H3 style={{marginBottom:8}}>Highlight del día</H3>
         <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
           placeholder="Add today's highlight..."
           style={{width:'100%', border:'none', outline:'none', fontSize:15,
@@ -2952,7 +2937,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       {/* Meetings */}
       <div className="card-hover" style={S.card}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-          <h3 style={{...S.h3, marginBottom:0}}>Meetings</h3>
+          <H3 style={{marginBottom:0}}>Meetings</H3>
           <Btn onClick={() => setMeetingForm({day: dayOfWeek, h:9, m:0, duration:1, title:'', notes:''})}
             style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
         </div>
@@ -2989,7 +2974,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       {/* To-Dos */}
       <div className="card-hover" style={S.card}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-          <h3 style={{...S.h3, marginBottom:0}}>To-Dos</h3>
+          <H3 style={{marginBottom:0}}>To-Dos</H3>
           <Btn onClick={() => setTodoForm({task:'', due:''})}
             style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
         </div>
@@ -3025,7 +3010,6 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
                             color:'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
-                  {t.due && <span style={{fontSize:11, color: t.due < today ? 'var(--err-line)' : 'var(--muted-soft)', flexShrink:0}}>{t.due}</span>}
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
                     <button onClick={() => setEditingTodoId(isEd ? null : t.id)}
                       style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
@@ -3043,16 +3027,9 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                 </div>
                 {isEd && (
                   <div style={{marginTop:6, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
-                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
-                      <div>
-                        <label style={S.lbl}>Inicio</label>
-                        <DatePicker value={t.startDate || ''} onChange={v => updateTodoField(t.id, 'startDate', v)}/>
-                      </div>
-                      <div>
-                        <label style={S.lbl}>Vence</label>
-                        <DatePicker value={t.due || ''} onChange={v => updateTodoField(t.id, 'due', v)}/>
-                      </div>
-                    </div>
+                    <label style={S.lbl}>Fecha de inicio</label>
+                    <DatePicker value={t.startDate || ''}
+                      onChange={v => { updateTodoField(t.id, 'startDate', v); setEditingTodoId(null); }}/>
                   </div>
                 )}
               </div>
@@ -3062,7 +3039,6 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         {todoForm && (
           <InlineForm>
             <Fld label="Task" value={todoForm.task} onChange={v => setTodoForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
-            <Fld label="Due date (optional)" value={todoForm.due} onChange={v => setTodoForm(f => ({...f, due:v}))} type="date"/>
             <div style={{fontSize:11, color:'var(--muted)', marginBottom:8}}>Inicio: {selDay}</div>
             <div style={{display:'flex', gap:7}}>
               <Btn onClick={saveTodo} style={{fontSize:12}}>Save</Btn>
@@ -3075,7 +3051,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       {/* Weekly Scorecard */}
       {scorecard.length > 0 && (
         <div className="card-hover" style={S.cardAccent}>
-          <h3 style={S.h3}>Scorecard - W{wn - qWeeks(q)[0] + 1} · {wDates(wn)}</h3>
+          <H3>Scorecard - W{wn - qWeeks(q)[0] + 1} · {wDates(wn)}</H3>
           <div style={{overflowX:'auto'}}>
             <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:isMobile ? 0 : 560}}>
               <colgroup>
@@ -3135,7 +3111,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       {/* Rocks — foto de las 13 semanas del trimestre */}
       <div className="card-hover" style={{...S.cardAccent, padding:0, overflow:'hidden'}}>
         <div style={{padding:'14px 18px 4px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap'}}>
-          <h3 style={{...S.h3, marginBottom:0}}>Rocks</h3>
+          <H3 style={{marginBottom:0}}>Rocks</H3>
           <div style={{fontSize:11, color:'var(--muted-soft)', letterSpacing:0.3}}>
             {curQ.split('-')[1]} · W{wn - qWeeks(q)[0] + 1} of 13
           </div>
@@ -3212,7 +3188,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
 
       {/* Headlines como primera card (mismo patrón que Daily → Highlight del día) */}
       <div className="card-hover" style={S.card}>
-        <h3 style={{...S.h3, marginBottom:8}}>Headlines de la semana</h3>
+        <H3 style={{marginBottom:8}}>Headlines de la semana</H3>
         <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
           placeholder="¿Qué destacas de esta semana?"
           style={{width:'100%', border:'none', outline:'none', fontSize:15,
