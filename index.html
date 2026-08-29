@@ -106,15 +106,14 @@
   @media (max-width: 768px){
     input:not([type="checkbox"]):not([type="radio"]), textarea, select{font-size:16px !important;}
   }
-  /* iOS PWA overscroll bounce fix — evita que el gris de fondo aparezca al hacer scroll
-     más allá del contenido. Solo en modo PWA (app instalada), Safari browser intacto. */
+  /* iOS PWA overscroll bounce fix + viewport fix — en modo PWA (app instalada) usamos
+     100vh en lugar de 100dvh porque dvh se queda corto en iOS y deja franja gris al fondo.
+     Safari browser intacto (la media query no se activa). */
   @media (display-mode: standalone){
-    html, body{overscroll-behavior:none; height:-webkit-fill-available;}
-    /* Fuerza a que main y outer usen el alto REAL del dispositivo (dvh a veces se queda
-       corto en iOS PWA dejando franja gris abajo). -webkit-fill-available es más fiable. */
-    .app-shell{min-height:-webkit-fill-available !important;}
-    main.main-content{max-height:-webkit-fill-available !important; min-height:-webkit-fill-available !important;}
-    nav.sidebar{height:-webkit-fill-available !important;}
+    html, body{overscroll-behavior:none;}
+    .app-shell{min-height:100vh !important;}
+    main.main-content{max-height:100vh !important; min-height:100vh !important;}
+    nav.sidebar{height:100vh !important;}
   }
   /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
   table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
