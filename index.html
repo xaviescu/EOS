@@ -64,8 +64,8 @@
     --s-4: 16px; --s-5: 24px; --s-6: 32px;
 
     /* Tipografía */
-    --f-mini: 10px; --f-xs: 11px; --f-sm: 14px; --f-md: 14px;
-    --f-lg: 14px; --f-xl: 24px; --f-2xl: 32px;
+    --f-mini: 10px; --f-xs: 11px; --f-sm: 13px; --f-md: 13px;
+    --f-lg: 13px; --f-xl: 20px; --f-2xl: 32px;
 
     /* Elevación */
     --elev-1: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
@@ -396,7 +396,7 @@ function DayTick({st, size}) {
                  style:{display:'inline-block', verticalAlign:'middle'}};
   if (st === 'ok')  return <svg {...props}><polyline points="20 6 9 17 4 12"/></svg>;
   if (st === 'nok') return <svg {...props}><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>;
-  return <span style={{color:'var(--muted-soft)', fontSize:14, fontWeight:500}}>·</span>;
+  return <span style={{color:'var(--muted-soft)', fontSize:13, fontWeight:500}}>·</span>;
 }
 const YEAR = 2026;
 const QS = ['Q1','Q2','Q3','Q4'];
@@ -710,7 +710,7 @@ function EmptyState({icon, message, cta, compact}) {
            style={{opacity:0.55}}>
         {iconMap[icon] || iconMap.inbox}
       </svg>
-      <div style={{fontSize:14, color:'var(--muted)', fontWeight:500}}>{message}</div>
+      <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>{message}</div>
       {cta && <div style={{marginTop:'var(--s-1)'}}>{cta}</div>}
     </div>
   );
@@ -845,7 +845,7 @@ function NB({active, onClick, icon, children}) {
               padding:'7px 12px', margin:'1px 6px', border:'none', cursor:'pointer', textAlign:'left',
               background: active ? 'var(--brand-soft)' : 'transparent',
               color: active ? 'var(--brand)' : 'rgba(255,255,255,0.72)',
-              fontSize:14, fontWeight: active ? 600 : 400, borderRadius:'var(--r-sm)'}}>
+              fontSize:13, fontWeight: active ? 600 : 400, borderRadius:'var(--r-sm)'}}>
       {icon}
       <span>{children}</span>
     </button>
@@ -1171,7 +1171,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
   return (
     <div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-        <div style={{fontSize:14, color:'var(--muted)'}}>Week {selWn} - {wDates(selWn)}</div>
+        <div style={{fontSize:13, color:'var(--muted)'}}>Week {selWn} - {wDates(selWn)}</div>
         <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
       </div>
@@ -1226,9 +1226,9 @@ function StdWeekCalendar({data, upd}) {
     <div>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
-          style={{fontSize:12}}>+ Event</Btn>
+          style={{fontSize:13}}>+ Event</Btn>
         <Btn v="sec" onClick={() => setCopyOpen(o => !o)}
-          style={{fontSize:12}}>Copy to Week</Btn>
+          style={{fontSize:13}}>Copy to Week</Btn>
       </div>
       {copyOpen && (
         <InlineForm marginTop={0}>
@@ -1466,7 +1466,7 @@ function SetupGate({onReady}) {
                        background:'var(--brand)', color:'var(--sidebar-bg)', fontWeight:700, fontSize:15,
                        letterSpacing:0.5, marginBottom:14}}>XE</div>
           <div style={{fontSize:18, fontWeight:600, color:'var(--text)', letterSpacing:-0.2}}>EOS XE</div>
-          <div style={{fontSize:14, color:'var(--muted)', marginTop:4}}>
+          <div style={{fontSize:13, color:'var(--muted)', marginTop:4}}>
             {step === 'config' ? 'Configure your Supabase' : (needsPin2 ? 'Create your PIN' : 'Unlock your dashboard')}
           </div>
         </div>
@@ -1477,12 +1477,12 @@ function SetupGate({onReady}) {
               placeholder="https://XXXX.supabase.co"/>
             <Fld label="Anon Key (publishable)" value={anonKey} onChange={setAnonKey}
               placeholder="eyJhbGciOiJIUzI1Ni..."/>
-            <div style={{fontSize:12, color:'var(--muted)', marginBottom:16, lineHeight:1.5}}>
+            <div style={{fontSize:11, color:'var(--muted)', marginBottom:16, lineHeight:1.5}}>
               Encuéntralos en supabase.com → tu proyecto → Settings → API.
               Los valores se guardan en el navegador, no se envían a ningún lado.
             </div>
             {err && (
-              <div style={{background:'var(--err-bg)', color:'var(--err-fg)', fontSize:12,
+              <div style={{background:'var(--err-bg)', color:'var(--err-fg)', fontSize:11,
                            padding:'8px 12px', borderRadius:'var(--r-sm)', marginBottom:12,
                            borderLeft:'3px solid var(--err-line)'}}>{err}</div>
             )}
@@ -1499,13 +1499,13 @@ function SetupGate({onReady}) {
               <Fld label="Confirm PIN" value={pin2} onChange={setPin2} type="password" placeholder="****"
                 inputMode="numeric" pattern="[0-9]*"/>
             )}
-            <div style={{fontSize:12, color:'var(--muted)', marginBottom:16, lineHeight:1.5}}>
+            <div style={{fontSize:11, color:'var(--muted)', marginBottom:16, lineHeight:1.5}}>
               {needsPin2
                 ? 'This PIN encrypts your data. If you lose it, the data becomes unrecoverable.'
                 : 'Enter the same PIN you used when setting up.'}
             </div>
             {err && (
-              <div style={{background:'var(--err-bg)', color:'var(--err-fg)', fontSize:12,
+              <div style={{background:'var(--err-bg)', color:'var(--err-fg)', fontSize:11,
                            padding:'8px 12px', borderRadius:'var(--r-sm)', marginBottom:12,
                            borderLeft:'3px solid var(--err-line)'}}>{err}</div>
             )}
@@ -1514,7 +1514,7 @@ function SetupGate({onReady}) {
             </Btn>
             <button type="button" onClick={reset}
               style={{width:'100%', marginTop:12, background:'none', border:'none',
-                      color:'var(--muted-soft)', fontSize:12, cursor:'pointer', padding:6, fontFamily:'inherit'}}>
+                      color:'var(--muted-soft)', fontSize:11, cursor:'pointer', padding:6, fontFamily:'inherit'}}>
               Change Supabase config
             </button>
           </form>
@@ -1914,7 +1914,7 @@ function VisionTab({data, upd}) {
                 {val}
                 <button onClick={() => upd(d => { d.vision.values.splice(i, 1); })}
                   style={{border:'none', background:'none', cursor:'pointer',
-                          color:'var(--warn-fg)', fontSize:14, padding:0}}>x</button>
+                          color:'var(--warn-fg)', fontSize:13, padding:0}}>x</button>
               </span>
             ))}
           </div>
@@ -1988,7 +1988,7 @@ function MonthTab({data, upd, goToDay}) {
                 style={{display:'flex', alignItems:'center', gap:6, cursor:'pointer', flexShrink:0, width:50,
                         opacity: we ? 0.5 : 1}}>
                 <span style={{fontSize:11, fontWeight:700, color:'var(--brand)', width:14}}>{dow}</span>
-                <span style={{fontSize:14, fontWeight:700, color:'var(--text)'}}>{n}</span>
+                <span style={{fontSize:13, fontWeight:700, color:'var(--text)'}}>{n}</span>
               </div>
               <input value={(data.monthNotes && data.monthNotes[ds]) || ''}
                 onChange={e => setNote(ds, e.target.value)} placeholder="Add highlight..."
@@ -2058,7 +2058,7 @@ function RocksTab({data, upd}) {
       <PageTitle icon="rocks_all">Rocks</PageTitle>
       <QBtns selQ={selQ} onSelect={qk => { setSelQ(qk); setAddRock(false); }}/>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn onClick={() => setAddRock(true)} style={{fontSize:12}}>+ Rock</Btn>
+        <Btn onClick={() => setAddRock(true)} style={{fontSize:13}}>+ Rock</Btn>
       </div>
       {addRock && (
         <InlineForm marginTop={0}>
@@ -2093,7 +2093,7 @@ function RocksTab({data, upd}) {
                       const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
                       if (idx >= 0) d.quarters[selQ].rocks[idx].title = e.target.value;
                     })}
-                    style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:14,
+                    style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:13,
                             border:'none', outline:'none', fontFamily:'inherit',
                             background:'transparent', padding:0}} placeholder="Rock title..."/>
                   <StatusPill status={rock.status || 'on-track'}
@@ -2102,7 +2102,7 @@ function RocksTab({data, upd}) {
                       const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
                       if (idx >= 0) d.quarters[selQ].rocks[idx].status = val;
                     })}/>
-                  <span style={{fontSize:12, color:'var(--muted-soft)'}}>
+                  <span style={{fontSize:11, color:'var(--muted-soft)'}}>
                     {steps.filter(s => stepDone(s)).length}/{steps.length} steps
                   </span>
                   {!cr
@@ -2110,14 +2110,14 @@ function RocksTab({data, upd}) {
                         onClick={() => setCopyRock(s => ({...s, [rock.id]: QS.find(q => YEAR + '-' + q !== selQ) || 'Q1'}))}
                         style={{fontSize:11, padding:'5px 10px'}}>Copy</Btn>
                     : <div style={{display:'flex', gap:4, alignItems:'center', flexWrap:'wrap'}}>
-                        <span style={{fontSize:12, color:'var(--muted)'}}>To:</span>
+                        <span style={{fontSize:11, color:'var(--muted)'}}>To:</span>
                         {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
                           <button key={q} onClick={() => setCopyRock(s => ({...s, [rock.id]: q}))}
                             style={{padding:'4px 10px', borderRadius:6, border:'1px solid',
                                     borderColor: cr === q ? 'var(--brand)' : 'var(--border)',
                                     background: cr === q ? 'var(--brand)' : 'white',
                                     color: cr === q ? 'white' : 'var(--text-2)',
-                                    cursor:'pointer', fontSize:12, fontWeight: cr === q ? 700 : 400}}>{q}</button>
+                                    cursor:'pointer', fontSize:13, fontWeight: cr === q ? 700 : 400}}>{q}</button>
                         ))}
                         <Btn onClick={() => doCopyRock(rock, cr)} style={{fontSize:11, padding:'5px 10px'}}>Copy</Btn>
                         <Btn v="sec" onClick={() => setCopyRock(s => { const n = {...s}; delete n[rock.id]; return n; })}
@@ -2143,7 +2143,7 @@ function RocksTab({data, upd}) {
                   </div>
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
-                  {steps.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:12, marginBottom:10, fontStyle:'italic'}}>No steps yet.</div>}
+                  {steps.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:11, marginBottom:10, fontStyle:'italic'}}>No steps yet.</div>}
                   {steps.map((step, si) => {
                     const sw2 = step.startWeek || step.weekNum || qw[0];
                     const ew2 = step.endWeek || step.weekNum || qw[0];
@@ -2160,7 +2160,7 @@ function RocksTab({data, upd}) {
                               const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
                               if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
                             })}
-                            style={{flex:'0 1 200px', minWidth:120, fontSize:14, fontWeight:500, color:'var(--text)',
+                            style={{flex:'0 1 200px', minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
                                     textDecoration: 'none',
                                     border:'none', outline:'none', fontFamily:'inherit',
                                     background:'transparent', padding:0}}/>
@@ -2212,13 +2212,13 @@ function RocksTab({data, upd}) {
                           <div style={{display:'flex', alignItems:'center', gap:8, marginTop:8,
                                        padding:'7px 10px', background:'var(--surface)', borderRadius:6,
                                        border:'1px solid var(--border)', flexWrap:'wrap'}}>
-                            <span style={{fontSize:12, color:'var(--muted)'}}>From Wk</span>
+                            <span style={{fontSize:11, color:'var(--muted)'}}>From Wk</span>
                             <select value={sw2}
                               onChange={e => { const v = parseInt(e.target.value); updRange(rock.id, step.id, v, Math.max(v, ew2)); }}
                               style={{...S.inp, width:60, padding:'4px 6px', fontSize:12}}>
                               {qw.map(wn => <option key={wn} value={wn}>{wn - qw[0] + 1}</option>)}
                             </select>
-                            <span style={{fontSize:12, color:'var(--muted)'}}>to Wk</span>
+                            <span style={{fontSize:11, color:'var(--muted)'}}>to Wk</span>
                             <select value={ew2}
                               onChange={e => updRange(rock.id, step.id, sw2, parseInt(e.target.value))}
                               style={{...S.inp, width:60, padding:'4px 6px', fontSize:12}}>
@@ -2234,13 +2234,13 @@ function RocksTab({data, upd}) {
                     <input value={sf.text}
                       onChange={e => setStepForms(f => ({...f, [rock.id]: {...(f[rock.id] || {}), text: e.target.value}}))}
                       style={{...S.inp, flex:1, minWidth:130}} placeholder="Add step..."/>
-                    <span style={{fontSize:12, color:'var(--muted)'}}>Wk</span>
+                    <span style={{fontSize:11, color:'var(--muted)'}}>Wk</span>
                     <select value={sf.sw || qw[0]}
                       onChange={e => setStepForms(f => ({...f, [rock.id]: {...(f[rock.id] || {}), sw: parseInt(e.target.value), ew: Math.max(parseInt(e.target.value), sf.ew || qw[0])}}))}
                       style={{...S.inp, width:58, padding:'6px 4px', fontSize:12}}>
                       {qw.map(wn => <option key={wn} value={wn}>{wn - qw[0] + 1}</option>)}
                     </select>
-                    <span style={{fontSize:12, color:'var(--muted)'}}>&gt;</span>
+                    <span style={{fontSize:11, color:'var(--muted)'}}>&gt;</span>
                     <select value={sf.ew || sf.sw || qw[0]}
                       onChange={e => setStepForms(f => ({...f, [rock.id]: {...(f[rock.id] || {}), ew: parseInt(e.target.value)}}))}
                       style={{...S.inp, width:58, padding:'6px 4px', fontSize:12}}>
@@ -2330,22 +2330,22 @@ function ScorecardTab({data, upd}) {
 
       {/* Toolbar de acciones — siempre arriba y consistente entre vistas */}
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn onClick={() => setShowF(true)} style={{fontSize:12}}>+ Metric</Btn>
+        <Btn onClick={() => setShowF(true)} style={{fontSize:13}}>+ Metric</Btn>
         {isMobile && view === 'daily' && (
-          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:12}}>
+          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
             {editMode ? 'Done' : 'Edit'}
           </Btn>
         )}
         {!showCopyQ
-          ? <Btn v="sec" onClick={() => setShowCopyQ(true)} style={{fontSize:12}}>Copy to Q...</Btn>
+          ? <Btn v="sec" onClick={() => setShowCopyQ(true)} style={{fontSize:13}}>Copy to Q...</Btn>
           : <React.Fragment>
-              <span style={{fontSize:12, color:'var(--muted)'}}>Copy to:</span>
+              <span style={{fontSize:11, color:'var(--muted)'}}>Copy to:</span>
               {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
                 <button key={q} onClick={() => copyToQ(YEAR + '-' + q)}
                   style={{padding:'6px 12px', borderRadius:'var(--r-md)', border:'1px solid var(--brand)',
-                          background:'var(--brand)', color:'white', cursor:'pointer', fontSize:12, fontWeight:700}}>{q}</button>
+                          background:'var(--brand)', color:'white', cursor:'pointer', fontSize:13, fontWeight:700}}>{q}</button>
               ))}
-              <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:12}}>Cancel</Btn>
+              <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:13}}>Cancel</Btn>
             </React.Fragment>
         }
       </div>
@@ -2569,11 +2569,11 @@ function ProjectsTab({data, upd}) {
       }}/>
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <div style={{display:'flex', gap:8, marginBottom:14}}>
-        <Btn onClick={addProject} style={{fontSize:12}}>+ Project</Btn>
-        <Btn v="sec" onClick={copyToNext} style={{fontSize:12}}>Copy to Next Week</Btn>
+        <Btn onClick={addProject} style={{fontSize:13}}>+ Project</Btn>
+        <Btn v="sec" onClick={copyToNext} style={{fontSize:13}}>Copy to Next Week</Btn>
       </div>
       {projects.length === 0 &&
-        <div style={{...S.card, textAlign:'center', color:'var(--muted-soft)', padding:28, fontSize:14}}>
+        <div style={{...S.card, textAlign:'center', color:'var(--muted-soft)', padding:28, fontSize:13}}>
           No projects for week {selWn}.
         </div>}
       {projects.length > 0 && (
@@ -2596,7 +2596,7 @@ function ProjectsTab({data, upd}) {
                     <input value={proj.name || ''}
                       onChange={e => upd(d => { d.weeklyProjects[wk][pi].name = e.target.value; })}
                       placeholder="Project name..."
-                      style={{width:'100%', border:'none', outline:'none', fontSize:14,
+                      style={{width:'100%', border:'none', outline:'none', fontSize:13,
                               fontWeight:700, fontFamily:'inherit', color:'var(--text)',
                               background:'transparent', padding:0}}/>
                   </td>
@@ -2677,9 +2677,9 @@ function TodosTab({data, upd}) {
             onChange={e => upd(d => { d.todos[ri].task = e.target.value; })}
             style={{width:'100%', border:'none', outline:'none', fontWeight:500,
                     color:'var(--text)', textDecoration: 'none',
-                    fontSize:14, marginBottom:4, background:'transparent',
+                    fontSize:13, marginBottom:4, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
-          <div style={{fontSize:12, color:'var(--muted-soft)', display:'flex', gap:12, flexWrap:'wrap'}}>
+          <div style={{fontSize:11, color:'var(--muted-soft)', display:'flex', gap:12, flexWrap:'wrap'}}>
             {t.startDate && <span>Start: {t.startDate}</span>}
             {t.done && t.completedDate &&
               <span style={{color:'var(--ok-line)', fontWeight:600}}>Done: {t.completedDate}</span>}
@@ -2717,7 +2717,7 @@ function TodosTab({data, upd}) {
     <div>
       <PageTitle icon="todos">To-Dos</PageTitle>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn onClick={() => setShowF(true)} style={{fontSize:12}}>+ To-do</Btn>
+        <Btn onClick={() => setShowF(true)} style={{fontSize:13}}>+ To-do</Btn>
       </div>
       {showF && (
         <InlineForm marginTop={0}>
@@ -2730,14 +2730,14 @@ function TodosTab({data, upd}) {
         </InlineForm>
       )}
       <div style={{marginBottom:12}}>
-        <div style={{fontSize:14, fontWeight:700, color:'var(--text-2)', marginBottom:6}}>In Progress ({pending.length})</div>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--text-2)', marginBottom:6}}>In Progress ({pending.length})</div>
         {pending.length === 0 && <EmptyState icon="check" message="No pending tasks. Well done."/>}
         {pending.map(t => <TRow key={t.id} t={t}/>)}
       </div>
       {done.length > 0 && (
         <div style={{marginBottom:12}}>
           <button onClick={() => setShowDone(s => !s)}
-            style={{display:'flex', alignItems:'center', gap:8, fontSize:14,
+            style={{display:'flex', alignItems:'center', gap:8, fontSize:13,
                     fontWeight:700, color:'var(--ok-line)', background:'none', border:'none',
                     cursor:'pointer', marginBottom:6, padding:0}}>
             Completed ({done.length}) {showDone ? '^' : 'v'}
@@ -2766,7 +2766,7 @@ function ProcessesTab({data, upd}) {
         <div>
           <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
             <Btn onClick={() => upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); })}
-              style={{fontSize:12}}>+ Process</Btn>
+              style={{fontSize:13}}>+ Process</Btn>
           </div>
           {ps.length === 0 && <EmptyState icon="target" message="Define your core processes. Add the first one above."/>}
           {ps.map((p, i) => (
@@ -2779,7 +2779,7 @@ function ProcessesTab({data, upd}) {
                     onChange={e => { e.stopPropagation(); upd(d => { d.processes[i].name = e.target.value; }); }}
                     onClick={e => e.stopPropagation()} placeholder="Process name..."
                     style={{width:'100%', border:'none', outline:'none', fontWeight:600,
-                            fontSize:14, fontFamily:'inherit', color:'var(--text)',
+                            fontSize:13, fontFamily:'inherit', color:'var(--text)',
                             background:'transparent', cursor:'text', padding:0}}/>
                 </div>
                 <span style={{display:'inline-block', padding:'3px 10px', borderRadius:10,
@@ -2794,12 +2794,12 @@ function ProcessesTab({data, upd}) {
                   <Fld label="Steps" value={p.steps}
                     onChange={v => upd(d => { d.processes[i].steps = v; })} placeholder="Step 1..." multi/>
                   <div style={{display:'flex', alignItems:'center', gap:14}}>
-                    <label style={{display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:14}}>
+                    <label style={{display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13}}>
                       <input type="checkbox" checked={p.documented || false}
                         onChange={e => upd(d => { d.processes[i].documented = e.target.checked; })}/>
                       Documented
                     </label>
-                    <Btn v="red" style={{marginLeft:'auto', fontSize:12}}
+                    <Btn v="red" style={{marginLeft:'auto', fontSize:13}}
                       onClick={() => upd(d => { d.processes.splice(i, 1); setExp(null); })}>Delete</Btn>
                   </div>
                 </div>
@@ -2910,12 +2910,12 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           onChange={ds => { if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
           style={{width: isMobile ? 130 : 140}}/>
         <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec"
-          style={isMobile ? {padding:'6px 10px', fontSize:12} : {padding:'6px 12px', fontSize:12}}>Today</Btn>
+          style={isMobile ? {padding:'6px 10px', fontSize:13} : {padding:'6px 12px', fontSize:13}}>Today</Btn>
         <div style={{display:'flex', gap:4, alignItems:'center'}}>
           <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
             style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                    fontSize:14, color:'var(--text-2)', padding:0, display:'flex',
+                    fontSize:13, color:'var(--text-2)', padding:0, display:'flex',
                     alignItems:'center', justifyContent:'center'}}>‹</button>
           <button onClick={() => setShowCal(s => !s)}
             style={{height:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
@@ -2928,7 +2928,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
             style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                    fontSize:14, color:'var(--text-2)', padding:0, display:'flex',
+                    fontSize:13, color:'var(--text-2)', padding:0, display:'flex',
                     alignItems:'center', justifyContent:'center'}}>›</button>
         </div>
       </div>
@@ -2957,7 +2957,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         <H3 style={{marginBottom:8}}>Daily Highlight</H3>
         <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
           placeholder="Add today's highlight..."
-          style={{width:'100%', border:'none', outline:'none', fontSize:14,
+          style={{width:'100%', border:'none', outline:'none', fontSize:13,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
@@ -2981,11 +2981,11 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                         background: st.bg,
                         borderLeft:'4px solid ' + st.border,
                         position:'relative'}}>
-                <div style={{fontSize:14, fontWeight:700, color: st.text, flexShrink:0, minWidth:90}}>
+                <div style={{fontSize:13, fontWeight:700, color: st.text, flexShrink:0, minWidth:90}}>
                   {fmtTime(e.h, e.m)} - {fmtTime(end.h, end.m)}
                 </div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:14, fontWeight:600, color: st.text}}>{e.title}</div>
+                  <div style={{fontSize:13, fontWeight:600, color: st.text}}>{e.title}</div>
                   {e.notes && <div style={{fontSize:11, color: st.text, opacity:0.7}}>{e.notes}</div>}
                 </div>
                 <button onClick={(ev) => { ev.stopPropagation(); deleteMeeting(e.id); }}
@@ -3034,7 +3034,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     })}
                     style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
                   <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
-                    style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
+                    style={{flex:1, border:'none', outline:'none', fontSize:13, fontWeight:500,
                             color:'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
@@ -3068,8 +3068,8 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             <Fld label="Task" value={todoForm.task} onChange={v => setTodoForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
             <div style={{fontSize:11, color:'var(--muted)', marginBottom:8}}>Start: {selDay}</div>
             <div style={{display:'flex', gap:7}}>
-              <Btn onClick={saveTodo} style={{fontSize:12}}>Save</Btn>
-              <Btn v="sec" onClick={() => setTodoForm(null)} style={{fontSize:12}}>Cancel</Btn>
+              <Btn onClick={saveTodo} style={{fontSize:13}}>Save</Btn>
+              <Btn v="sec" onClick={() => setTodoForm(null)} style={{fontSize:13}}>Cancel</Btn>
             </div>
           </InlineForm>
         )}
@@ -3103,7 +3103,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   return (
                   <tr key={m.id}>
                     <td style={{padding:'4px 12px'}}>
-                      <div style={{fontSize:14, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
+                      <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
                     </td>
                     <td style={{padding:'4px 4px', textAlign:'center'}}>
                       <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
@@ -3127,7 +3127,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                             style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
                                     border:'none', background:'transparent',
                                     color: info[1],
-                                    cursor:'pointer', fontSize:14, fontWeight:700,
+                                    cursor:'pointer', fontSize:13, fontWeight:700,
                                       display:'inline-flex', alignItems:'center', justifyContent:'center'}}><DayTick st={st}/></button>
                         </td>
                       );
@@ -3208,7 +3208,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
       {embedded && (
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
                      marginBottom:12, gap:10, flexWrap:'wrap'}}>
-          <div style={{fontSize:14, color:'var(--muted)', letterSpacing:0.2}}>
+          <div style={{fontSize:13, color:'var(--muted)', letterSpacing:0.2}}>
             Week {localWn} · {qKey.split('-')[1]} · {wDates(weekNum)}
           </div>
           {wData.rating && <div style={{background:'var(--brand)', color:'white', borderRadius:'var(--r-sm)',
@@ -3221,7 +3221,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         <H3 style={{marginBottom:8}}>Weekly Headlines</H3>
         <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
           placeholder="What stands out this week?"
-          style={{width:'100%', border:'none', outline:'none', fontSize:14,
+          style={{width:'100%', border:'none', outline:'none', fontSize:13,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
@@ -3311,7 +3311,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
             const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(weekNum, di)] === 'ok' ? acc + 1 : acc), 0);
             return (
             <tr key={m.id}>
-              <td style={{padding:'4px 12px'}}><div style={{fontSize:14, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
+              <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
               <td style={{padding:'4px 4px', textAlign:'center'}}>
                 <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
                   <span style={{width:14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
@@ -3329,7 +3329,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
                       style={{width:'100%', height:24, borderRadius:5,
                               border:'none', background:'transparent',
                               color: info[1],
-                              cursor:'pointer', fontSize:14, fontWeight:700,
+                              cursor:'pointer', fontSize:13, fontWeight:700,
                                       display:'inline-flex', alignItems:'center', justifyContent:'center'}}><DayTick st={st}/></button>
                   </td>
                 );
@@ -3393,7 +3393,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
                 const idx = d.todos.findIndex(x => x.id === t.id);
                 if (idx >= 0) d.todos[idx].task = ev.target.value;
               })}
-              style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
+              style={{flex:1, border:'none', outline:'none', fontSize:13, fontWeight:500,
                       textDecoration: 'none', color:'var(--text)',
                       background:'transparent', fontFamily:'inherit', padding:0}}/>
             {t.due && <span style={{fontSize:11, color: late ? 'var(--err-line)' : 'var(--muted-soft)'}}>{t.due}</span>}
@@ -3406,16 +3406,16 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
           </div>
         );
       })}
-      {!visibleTodos.length && <div style={{fontSize:14, color:'var(--muted-soft)', padding:'4px 0'}}>No to-dos yet.</div>}
+      {!visibleTodos.length && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'4px 0'}}>No to-dos yet.</div>}
       {!showF
-        ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:12, padding:'6px 12px'}}>+ Task</Btn>
+        ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:13, padding:'6px 12px'}}>+ Task</Btn>
         : (
           <InlineForm>
             <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
             <Fld label="Due date" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
             <div style={{display:'flex', gap:7}}>
-              <Btn onClick={add} style={{fontSize:12}}>Save</Btn>
-              <Btn v="sec" onClick={() => setShowF(false)} style={{fontSize:12}}>Cancel</Btn>
+              <Btn onClick={add} style={{fontSize:13}}>Save</Btn>
+              <Btn v="sec" onClick={() => setShowF(false)} style={{fontSize:13}}>Cancel</Btn>
             </div>
           </InlineForm>
         )
@@ -3446,7 +3446,7 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues}) {
         {projects.map(proj => (
           <tr key={proj.id}>
             <td style={{padding:'7px 12px 7px 0', verticalAlign:'middle',
-                        fontSize:14, fontWeight:700, color:'var(--text)',
+                        fontSize:13, fontWeight:700, color:'var(--text)',
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                 title={proj.name || '(unnamed)'}>{proj.name || '(unnamed)'}</td>
             <td style={{padding:'7px 0', verticalAlign:'middle'}}>
@@ -3513,7 +3513,7 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
   return (
     <div>
       {active.length === 0 && !form &&
-        <div style={{color:'var(--muted-soft)', fontSize:14, marginBottom:10}}>
+        <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
           No issues. Use "+ Issue" buttons above or add manually.
         </div>}
       {active.map(issue => (
@@ -3525,7 +3525,7 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
             <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
               style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
             <div style={{flex:1}}>
-              <div style={{fontSize:14, fontWeight:600, color:'var(--text)',
+              <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
                            textDecoration: 'none', marginBottom:5}}>
                 {issue.sourceName}
               </div>
@@ -3554,12 +3554,12 @@ function L10Issues({upd, qKey, idsIssues, weekNum}) {
             <Fld label="Issue" value={form.name} onChange={v => setForm(f => ({...f, name:v}))} placeholder="Describe the issue..."/>
             <Fld label="Action" value={form.action} onChange={v => setForm(f => ({...f, action:v}))} placeholder="What action will be taken?"/>
             <div style={{display:'flex', gap:7}}>
-              <Btn onClick={addIssue} style={{fontSize:12}}>Save</Btn>
-              <Btn v="sec" onClick={() => setForm(null)} style={{fontSize:12}}>Cancel</Btn>
+              <Btn onClick={addIssue} style={{fontSize:13}}>Save</Btn>
+              <Btn v="sec" onClick={() => setForm(null)} style={{fontSize:13}}>Cancel</Btn>
             </div>
           </InlineForm>
         )
-        : <Btn onClick={() => setForm({name:'', action:''})} style={{marginTop:8, fontSize:12, padding:'6px 12px'}}>+ Issue manual</Btn>
+        : <Btn onClick={() => setForm({name:'', action:''})} style={{marginTop:8, fontSize:13, padding:'6px 12px'}}>+ Issue manual</Btn>
       }
     </div>
   );
@@ -3636,7 +3636,7 @@ function QReview({data, upd, qKey, qData}) {
         <H3 style={{marginBottom:8}}>Quarter Headlines</H3>
         <input value={rev.headlines || ''} onChange={e => setR('headlines', e.target.value)}
           placeholder="What stands out this quarter?"
-          style={{width:'100%', border:'none', outline:'none', fontSize:14,
+          style={{width:'100%', border:'none', outline:'none', fontSize:13,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
@@ -3676,7 +3676,7 @@ function QReview({data, upd, qKey, qData}) {
               {seg.k === 'issues' && (
                 <div>
                   {idsIssues.length === 0 && !issueForm &&
-                    <div style={{color:'var(--muted-soft)', fontSize:14, marginBottom:10}}>
+                    <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
                       No issues yet. Use "+ Issue" buttons in Scorecard/Rocks above, or add one manually below.
                     </div>}
                   {idsIssues.map(issue => (
@@ -3710,12 +3710,12 @@ function QReview({data, upd, qKey, qData}) {
                         <Fld label="Issue" value={issueForm.name} onChange={v => setIssueForm(f => ({...f, name:v}))} placeholder="Describe the issue..."/>
                         <Fld label="Action" value={issueForm.action} onChange={v => setIssueForm(f => ({...f, action:v}))} placeholder="What action will be taken?"/>
                         <div style={{display:'flex', gap:7}}>
-                          <Btn onClick={addManualIssue} style={{fontSize:12}}>Save</Btn>
-                          <Btn v="sec" onClick={() => setIssueForm(null)} style={{fontSize:12}}>Cancel</Btn>
+                          <Btn onClick={addManualIssue} style={{fontSize:13}}>Save</Btn>
+                          <Btn v="sec" onClick={() => setIssueForm(null)} style={{fontSize:13}}>Cancel</Btn>
                         </div>
                       </InlineForm>
                     )
-                    : <Btn onClick={() => setIssueForm({name:'', action:''})} style={{marginTop:8, fontSize:12, padding:'6px 12px'}}>+ Issue manual</Btn>
+                    : <Btn onClick={() => setIssueForm({name:'', action:''})} style={{marginTop:8, fontSize:13, padding:'6px 12px'}}>+ Issue manual</Btn>
                   }
                 </div>
               )}
@@ -3774,7 +3774,7 @@ function PrintView({data, onBack}) {
   const SH = {
     page: {background:'var(--surface)', padding:20, color:'var(--text)', fontSize:13, lineHeight:1.5, maxWidth:900, margin:'0 auto'},
     h1: {fontSize:26, fontWeight:700, color:'var(--sidebar-bg)', marginBottom:6, marginTop:0, borderBottom:'3px solid var(--brand)', paddingBottom:8},
-    sub: {fontSize:12, color:'var(--muted)', marginBottom:24},
+    sub: {fontSize:11, color:'var(--muted)', marginBottom:24},
     h2: {fontSize:19, fontWeight:700, color:'var(--sidebar-bg)', marginTop:26, marginBottom:12, paddingBottom:5, borderBottom:'2px solid var(--brand)'},
     h3: {fontSize:15, fontWeight:700, color:'var(--sidebar-bg)', marginTop:16, marginBottom:8},
     h4: {fontSize:12, fontWeight:700, color:'var(--text-2)', marginTop:12, marginBottom:5, textTransform:'uppercase', letterSpacing:0.5},
@@ -3809,7 +3809,7 @@ function PrintView({data, onBack}) {
         <div style={{fontSize:38, fontWeight:700, color:'var(--sidebar-bg)', letterSpacing:-0.5, marginBottom:8}}>EOS XE</div>
         <div style={{fontSize:18, color:'var(--muted)', marginBottom:32}}>Dashboard — Resumen completo</div>
         <div style={{width:80, height:3, background:'var(--brand)', margin:'0 auto 24px', borderRadius:2}}/>
-        <div style={{fontSize:14, color:'var(--text-2)', fontWeight:600, textTransform:'uppercase', letterSpacing:1.5, marginBottom:4}}>
+        <div style={{fontSize:13, color:'var(--text-2)', fontWeight:600, textTransform:'uppercase', letterSpacing:1.5, marginBottom:4}}>
           Generado el
         </div>
         <div style={{fontSize:20, color:'var(--text)', fontWeight:600}}>{today}</div>
