@@ -529,8 +529,8 @@ function clearCfg() {
 // Style tokens
 // =====================================================================
 const S = {
-  card: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)'},
-  cardAlt: {background:'var(--surface-alt)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', border:'1px solid var(--border)'},
+  card: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)', borderLeft:'3px solid var(--brand)'},
+  cardAlt: {background:'var(--surface-alt)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', border:'1px solid var(--border)', borderLeft:'3px solid var(--brand)'},
   cardAccent: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)', borderLeft:'3px solid var(--brand)'},
   h2:   {fontSize:'var(--f-xl)', fontWeight:600, color:'var(--text)', marginBottom:'var(--s-5)', marginTop:0, letterSpacing:-0.2},
   h3:   {fontSize:'var(--f-xs)', fontWeight:700, color:'var(--muted)', marginBottom:'var(--s-2)', marginTop:0, textTransform:'uppercase', letterSpacing:0.6},
@@ -753,15 +753,19 @@ function Btn({onClick, children, v, style: sx, disabled}) {
   );
 }
 
-// Título de página estándar — icono + título + fino underline indigo.
+// Título de página estándar — badge cuadrado indigo con el icono + título.
 function PageTitle({icon, children}) {
   return (
-    <div style={{marginBottom:'var(--s-5)'}}>
-      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-        {icon && <span style={{color:'var(--brand)', display:'inline-flex'}}><Icon name={icon} size={22}/></span>}
-        <h2 style={{...S.h2, marginBottom:0}}>{children}</h2>
-      </div>
-      <div style={{width:36, height:2, background:'var(--brand)', borderRadius:1}}/>
+    <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:'var(--s-5)'}}>
+      {icon && (
+        <div style={{width:34, height:34, borderRadius:'var(--r-sm)',
+                     background:'var(--brand-soft)', color:'var(--brand)',
+                     display:'flex', alignItems:'center', justifyContent:'center',
+                     flexShrink:0}}>
+          <Icon name={icon} size={20}/>
+        </div>
+      )}
+      <h2 style={{...S.h2, marginBottom:0}}>{children}</h2>
     </div>
   );
 }
@@ -964,25 +968,26 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         width:'100%', minWidth: compact ? 0 : 680, position:'relative'
       }}>
         {/* Header — hora */}
-        <div style={{gridRow:1, gridColumn:1, background:'var(--surface-alt)',
+        <div style={{gridRow:1, gridColumn:1, background:'var(--brand-soft)',
                      borderBottom:'2px solid var(--brand)',
                      padding: compact ? '3px 4px' : '5px 6px',
-                     color:'var(--muted-soft)', fontSize:9, fontWeight:700,
+                     color:'var(--brand)', fontSize:11, fontWeight:700,
+                     textTransform:'uppercase', letterSpacing:0.6,
                      display:'flex', alignItems:'flex-end', justifyContent:'flex-end'}}>h</div>
         {/* Header — días */}
         {DAYS.map((day, di) => (
           <div key={'h-'+di}
             onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
-            style={{gridRow:1, gridColumn: di+2, background:'var(--surface-alt)',
+            style={{gridRow:1, gridColumn: di+2, background:'var(--brand-soft)',
                     borderBottom:'2px solid var(--brand)',
-                    padding: compact ? '6px 1px' : '6px 4px', color:'var(--text)',
-                    fontSize: compact ? 10 : 13, fontWeight:700, textAlign:'center',
-                    letterSpacing:0.3,
+                    padding: compact ? '6px 1px' : '6px 4px', color:'var(--brand)',
+                    fontSize:11, fontWeight:700, textAlign:'center',
+                    textTransform:'uppercase', letterSpacing:0.6,
                     display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
                     cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
             <div>{compact ? day[0] : day.slice(0, 3)}</div>
             {dayLabels && dayLabels[di] && dayLabels[di].sub &&
-              <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2}}>{dayLabels[di].sub}</div>}
+              <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2, opacity:0.85}}>{dayLabels[di].sub}</div>}
           </div>
         ))}
         {/* Hour labels (fila por cada slot) */}
@@ -1670,7 +1675,7 @@ function App({bundle, onLogout}) {
         <div onClick={() => setNavOpen(false)}
           style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:99}}/>
       )}
-      <nav className="sidebar no-print" style={{width: navOpen ? 240 : (isMobile ? 0 : 48),
+      <nav className="sidebar no-print" style={{width: navOpen ? (isMobile ? 240 : 200) : (isMobile ? 0 : 48),
                    background:'var(--sidebar-bg)', flexShrink:0,
                    display:'flex', flexDirection:'column',
                    position: isMobile ? 'fixed' : 'sticky', top:0, left:0,
@@ -2340,11 +2345,11 @@ function ScorecardTab({data, upd}) {
         {scorecard.length === 0
           ? <EmptyState icon="chart" message={'Sin métricas para ' + selQ.split('-')[1] + '. Añade la primera abajo.'}/>
           : (
-            <div style={{overflowX:'auto'}}>
-              <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:560}}>
+            <div>
+              <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%'}}>
                 <colgroup>
-                  <col style={{width:150}}/><col style={{width:55}}/>
-                  {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
+                  <col style={{width:'20%'}}/><col style={{width:56}}/>
+                  {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:82}}/>
                 </colgroup>
                 <thead>
                   <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
@@ -2385,8 +2390,9 @@ function ScorecardTab({data, upd}) {
                           <td key={di} style={{padding:2, textAlign:'center'}}>
                             <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
                               style={{width:'100%', height:24, borderRadius:5,
-                                      border:'1px solid ' + info[0], background:info[0],
-                                      color:info[1], cursor:'pointer', fontSize:13, fontWeight:700}}>{info[2]}</button>
+                                      border:'none', background:'transparent',
+                                      color: st === 'ok' ? 'var(--ok-line)' : st === 'nok' ? 'var(--err-line)' : 'var(--muted-soft)',
+                                      cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
                           </td>
                         );
                       })}
@@ -2456,17 +2462,16 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                   const goal = parseInt(m.goal || 0);
                   const hasGoal = !isNaN(goal) && goal > 0;
                   const isSel = wn === selWn;
-                  const bg = cnt === 0 ? 'transparent' : hasGoal ? (cnt >= goal ? 'var(--ok-bg)' : 'var(--err-bg)') : 'var(--info-bg)';
-                  const col = cnt === 0 ? 'var(--border-strong)' : hasGoal ? (cnt >= goal ? 'var(--ok-fg)' : 'var(--err-fg)') : 'var(--info-fg)';
+                  const col = cnt === 0 ? 'var(--muted-soft)' : hasGoal ? (cnt >= goal ? 'var(--ok-line)' : 'var(--err-line)') : 'var(--info-line)';
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                       style={{padding:2, textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
                               background: isSel ? 'rgba(94,106,210,0.1)' : 'transparent',
                               outline: isSel ? '2px solid rgba(94,106,210,0.5)' : 'none', outlineOffset:-1}}>
-                      <div style={{width:30, height:28, background:bg, borderRadius:4,
+                      <div style={{width:30, height:28, borderRadius:4,
                                    display:'flex', alignItems:'center', justifyContent:'center',
-                                   fontSize:13, color:col, fontWeight:700, margin:'0 auto'}}>
-                        {cnt > 0 ? cnt : '.'}
+                                   fontSize:14, color:col, fontWeight:700, margin:'0 auto'}}>
+                        {cnt > 0 ? cnt : '·'}
                       </div>
                     </td>
                   );
@@ -2896,7 +2901,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       <div style={{display:'flex', alignItems:'center', gap: isMobile ? 6 : 10, marginBottom: isMobile ? 8 : 14, flexWrap:'wrap'}}>
         <DatePicker value={selDay}
           onChange={ds => { if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
-          style={{width: isMobile ? 150 : 185}}/>
+          style={{width: isMobile ? 130 : 140}}/>
         <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec"
           style={isMobile ? {padding:'6px 10px', fontSize:12} : {}}>Today</Btn>
         <div style={{display:'flex', gap:4, alignItems:'center', marginLeft: isMobile ? 'auto' : 0}}>
@@ -3119,7 +3124,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               <thead>
                 <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
                   <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
-                  <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
+                  <th style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
                   {DAYS.map((day, di) => (
                     <th key={di} style={{padding:'8px 2px', textAlign:'center', color:'var(--text)', fontSize: isMobile ? 10 : 12, fontWeight:700}}>
                       <div>{isMobile ? day[0] : day.slice(0, 3)}</div>
@@ -3134,7 +3139,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     <td style={{padding:'4px 12px'}}>
                       <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
                     </td>
-                    <td style={{padding:'4px 4px'}}>
+                    <td style={{padding:'4px 4px', textAlign:'center'}}>
                       <div style={{fontSize:13, fontWeight:600, color:'var(--brand)'}}>{m.goal || ''}</div>
                     </td>
                     {DAYS.map((_, di) => {
@@ -3150,8 +3155,9 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                               d.quarters[curQ].scorecard[mi].dayData[date] = cur === (st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok') ? null : (st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok');
                             })}
                             style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
-                                    border:'1px solid ' + info[0], background:info[0],
-                                    color:info[1], cursor:'pointer', fontSize:13, fontWeight:700}}>{info[2]}</button>
+                                    border:'none', background:'transparent',
+                                    color: st === 'ok' ? 'var(--ok-line)' : st === 'nok' ? 'var(--err-line)' : 'var(--muted-soft)',
+                                    cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
                         </td>
                       );
                     })}
@@ -3306,7 +3312,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
         <thead>
           <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
             <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
-            <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
+            <th style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
             {DAYS.map((day, di) => (
               <th key={di} style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:12, fontWeight:700}}>
                 <div>{day.slice(0, 3)}</div>
@@ -3320,7 +3326,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
           {scorecard.map((m, mi) => (
             <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
               <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
-              <td style={{padding:'4px 4px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--brand)'}}>{m.goal || ''}</div></td>
+              <td style={{padding:'4px 4px', textAlign:'center'}}><div style={{fontSize:13, fontWeight:600, color:'var(--brand)'}}>{m.goal || ''}</div></td>
               {DAYS.map((_, di) => {
                 const date = dayStr(weekNum, di);
                 const st = m.dayData && m.dayData[date];
@@ -3329,8 +3335,9 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
                   <td key={di} style={{padding:2, textAlign:'center'}}>
                     <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
                       style={{width:'100%', height:24, borderRadius:5,
-                              border:'1px solid ' + info[0], background:info[0],
-                              color:info[1], cursor:'pointer', fontSize:13, fontWeight:700}}>{info[2]}</button>
+                              border:'none', background:'transparent',
+                              color: st === 'ok' ? 'var(--ok-line)' : st === 'nok' ? 'var(--err-line)' : 'var(--muted-soft)',
+                              cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
                   </td>
                 );
               })}
