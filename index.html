@@ -745,7 +745,7 @@ function MoveBtns({onUp, onDown, disabledUp, disabledDown}) {
 function XBtn({onClick, size, title}) {
   const sz = size || 15;
   return (
-    <button onClick={onClick} title={title || 'Eliminar'}
+    <button onClick={onClick} title={title || 'Delete'}
       style={{border:'none', background:'none', cursor:'pointer',
               color:'var(--muted-soft)', fontSize:sz, padding:'2px 6px', lineHeight:1,
               borderRadius:'var(--r-sm)', transition:'color .12s, background .12s',
@@ -1073,7 +1073,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                   <div style={{position:'absolute', top:2, right:3, display:'flex', gap:2, alignItems:'center'}}>
                     {onCycleColor && (
                       <button onClick={(e) => { e.stopPropagation(); onCycleColor(ev.id); }}
-                        title="Cambiar color"
+                        title="Change color"
                         style={{border:'1px solid ' + st.border, borderRadius:'50%',
                                 background:'transparent', width:11, height:11, padding:0,
                                 cursor:'pointer'}}/>
@@ -1229,7 +1229,7 @@ function StdWeekCalendar({data, upd}) {
       {copyOpen && (
         <InlineForm marginTop={0}>
           <div style={{fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8}}>
-            Copiar {events.length} evento{events.length === 1 ? '' : 's'} a…
+            Copy {events.length} event{events.length === 1 ? '' : 's'} to…
           </div>
           <QBtns selQ={copyQ} onSelect={q => {
             setCopyQ(q);
@@ -1238,8 +1238,8 @@ function StdWeekCalendar({data, upd}) {
           }}/>
           <WkBtns selQ={copyQ} selWn={copyWn} onSelect={setCopyWn}/>
           <div style={{display:'flex', gap:7, marginTop:4}}>
-            <Btn onClick={doCopy}>Copiar a Week {copyWn - qWeeks(parseInt(copyQ.split('-Q')[1]))[0] + 1} · {wDates(copyWn)}</Btn>
-            <Btn v="sec" onClick={() => setCopyOpen(false)}>Cancelar</Btn>
+            <Btn onClick={doCopy}>Copy to Week {copyWn - qWeeks(parseInt(copyQ.split('-Q')[1]))[0] + 1} · {wDates(copyWn)}</Btn>
+            <Btn v="sec" onClick={() => setCopyOpen(false)}>Cancel</Btn>
           </div>
         </InlineForm>
       )}
@@ -1400,7 +1400,7 @@ function SetupGate({onReady}) {
 
   const tryUnlock = async () => {
     setErr('');
-    if (!pin || pin.length < 4) { setErr('Mínimo 4 caracteres.'); return; }
+    if (!pin || pin.length < 4) { setErr('Minimum 4 characters.'); return; }
     setBusy(true);
     try {
       const cfg2 = getCfg();
@@ -1411,7 +1411,7 @@ function SetupGate({onReady}) {
       let initialState;
       if (!data) {
         // First time ever - this PIN becomes "the" PIN
-        if (pin2 !== pin) { setErr('Confirma el PIN para crear la cuenta.'); setBusy(false); return; }
+        if (pin2 !== pin) { setErr('Confirm PIN to create account.'); setBusy(false); return; }
         initialState = INIT;
         const {ciphertext, iv} = await encryptJSON(initialState, key);
         const {error: insErr} = await client.from('eos_data').insert({
@@ -1433,7 +1433,7 @@ function SetupGate({onReady}) {
   };
 
   const reset = () => {
-    if (confirm('Esto borra la URL y la clave guardadas (NO borra tus datos en Supabase). ¿Continuar?')) {
+    if (confirm('This deletes the saved URL and key (does NOT delete your Supabase data). Continue?')) {
       clearCfg(); setStep('config'); setSupabaseUrl(''); setAnonKey(''); setPin(''); setErr('');
     }
   };
@@ -1481,23 +1481,23 @@ function SetupGate({onReady}) {
                            padding:'8px 12px', borderRadius:'var(--r-sm)', marginBottom:12,
                            borderLeft:'3px solid var(--err-line)'}}>{err}</div>
             )}
-            <Btn onClick={saveConfig} style={{width:'100%'}}>Continuar</Btn>
+            <Btn onClick={saveConfig} style={{width:'100%'}}>Continue</Btn>
           </form>
         )}
 
         {step === 'pin' && (
           <form onSubmit={e => { e.preventDefault(); if (!busy) tryUnlock(); }}>
-            <Fld label={needsPin2 ? 'Nuevo PIN (mínimo 4 caracteres)' : 'Tu PIN'}
+            <Fld label={needsPin2 ? 'New PIN (min 4 characters)' : 'Your PIN'}
               value={pin} onChange={setPin} type="password" placeholder="****"
               inputMode="numeric" pattern="[0-9]*" autoFocus={true}/>
             {needsPin2 && (
-              <Fld label="Confirma el PIN" value={pin2} onChange={setPin2} type="password" placeholder="****"
+              <Fld label="Confirm PIN" value={pin2} onChange={setPin2} type="password" placeholder="****"
                 inputMode="numeric" pattern="[0-9]*"/>
             )}
             <div style={{fontSize:12, color:'var(--muted)', marginBottom:16, lineHeight:1.5}}>
               {needsPin2
-                ? 'Este PIN cifra tus datos. Si lo pierdes, los datos se vuelven irrecuperables.'
-                : 'Introduce el mismo PIN que usaste al configurar.'}
+                ? 'This PIN encrypts your data. If you lose it, the data becomes unrecoverable.'
+                : 'Enter the same PIN you used when setting up.'}
             </div>
             {err && (
               <div style={{background:'var(--err-bg)', color:'var(--err-fg)', fontSize:12,
@@ -1505,12 +1505,12 @@ function SetupGate({onReady}) {
                            borderLeft:'3px solid var(--err-line)'}}>{err}</div>
             )}
             <Btn onClick={tryUnlock} disabled={busy} style={{width:'100%'}}>
-              {busy ? 'Verificando...' : (needsPin2 ? 'Crear y entrar' : 'Desbloquear')}
+              {busy ? 'Verifying...' : (needsPin2 ? 'Create and enter' : 'Unlock')}
             </Btn>
             <button type="button" onClick={reset}
               style={{width:'100%', marginTop:12, background:'none', border:'none',
                       color:'var(--muted-soft)', fontSize:12, cursor:'pointer', padding:6, fontFamily:'inherit'}}>
-              Cambiar configuración de Supabase
+              Change Supabase config
             </button>
           </form>
         )}
@@ -1524,7 +1524,7 @@ function SetupGate({onReady}) {
 // =====================================================================
 function SyncBadge({status, lastSavedAt}) {
   const colors = {idle:'var(--ok-line)', saving:'var(--brand)', error:'var(--err-line)', loading:'var(--info-line)'};
-  const labels = {idle:'Sincronizado', saving:'Guardando...', error:'Error', loading:'Cargando...'};
+  const labels = {idle:'Synced', saving:'Saving...', error:'Error', loading:'Loading...'};
   const c = colors[status] || colors.idle;
   return (
     <div style={{padding:'4px 10px', display:'flex', alignItems:'center', gap:6,
@@ -1703,7 +1703,7 @@ function App({bundle, onLogout}) {
   ];
   const GNAV_FLAT = GNAV.flatMap(s => s.items);
   const syncColor = {idle:'var(--ok-line)', saving:'var(--brand)', error:'var(--err-line)', loading:'var(--info-line)'}[syncStatus] || 'var(--ok-line)';
-  const syncLabel = {idle:'Sincronizado', saving:'Guardando...', error:'Error de sync', loading:'Cargando...'}[syncStatus] || syncStatus;
+  const syncLabel = {idle:'Synced', saving:'Saving...', error:'Sync error', loading:'Loading...'}[syncStatus] || syncStatus;
 
   return (
     <div style={{display:'flex',
@@ -1801,7 +1801,7 @@ function App({bundle, onLogout}) {
                        display:'flex', gap:6, alignItems:'center', position:'relative'}}>
             <input ref={importRef} type="file" accept=".json" style={{display:'none'}} onChange={importJSON}/>
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="side-btn"
-              title={theme === 'dark' ? 'Cambiar a Light' : 'Cambiar a Dark'}
+              title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
               style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
               {theme === 'dark'
                 ? <React.Fragment><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>Light</React.Fragment>
@@ -1823,8 +1823,8 @@ function App({bundle, onLogout}) {
                 {[
                   ['Exportar backup', () => { exportJSON(); setMoreOpen(false); }],
                   ['Importar backup', () => { importRef.current && importRef.current.click(); setMoreOpen(false); }],
-                  ['Imprimir / PDF', () => { setTab('print'); if (isMobile) setNavOpen(false); setMoreOpen(false); }],
-                  ['Bloquear (logout)', () => { setMoreOpen(false); onLogout(); }]
+                  ['Print / PDF', () => { setTab('print'); if (isMobile) setNavOpen(false); setMoreOpen(false); }],
+                  ['Lock (logout)', () => { setMoreOpen(false); onLogout(); }]
                 ].map(([label, fn]) => (
                   <button key={label} onClick={fn}
                     style={{display:'block', width:'100%', padding:'7px 10px',
@@ -2057,7 +2057,7 @@ function RocksTab({data, upd}) {
       </div>
       {addRock && (
         <InlineForm marginTop={0}>
-          <H3>Nueva Rock — {selQ.split('-')[1]}</H3>
+          <H3>New Rock — {selQ.split('-')[1]}</H3>
           <Fld label="Title" value={rockForm.title}
             onChange={v => setRockForm(f => ({...f, title:v}))}
             placeholder="What must be achieved this quarter?"/>
@@ -2073,7 +2073,7 @@ function RocksTab({data, upd}) {
       )}
       <div>
         {rocks.length === 0 && !addRock &&
-          <EmptyState icon="target" message={'Sin Rocks para ' + selQ.split('-')[1] + '. Añade la primera arriba.'}/>}
+          <EmptyState icon="target" message={'No Rocks for ' + selQ.split('-')[1] + '. Add the first one above.'}/>}
           {rocks.map((rock, ri) => {
             const steps = wr[rock.id] || [];
             const sf = stepForms[rock.id] || {text:'', sw: qw[0], ew: qw[0]};
@@ -2138,7 +2138,7 @@ function RocksTab({data, upd}) {
                   </div>
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
-                  {steps.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:12, marginBottom:10, fontStyle:'italic'}}>Sin steps aún.</div>}
+                  {steps.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:12, marginBottom:10, fontStyle:'italic'}}>No steps yet.</div>}
                   {steps.map((step, si) => {
                     const sw2 = step.startWeek || step.weekNum || qw[0];
                     const ew2 = step.endWeek || step.weekNum || qw[0];
@@ -2340,13 +2340,13 @@ function ScorecardTab({data, upd}) {
                   style={{padding:'6px 12px', borderRadius:'var(--r-md)', border:'1px solid var(--brand)',
                           background:'var(--brand)', color:'white', cursor:'pointer', fontSize:12, fontWeight:700}}>{q}</button>
               ))}
-              <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:12}}>Cancelar</Btn>
+              <Btn v="sec" onClick={() => setShowCopyQ(false)} style={{fontSize:12}}>Cancel</Btn>
             </React.Fragment>
         }
       </div>
       {showF && (
         <InlineForm marginTop={0}>
-          <H3>Nueva métrica — {selQ.split('-')[1]}</H3>
+          <H3>New metric — {selQ.split('-')[1]}</H3>
           <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
           <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
           <div style={{display:'flex', gap:8}}>
@@ -2366,7 +2366,7 @@ function ScorecardTab({data, upd}) {
           <H3 style={{marginBottom:0}}>W{selWn - qw[0] + 1} - {wDates(selWn)}</H3>
         </div>
         {scorecard.length === 0
-          ? <EmptyState icon="chart" message={'Sin métricas para ' + selQ.split('-')[1] + '. Añade la primera abajo.'}/>
+          ? <EmptyState icon="chart" message={'No metrics for ' + selQ.split('-')[1] + '. Add the first one below.'}/>
           : (
             <div>
               <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%'}}>
@@ -2547,7 +2547,7 @@ function ProjectsTab({data, upd}) {
     });
   };
   const createTodoFromProject = (proj) => upd(d => {
-    const taskName = (proj.name || '(sin nombre)') + (proj.textStatus ? ' — ' + proj.textStatus : '');
+    const taskName = (proj.name || '(unnamed)') + (proj.textStatus ? ' — ' + proj.textStatus : '');
     d.todos.push({id: uid(), task: taskName, startDate: todayStr(), due: '', done: false, completedDate: null});
   });
   return (
@@ -2671,13 +2671,13 @@ function TodosTab({data, upd}) {
                     fontSize:14, marginBottom:4, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'var(--muted-soft)', display:'flex', gap:12, flexWrap:'wrap'}}>
-            {t.startDate && <span>Inicio: {t.startDate}</span>}
+            {t.startDate && <span>Start: {t.startDate}</span>}
             {t.done && t.completedDate &&
               <span style={{color:'var(--ok-line)', fontWeight:600}}>Hecha: {t.completedDate}</span>}
           </div>
           {isEd && (
             <div style={{marginTop:8, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
-              <label style={S.lbl}>Fecha de inicio</label>
+              <label style={S.lbl}>Start date</label>
               <DatePicker value={t.startDate || ''}
                 onChange={v => { updField('startDate', v); setEditingId(null); }}/>
             </div>
@@ -2713,7 +2713,7 @@ function TodosTab({data, upd}) {
       {showF && (
         <InlineForm marginTop={0}>
           <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
-          <Fld label="Fecha de inicio" value={form.startDate} onChange={v => setForm(f => ({...f, startDate:v}))} type="date"/>
+          <Fld label="Start date" value={form.startDate} onChange={v => setForm(f => ({...f, startDate:v}))} type="date"/>
           <div style={{display:'flex', gap:8}}>
             <Btn onClick={add}>Save</Btn>
             <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
@@ -2759,7 +2759,7 @@ function ProcessesTab({data, upd}) {
             <Btn onClick={() => upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); })}
               style={{fontSize:12}}>+ Process</Btn>
           </div>
-          {ps.length === 0 && <EmptyState icon="target" message="Define tus core processes. Añade el primero arriba."/>}
+          {ps.length === 0 && <EmptyState icon="target" message="Define your core processes. Add the first one above."/>}
           {ps.map((p, i) => (
             <div key={p.id || i} style={{...S.card, padding:0, overflow:'hidden'}}>
               <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
@@ -2945,7 +2945,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
 
       {/* Note como primera card */}
       <div className="card-hover" style={S.card}>
-        <H3 style={{marginBottom:8}}>Highlight del día</H3>
+        <H3 style={{marginBottom:8}}>Daily Highlight</H3>
         <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
           placeholder="Add today's highlight..."
           style={{width:'100%', border:'none', outline:'none', fontSize:15,
@@ -2960,7 +2960,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
         </div>
         {calEvents.length === 0
-          ? <EmptyState icon="calendar" message="Sin eventos hoy." compact/>
+          ? <EmptyState icon="calendar" message="No events today." compact/>
           : calEvents.map(e => {
             const st = eventStyle(e);
             const end = eventEndTime(e);
@@ -2997,7 +2997,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
         </div>
         {dayTodos.length === 0
-          ? <EmptyState icon="check" message="Sin to-dos hoy." compact/>
+          ? <EmptyState icon="check" message="No to-dos today." compact/>
           : dayTodos.map((t, dti) => {
             const donOnDay = t.completedDate && t.completedDate <= selDay;
             const isEd = editingTodoId === t.id;
@@ -3045,7 +3045,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                 </div>
                 {isEd && (
                   <div style={{marginTop:6, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
-                    <label style={S.lbl}>Fecha de inicio</label>
+                    <label style={S.lbl}>Start date</label>
                     <DatePicker value={t.startDate || ''}
                       onChange={v => { updateTodoField(t.id, 'startDate', v); setEditingTodoId(null); }}/>
                   </div>
@@ -3057,7 +3057,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         {todoForm && (
           <InlineForm>
             <Fld label="Task" value={todoForm.task} onChange={v => setTodoForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
-            <div style={{fontSize:11, color:'var(--muted)', marginBottom:8}}>Inicio: {selDay}</div>
+            <div style={{fontSize:11, color:'var(--muted)', marginBottom:8}}>Start: {selDay}</div>
             <div style={{display:'flex', gap:7}}>
               <Btn onClick={saveTodo} style={{fontSize:12}}>Save</Btn>
               <Btn v="sec" onClick={() => setTodoForm(null)} style={{fontSize:12}}>Cancel</Btn>
@@ -3139,7 +3139,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         </div>
         {rocks.length === 0
           ? <div style={{padding:'0 18px 14px'}}>
-              <EmptyState icon="target" message="Sin Rocks este trimestre." compact/>
+              <EmptyState icon="target" message="No Rocks this quarter." compact/>
             </div>
           : <div style={{padding:'6px 12px 14px'}}>
               <GanttChart rocks={rocks} wr={wr} qw={qWeeks(q)} upd={upd} qKey={curQ} highlightWn={wn}/>
@@ -3209,9 +3209,9 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
 
       {/* Headlines como primera card (mismo patrón que Daily → Highlight del día) */}
       <div className="card-hover" style={S.card}>
-        <H3 style={{marginBottom:8}}>Headlines de la semana</H3>
+        <H3 style={{marginBottom:8}}>Weekly Headlines</H3>
         <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
-          placeholder="¿Qué destacas de esta semana?"
+          placeholder="What stands out this week?"
           style={{width:'100%', border:'none', outline:'none', fontSize:15,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
@@ -3238,7 +3238,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'conclude' && (
                 <div>
                   <Fld label="Notes" value={wData.conclusionNotes || ''} onChange={v => setWD('conclusionNotes', v)} placeholder="Agreements and next steps..." multi/>
-                  <label style={S.lbl}>Meeting rating (1-10)</label>
+                  <label style={S.lbl}>Week rating (1-10)</label>
                   <div style={{display:'flex', gap:4, marginTop:6}}>
                     {[1,2,3,4,5,6,7,8,9,10].map(n => (
                       <button key={n} onClick={() => setWD('rating', wData.rating === n ? null : n)}
@@ -3259,7 +3259,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
 }
 
 function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd}) {
-  if (!rocks.length) return <EmptyState icon="target" message="Sin Rocks este trimestre. Créalos en la pestaña Rocks."/>;
+  if (!rocks.length) return <EmptyState icon="target" message="No Rocks this quarter. Create them in the Rocks tab."/>;
   return (
     <GanttChart rocks={rocks} wr={wr} qw={qw} upd={upd} qKey={qKey} highlightWn={weekNum}
       rightGutterWidth={70}
@@ -3271,7 +3271,7 @@ function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd}) {
 }
 
 function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
-  if (!scorecard.length) return <EmptyState icon="chart" message="Sin métricas este trimestre."/>;
+  if (!scorecard.length) return <EmptyState icon="chart" message="No metrics this quarter."/>;
   const setDay = (mi, date, st) => upd(d => {
     ensureQ(d, qKey);
     if (!d.quarters[qKey].scorecard[mi].dayData) d.quarters[qKey].scorecard[mi].dayData = {};
@@ -3418,14 +3418,14 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
 function L10Projects({data, upd, qKey, weekNum, idsIssues}) {
   const wk = wKey(weekNum);
   const projects = (data.weeklyProjects && data.weeklyProjects[wk]) || [];
-  if (!projects.length) return <EmptyState icon="layers" message="Sin projects esta semana. Añádelos en la pestaña Projects."/>;
+  if (!projects.length) return <EmptyState icon="layers" message="No projects this week. Add them in the Projects tab."/>;
   const setStatus = (pid, val) => upd(d => {
     if (!d.weeklyProjects || !d.weeklyProjects[wk]) return;
     const idx = d.weeklyProjects[wk].findIndex(p => p.id === pid);
     if (idx >= 0) d.weeklyProjects[wk][idx].textStatus = val;
   });
   const createTodoFromProject = (proj) => upd(d => {
-    const taskName = (proj.name || '(sin nombre)') + (proj.textStatus ? ' — ' + proj.textStatus : '');
+    const taskName = (proj.name || '(unnamed)') + (proj.textStatus ? ' — ' + proj.textStatus : '');
     d.todos.push({id: uid(), task: taskName, startDate: todayStr(), due: '', done: false, completedDate: null});
   });
   return (
@@ -3622,6 +3622,15 @@ function QReview({data, upd, qKey, qData}) {
 
   return (
     <div>
+      {/* Headlines del quarter — misma UX que L10 → Headlines de la semana */}
+      <div className="card-hover" style={S.card}>
+        <H3 style={{marginBottom:8}}>Quarter Headlines</H3>
+        <input value={rev.headlines || ''} onChange={e => setR('headlines', e.target.value)}
+          placeholder="What stands out this quarter?"
+          style={{width:'100%', border:'none', outline:'none', fontSize:15,
+                  padding:'2px 0', background:'transparent',
+                  color:'var(--text)', fontFamily:'inherit'}}/>
+      </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
           <div className="accordion-hdr" style={{display:'flex', alignItems:'center', justifyContent:'space-between',
@@ -3645,7 +3654,7 @@ function QReview({data, upd, qKey, qData}) {
               )}
               {seg.k === 'rocks' && (
                 rocks.length === 0
-                  ? <EmptyState icon="target" message="Sin rocks."/>
+                  ? <EmptyState icon="target" message="No rocks."/>
                   : (
                     <GanttChart rocks={rocks} wr={qData.weeklyRocks || {}} qw={qw} upd={upd} qKey={qKey}
                       rightGutterWidth={70}
@@ -3772,14 +3781,14 @@ function PrintView({data, onBack}) {
     <div className="print-view" style={SH.page}>
       <div className="no-print" style={{display:'flex', gap:10, marginBottom:18, padding:'12px 14px', background:'var(--warn-bg)', borderRadius:10, alignItems:'center', flexWrap:'wrap'}}>
         <span style={{fontSize:13, color:'var(--warn-fg)', flex:1, minWidth:200}}>
-          Vista de impresión. Click en "Imprimir / PDF" y elige "Guardar como PDF" en el diálogo del navegador.
+          Print view. Click "Print / PDF" and choose "Save as PDF" in the browser dialog.
         </span>
         <button onClick={triggerPrint}
           style={{padding:'8px 18px', borderRadius:8, border:'none',
-                  background:'var(--brand)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer'}}>Imprimir / PDF</button>
+                  background:'var(--brand)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer'}}>Print / PDF</button>
         <button onClick={onBack}
           style={{padding:'8px 16px', borderRadius:8, border:'1px solid var(--border-strong)',
-                  background:'var(--surface)', color:'var(--text-2)', fontSize:13, cursor:'pointer'}}>← Volver</button>
+                  background:'var(--surface)', color:'var(--text-2)', fontSize:13, cursor:'pointer'}}>← Back</button>
       </div>
 
       {/* Cover page — solo visible en impresión */}
@@ -3820,7 +3829,7 @@ function PrintView({data, onBack}) {
         <h2 style={SH.h2}>Vision {YEAR}</h2>
         <h3 style={SH.h3}>Core Values</h3>
         {(v.values || []).length === 0
-          ? <div style={SH.empty}>Sin valores definidos.</div>
+          ? <div style={SH.empty}>No values defined.</div>
           : <div>{v.values.map((val, i) => <span key={i} style={{...SH.pill('var(--warn-bg)','var(--warn-fg)'), marginRight:5, marginBottom:4}}>{val}</span>)}</div>}
         <h3 style={SH.h3}>Long Term View</h3>
         <div style={SH.p}>{v.ltView || <span style={SH.empty}>Vacío.</span>}</div>
@@ -3987,7 +3996,7 @@ function PrintView({data, onBack}) {
                 <table style={SH.table}>
                   <thead>
                     <tr>
-                      <th style={{...SH.th, width:60}}>Semana</th>
+                      <th style={{...SH.th, width:60}}>Week</th>
                       <th style={SH.th}>Headlines</th>
                       <th style={SH.th}>Conclusión</th>
                       <th style={{...SH.th, width:50, textAlign:'center'}}>Rating</th>
@@ -4048,7 +4057,7 @@ function PrintView({data, onBack}) {
           {ps.map((p, i) => (
             <div key={p.id || i} className="print-section" style={{marginBottom:14}}>
               <h3 style={{...SH.h3, display:'flex', alignItems:'center', gap:10}}>
-                {p.name || '(sin nombre)'}
+                {p.name || '(unnamed)'}
                 <span style={SH.pill(p.documented ? 'var(--ok-bg)' : 'var(--err-bg)', p.documented ? 'var(--ok-fg)' : 'var(--err-fg)')}>
                   {p.documented ? 'Documentado' : 'No documentado'}
                 </span>
