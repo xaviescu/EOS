@@ -100,6 +100,13 @@
   table, .num{font-variant-numeric:tabular-nums;}
   /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
   table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
+  /* Table header brand — cabeceras de tabla con marca indigo. */
+  tr.th-brand th{
+    color:var(--brand) !important;
+    text-transform:uppercase !important; letter-spacing:0.6px !important;
+    font-size:11px !important; font-weight:700 !important;
+  }
+  tr.th-brand th > div{color:var(--brand) !important;}
   /* Prevent iOS Safari from auto-zooming on input focus (happens when
      input font-size < 16px). Applies on touch devices only, so desktop
      keeps its compact input font-size. */
@@ -124,7 +131,7 @@
   .btn:hover{filter:brightness(1.05);}
   .btn:active{transform:translateY(1px);}
   .btn:focus-visible{outline:none; box-shadow:0 0 0 3px var(--brand-ring);}
-  .btn-sec:hover{background:#e6eaf0 !important;}
+  .btn-sec:hover{background:var(--brand-soft) !important;}
 
   /* Nav item de la sidebar */
   .nb-item{transition:background .12s ease, color .12s ease;}
@@ -524,6 +531,7 @@ function clearCfg() {
 const S = {
   card: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)'},
   cardAlt: {background:'var(--surface-alt)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', border:'1px solid var(--border)'},
+  cardAccent: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)', borderLeft:'3px solid var(--brand)'},
   h2:   {fontSize:'var(--f-xl)', fontWeight:600, color:'var(--text)', marginBottom:'var(--s-5)', marginTop:0, letterSpacing:-0.2},
   h3:   {fontSize:'var(--f-xs)', fontWeight:700, color:'var(--muted)', marginBottom:'var(--s-2)', marginTop:0, textTransform:'uppercase', letterSpacing:0.6},
   lbl:  {fontSize:'var(--f-xs)', color:'var(--muted-soft)', display:'block', marginBottom:'var(--s-1)', fontWeight:700, textTransform:'uppercase'},
@@ -675,7 +683,8 @@ function EmptyState({icon, message, cta, compact}) {
     <div style={{...S.cardAlt, textAlign:'center', padding: compact ? 'var(--s-4) var(--s-3)' : 'var(--s-5)',
                  display:'flex', flexDirection:'column', alignItems:'center', gap:'var(--s-2)'}}>
       <svg width={compact ? 22 : 28} height={compact ? 22 : 28} viewBox="0 0 24 24" fill="none"
-           stroke="var(--muted-soft)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+           stroke="var(--brand)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+           style={{opacity:0.55}}>
         {iconMap[icon] || iconMap.inbox}
       </svg>
       <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>{message}</div>
@@ -730,17 +739,30 @@ function XBtn({onClick, size, title}) {
 function Btn({onClick, children, v, style: sx, disabled}) {
   v = v || 'pri'; sx = sx || {};
   const C = {
-    pri: {background:'var(--brand)',    color:'white'},
-    sec: {background:'#f1f3f6',         color:'var(--text-2)'},
-    red: {background:'var(--err-line)', color:'white'},
-    grn: {background:'var(--ok-line)',  color:'white'}
+    pri: {background:'var(--brand)',    color:'white', border:'1px solid var(--brand)'},
+    sec: {background:'transparent',     color:'var(--brand)', border:'1px solid var(--brand-ring)'},
+    red: {background:'var(--err-line)', color:'white', border:'1px solid var(--err-line)'},
+    grn: {background:'var(--ok-line)',  color:'white', border:'1px solid var(--ok-line)'}
   };
   return (
     <button onClick={onClick} disabled={disabled} className={'btn btn-' + v}
-      style={{padding:'8px 16px', borderRadius:'var(--r-md)', border:'none', cursor: disabled ? 'not-allowed' : 'pointer',
+      style={{padding:'7px 15px', borderRadius:'var(--r-md)', cursor: disabled ? 'not-allowed' : 'pointer',
               fontSize:'var(--f-sm)', fontWeight:600, opacity: disabled ? 0.5 : 1, ...(C[v] || C.pri), ...sx}}>
       {children}
     </button>
+  );
+}
+
+// Título de página estándar — icono + título + fino underline indigo.
+function PageTitle({icon, children}) {
+  return (
+    <div style={{marginBottom:'var(--s-5)'}}>
+      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
+        {icon && <span style={{color:'var(--brand)', display:'inline-flex'}}><Icon name={icon} size={22}/></span>}
+        <h2 style={{...S.h2, marginBottom:0}}>{children}</h2>
+      </div>
+      <div style={{width:36, height:2, background:'var(--brand)', borderRadius:1}}/>
+    </div>
   );
 }
 
@@ -1209,7 +1231,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
             {rightGutterWidth && <col style={{width: rightGutterWidth}}/>}
           </colgroup>
           <thead>
-            <tr style={{background:'var(--surface-alt)', borderBottom:'2px solid var(--brand)'}}>
+            <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
               <th style={{padding:'8px 14px', textAlign:'left', color:'var(--text)', fontSize:14, fontWeight:700}}>Rock / Step</th>
               {qw.map(wn => {
                 const isCur = highlightWn && wn === highlightWn;
@@ -1823,7 +1845,7 @@ function VisionTab({data, upd}) {
   const VTABS = [['values','Core Values'], ['lt','Long Term'], ['3y','3 Year View'], ['1y','1 Year View']];
   return (
     <div>
-      <h2 style={S.h2}>Vision {YEAR}</h2>
+      <PageTitle icon="vision">Vision {YEAR}</PageTitle>
       <div className="tabbar">
         {VTABS.map(([id, lbl]) => (
           <button key={id} onClick={() => setVTab(id)}
@@ -1890,7 +1912,7 @@ function MonthTab({data, upd, goToDay}) {
   const setNote = (ds, val) => upd(d => { if (!d.monthNotes) d.monthNotes = {}; d.monthNotes[ds] = val; });
   return (
     <div>
-      <h2 style={S.h2}>Month {YEAR}</h2>
+      <PageTitle icon="month">Month {YEAR}</PageTitle>
       <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:20}}>
         {MONTHS_F.map((m, i) => (
           <button key={i} onClick={() => setSelM(i)} className="btn"
@@ -1983,7 +2005,7 @@ function RocksTab({data, upd}) {
   const curWn = getCurWn();
   return (
     <div>
-      <h2 style={S.h2}>Rocks</h2>
+      <PageTitle icon="rocks_all">Rocks</PageTitle>
       <QBtns selQ={selQ} onSelect={qk => { setSelQ(qk); setAddRock(false); }}/>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setAddRock(true)} style={{fontSize:12}}>+ Rock</Btn>
@@ -2269,7 +2291,7 @@ function ScorecardTab({data, upd}) {
 
   return (
     <div>
-      <h2 style={S.h2}>Scorecard</h2>
+      <PageTitle icon="scorecard">Scorecard</PageTitle>
       <QBtns selQ={selQ} onSelect={handleSetQ}/>
       <div className="tabbar">
         <button className={'tab-underline' + (view === 'daily' ? ' active' : '')}
@@ -2325,7 +2347,7 @@ function ScorecardTab({data, upd}) {
                   {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
                 </colgroup>
                 <thead>
-                  <tr style={{background:'var(--surface-alt)', borderBottom:'2px solid var(--brand)'}}>
+                  <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
                     <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
                     <th style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
                     {DAYS.map((day, di) => (
@@ -2410,7 +2432,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
             {renderMetricExtra && <col style={{width:70}}/>}
           </colgroup>
           <thead>
-            <tr style={{background:'var(--surface-alt)', borderBottom:'2px solid var(--brand)'}}>
+            <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
               <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:14, fontWeight:700}}>Metric</th>
               {qw.map((wn, i) => (
                 <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
@@ -2486,7 +2508,7 @@ function ProjectsTab({data, upd}) {
   });
   return (
     <div>
-      <h2 style={S.h2}>Projects</h2>
+      <PageTitle icon="projects">Projects</PageTitle>
       <QBtns selQ={selQ} onSelect={q => {
         setSelQ(q);
         const qw2 = qWeeks(parseInt(q.split('-Q')[1]));
@@ -2650,7 +2672,7 @@ function TodosTab({data, upd}) {
   };
   return (
     <div>
-      <h2 style={S.h2}>To-Dos</h2>
+      <PageTitle icon="todos">To-Dos</PageTitle>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setShowF(true)} style={{fontSize:12}}>+ To-do</Btn>
       </div>
@@ -2711,7 +2733,7 @@ function ProcessesTab({data, upd}) {
   };
   return (
     <div>
-      <h2 style={S.h2}>Processes</h2>
+      <PageTitle icon="procesos">Processes</PageTitle>
       <div style={{display:'flex', gap:8, marginBottom:18}}>
         <Btn onClick={() => setProcTab('processes')} v={procTab === 'processes' ? 'pri' : 'sec'}>Processes</Btn>
         <Btn onClick={() => setProcTab('stdweek')} v={procTab === 'stdweek' ? 'pri' : 'sec'}>Std Week</Btn>
@@ -2870,7 +2892,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
 
   return (
     <div>
-      <h2 style={S.h2}>Daily Summary</h2>
+      <PageTitle icon="diario">Daily Summary</PageTitle>
       <div style={{display:'flex', alignItems:'center', gap: isMobile ? 6 : 10, marginBottom: isMobile ? 8 : 14, flexWrap:'wrap'}}>
         <DatePicker value={selDay}
           onChange={ds => { if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
@@ -2929,7 +2951,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   background:'transparent', color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
       {/* Meetings */}
-      <div className="card-hover" style={S.cardAlt}>
+      <div className="card-hover" style={S.card}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
           <h3 style={{...S.h3, marginBottom:0}}>Meetings</h3>
           <Btn onClick={() => setMeetingForm({day: dayOfWeek, h:9, m:0, duration:1, title:'', notes:''})}
@@ -3052,7 +3074,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       </div>
 
       {/* Rocks */}
-      <div className="card-hover" style={S.card}>
+      <div className="card-hover" style={S.cardAccent}>
         <h3 style={S.h3}>Rocks</h3>
         {wrThisWeek.length === 0
           ? <EmptyState icon="target" message="Sin steps de rocks esta semana." compact/>
@@ -3085,7 +3107,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
 
       {/* Weekly Scorecard */}
       {scorecard.length > 0 && (
-        <div className="card-hover" style={S.card}>
+        <div className="card-hover" style={S.cardAccent}>
           <h3 style={S.h3}>Scorecard - W{wn - qWeeks(q)[0] + 1} · {wDates(wn)}</h3>
           <div style={{overflowX:'auto'}}>
             <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:isMobile ? 0 : 560}}>
@@ -3095,7 +3117,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                 {DAYS.map((_, i) => <col key={i}/>)}
               </colgroup>
               <thead>
-                <tr style={{background:'var(--surface-alt)', borderBottom:'2px solid var(--brand)'}}>
+                <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
                   <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
                   <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
                   {DAYS.map((day, di) => (
@@ -3159,7 +3181,7 @@ function L10MainTab({data, upd}) {
   };
   return (
     <div>
-      <h2 style={S.h2}>L10 Meetings</h2>
+      <PageTitle icon="l10_main">L10 Meetings</PageTitle>
       <QBtns selQ={selQ} onSelect={handleSetQ}/>
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <WeekL10 data={data} upd={upd} qKey={selQ} weekNum={selWn} embedded={true}/>
@@ -3282,7 +3304,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
           {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
         </colgroup>
         <thead>
-          <tr style={{background:'var(--surface-alt)', borderBottom:'2px solid var(--brand)'}}>
+          <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
             <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Metric</th>
             <th style={{padding:'8px 4px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
             {DAYS.map((day, di) => (
@@ -3555,7 +3577,7 @@ function QReviewMainTab({data, upd}) {
   const qData = data.quarters[selQ] || {rocks:[], weeks:{}, weeklyRocks:{}, qReview:{}, scorecard:[], idsIssues:[]};
   return (
     <div>
-      <h2 style={S.h2}>Q Review</h2>
+      <PageTitle icon="qreview_main">Q Review</PageTitle>
       <QBtns selQ={selQ} onSelect={setSelQ}/>
       <QReview data={data} upd={upd} qKey={selQ} qData={qData}/>
     </div>
