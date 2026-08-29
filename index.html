@@ -1902,9 +1902,7 @@ function VisionTab({data, upd}) {
   const sv = (key, val) => upd(d => { d.vision[key] = val; });
   const [nv, setNv] = useState('');
   const [vTab, setVTab] = useState('values');
-  const VTABS = isMobile
-    ? [['values','Values'], ['lt','Long-Term'], ['3y','3-Year'], ['1y','1-Year']]
-    : [['values','Core Values'], ['lt','Long Term'], ['3y','3 Year View'], ['1y','1 Year View']];
+  const VTABS = [['values','Values'], ['lt','Long-Term'], ['3y','3-Year'], ['1y','1-Year']];
   return (
     <div>
       <PageTitle icon="vision">Vision {YEAR}</PageTitle>
@@ -1916,7 +1914,7 @@ function VisionTab({data, upd}) {
       </div>
       {vTab === 'values' && (
         <div style={S.card}>
-          <H3>Core Values</H3>
+          <H3>Values</H3>
           <div style={{marginBottom:10}}>
             {(v.values || []).map((val, i) => (
               <span key={i} style={{display:'inline-flex', alignItems:'center', gap:5,
@@ -1940,21 +1938,21 @@ function VisionTab({data, upd}) {
       )}
       {vTab === 'lt' && (
         <div style={S.card}>
-          <H3>Long Term View</H3>
+          <H3>Long-Term</H3>
           <textarea style={{...S.ta, minHeight:320}} value={v.ltView || ''}
             onChange={e => sv('ltView', e.target.value)} placeholder="Where do you want to be long term?"/>
         </div>
       )}
       {vTab === '3y' && (
         <div style={S.card}>
-          <H3>3 Year View</H3>
+          <H3>3-Year</H3>
           <textarea style={{...S.ta, minHeight:320}} value={v.threeYearView || ''}
             onChange={e => sv('threeYearView', e.target.value)} placeholder="What does success look like in 3 years?"/>
         </div>
       )}
       {vTab === '1y' && (
         <div style={S.card}>
-          <H3>1 Year View</H3>
+          <H3>1-Year</H3>
           <textarea style={{...S.ta, minHeight:320}} value={v.oneYearView || ''}
             onChange={e => sv('oneYearView', e.target.value)} placeholder="What must be accomplished this year?"/>
         </div>
@@ -2584,12 +2582,12 @@ function ProjectsTab({data, upd}) {
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap'}}>
         <Btn onClick={addProject} style={{fontSize:13}}>+ Project</Btn>
-        <Btn v="sec" onClick={copyToNext} style={{fontSize:13}}>Copy to Next Week</Btn>
         {isMobile && (
           <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
             {editMode ? 'Done' : 'Edit'}
           </Btn>
         )}
+        <Btn v="sec" onClick={copyToNext} style={{fontSize:13}}>Copy to Next Week</Btn>
       </div>
       {projects.length === 0 &&
         <div style={{...S.card, textAlign:'center', color:'var(--muted-soft)', padding:28, fontSize:13}}>
@@ -3038,12 +3036,12 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:6, flexWrap:'wrap'}}>
           <H3 style={{marginBottom:0}}>To-Dos</H3>
           <div style={{display:'flex', gap:6, alignItems:'center'}}>
-            <Btn onClick={() => setTodoForm({task:'', due:''})}
-              style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
             {isMobile && (
               <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
                 style={{fontSize:11, padding:'5px 12px'}}>{editMode ? 'Done' : 'Edit'}</Btn>
             )}
+            <Btn onClick={() => setTodoForm({task:'', due:''})}
+              style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
           </div>
         </div>
         {dayTodos.length === 0
