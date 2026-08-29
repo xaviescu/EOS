@@ -2000,11 +2000,14 @@ function MonthTab({data, upd, goToDay}) {
                 <span style={{fontSize:11, fontWeight:700, color:'var(--brand)', width:14}}>{dow}</span>
                 <span style={{fontSize:13, fontWeight:700, color:'var(--text)'}}>{n}</span>
               </div>
-              <input value={(data.monthNotes && data.monthNotes[ds]) || ''}
+              <textarea value={(data.monthNotes && data.monthNotes[ds]) || ''}
                 onChange={e => setNote(ds, e.target.value)} placeholder="Add highlight..."
+                rows={1}
+                ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
                 style={{flex:1, border:'none',
                         outline:'none', fontSize:13, padding:'3px 4px',
-                        background:'transparent', color:'var(--text)', fontFamily:'inherit'}}/>
+                        background:'transparent', color:'var(--text)', fontFamily:'inherit',
+                        resize:'none', overflow:'hidden', lineHeight:1.5}}/>
             </div>
           );
         })}
@@ -3266,11 +3269,13 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
       {/* Headlines como primera card (mismo patrón que Daily → Highlight del día) */}
       <div className="card-hover" style={S.card}>
         <H3 style={{marginBottom:8}}>Weekly Headlines</H3>
-        <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
+        <textarea value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
           placeholder="What stands out this week?"
+          rows={1}
+          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
           style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                  padding:'2px 0', background:'transparent',
-                  color:'var(--text)', fontFamily:'inherit'}}/>
+                  padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5}}/>
       </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
@@ -3688,11 +3693,13 @@ function QReview({data, upd, qKey, qData}) {
       {/* Headlines del quarter — misma UX que L10 → Headlines de la semana */}
       <div className="card-hover" style={S.card}>
         <H3 style={{marginBottom:8}}>Quarter Headlines</H3>
-        <input value={rev.headlines || ''} onChange={e => setR('headlines', e.target.value)}
+        <textarea value={rev.headlines || ''} onChange={e => setR('headlines', e.target.value)}
           placeholder="What stands out this quarter?"
+          rows={1}
+          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
           style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                  padding:'2px 0', background:'transparent',
-                  color:'var(--text)', fontFamily:'inherit'}}/>
+                  padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5}}/>
       </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
