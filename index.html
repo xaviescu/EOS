@@ -2500,7 +2500,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                   const goal = parseInt(m.goal || 0);
                   const hasGoal = !isNaN(goal) && goal > 0;
                   const isSel = wn === selWn;
-                  const col = cnt === 0 ? 'var(--muted-soft)' : hasGoal ? (cnt >= goal ? 'var(--ok-line)' : 'var(--err-line)') : 'var(--info-line)';
+                  const done = hasGoal && cnt >= goal;
+                  const col = done ? 'var(--brand)' : 'var(--muted-soft)';
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                       style={{padding:'2px 0', textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
