@@ -106,14 +106,15 @@
   @media (max-width: 768px){
     input:not([type="checkbox"]):not([type="radio"]), textarea, select{font-size:16px !important;}
   }
-  /* iOS PWA overscroll bounce fix + viewport fix — en modo PWA (app instalada) usamos
-     100vh en lugar de 100dvh porque dvh se queda corto en iOS y deja franja gris al fondo.
-     Safari browser intacto (la media query no se activa). */
+  /* iOS PWA overscroll bounce + viewport fix — en modo PWA (app instalada) usamos
+     var --app-height (píxeles exactos calculados vía window.innerHeight en JS) porque
+     ni dvh ni vh ni -webkit-fill-available cubren fiablemente toda la pantalla física
+     en iOS PWA. Safari browser intacto (la media query no se activa). */
   @media (display-mode: standalone){
     html, body{overscroll-behavior:none;}
-    .app-shell{min-height:100vh !important;}
-    main.main-content{max-height:100vh !important; min-height:100vh !important;}
-    nav.sidebar{height:100vh !important;}
+    .app-shell{min-height:var(--app-height, 100vh) !important;}
+    main.main-content{max-height:var(--app-height, 100vh) !important; min-height:var(--app-height, 100vh) !important;}
+    nav.sidebar{height:var(--app-height, 100vh) !important;}
   }
   /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
   table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
@@ -275,6 +276,17 @@
       var t = localStorage.getItem('eos-xe-theme');
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
     } catch(e){}
+  })();
+  // iOS PWA viewport fix — usa window.innerHeight (píxeles exactos del viewport real)
+  // como CSS var --app-height. En iOS PWA, dvh/vh a veces no cubren toda la pantalla
+  // física dejando franja gris; innerHeight sí es el valor exacto.
+  (function(){
+    var setH = function(){
+      document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+    };
+    setH();
+    window.addEventListener('resize', setH);
+    window.addEventListener('orientationchange', setH);
   })();
 </script>
 <style>
