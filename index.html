@@ -380,8 +380,8 @@ const SI = {
 // Day status: usado por Scorecard (main), Scorecard summary y L10Scorecard.
 // Tupla [bg, fg, label]. Fallback para status desconocido.
 const DAY_STATUS = {
-  ok:  ['transparent', 'var(--text)',        '✓'],
-  nok: ['transparent', 'var(--muted-soft)',  '·']
+  ok:  ['transparent', 'var(--ok-fg)',  '✓'],
+  nok: ['transparent', 'var(--err-fg)', '×']
 };
 const getDayStatus = st => DAY_STATUS[st] || ['transparent', 'var(--muted-soft)', '·'];
 const YEAR = 2026;
@@ -1178,6 +1178,9 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
 
 function StdWeekCalendar({data, upd}) {
   const [form, setForm] = useState(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copyQ, setCopyQ] = useState(getCurQ());
+  const [copyWn, setCopyWn] = useState(getCurWn());
   const events = data.stdWeeklyEvents || [];
   const save = () => {
     if (!form || !form.title) return;
@@ -1192,13 +1195,45 @@ function StdWeekCalendar({data, upd}) {
     });
     setForm(null);
   };
+  const doCopy = () => {
+    if (!events.length) return;
+    const wk2 = wKey(copyWn);
+    upd(d => {
+      if (!d.weeklyCalendar) d.weeklyCalendar = {};
+      if (!d.weeklyCalendar[wk2]) d.weeklyCalendar[wk2] = [];
+      d.weeklyCalendar[wk2] = d.weeklyCalendar[wk2].filter(e => !e.isStdWeek);
+      events.forEach(e => { d.weeklyCalendar[wk2].push({...e, id: uid(), isStdWeek:true}); });
+    });
+    setCopyOpen(false);
+  };
   return (
     <div>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:8, flexWrap:'wrap'}}>
         <div style={{fontSize:13, color:'var(--muted)'}}>Template - click any slot to add</div>
-        <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
-          style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
+        <div style={{display:'flex', gap:6, alignItems:'center'}}>
+          <Btn v="sec" onClick={() => setCopyOpen(o => !o)}
+            style={{fontSize:11, padding:'5px 12px'}}>Copiar a semana</Btn>
+          <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
+            style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
+        </div>
       </div>
+      {copyOpen && (
+        <InlineForm marginTop={0}>
+          <div style={{fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8}}>
+            Copiar {events.length} evento{events.length === 1 ? '' : 's'} a…
+          </div>
+          <QBtns selQ={copyQ} onSelect={q => {
+            setCopyQ(q);
+            const qw2 = qWeeks(parseInt(q.split('-Q')[1]));
+            setCopyWn(qw2.includes(getCurWn()) ? getCurWn() : qw2[0]);
+          }}/>
+          <WkBtns selQ={copyQ} selWn={copyWn} onSelect={setCopyWn}/>
+          <div style={{display:'flex', gap:7, marginTop:4}}>
+            <Btn onClick={doCopy}>Copiar a Week {copyWn - qWeeks(parseInt(copyQ.split('-Q')[1]))[0] + 1} · {wDates(copyWn)}</Btn>
+            <Btn v="sec" onClick={() => setCopyOpen(false)}>Cancelar</Btn>
+          </div>
+        </InlineForm>
+      )}
       <CalTable events={events}
         onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
         onEdit={ev => setForm({...ev})}
@@ -2041,33 +2076,6 @@ function RocksTab({data, upd}) {
       <div>
         {rocks.length === 0 && !addRock &&
           <EmptyState icon="target" message={'Sin Rocks para ' + selQ.split('-')[1] + '. Añade la primera arriba.'}/>}
-        {/* Single week header (W1..W13) at the top of the rock list.
-            Se oculta en móvil porque los steps se representan como cajitas numeradas
-            1-13 (no como columnas fijas) y el header no se alinea. */}
-        {rocks.length > 0 && !isMobile && (
-          <div style={{position:'sticky', top:0, zIndex:10, background:'var(--bg)',
-                       padding:'6px 30px 10px 42px', marginBottom:2}}>
-            <div style={{display:'flex', alignItems:'center', gap:8}}>
-              <div style={{flex:'0 1 200px', minWidth:120}}/>
-              <div style={{display:'flex', gap:3, flexWrap:'nowrap'}}>
-                {qw.map(wn => {
-                  const isCur = wn === curWn;
-                  return (
-                    <div key={wn}
-                      style={{width:22, height:16, display:'flex', alignItems:'center', justifyContent:'center',
-                              fontSize:9, fontWeight: isCur ? 800 : 700,
-                              color: isCur ? 'var(--brand)' : 'var(--muted)',
-                              background: isCur ? 'rgba(94,106,210,0.15)' : 'transparent',
-                              borderRadius:3}}>
-                      W{wn - qw[0] + 1}
-                    </div>
-                  );
-                })}
-              </div>
-              <span style={{marginLeft:'auto', width:200}}/>
-            </div>
-          </div>
-        )}
           {rocks.map((rock, ri) => {
             const steps = wr[rock.id] || [];
             const sf = stepForms[rock.id] || {text:'', sw: qw[0], ew: qw[0]};
@@ -2157,14 +2165,17 @@ function RocksTab({data, upd}) {
                             {qw.map(wn => {
                               const inR = wn >= sw2 && wn <= ew2;
                               const chk = isWkDone(step, wn);
+                              const isCur = wn === curWn;
                               return (
                                 <div key={wn} onClick={() => inR && toggleWk(rock.id, step.id, wn)}
-                                  style={{width:22, height:22, borderRadius:4, border:'1px solid',
+                                  style={{width:22, height:22, borderRadius:4,
+                                          border: isCur ? '2px solid var(--brand)' : '1px solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: inR ? 'pointer' : 'default',
-                                          borderColor: !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)',
+                                          borderColor: isCur ? 'var(--brand)' : !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)',
                                           background: !inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(94,106,210,0.12)',
-                                          color: !inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)'}}>
+                                          color: !inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)',
+                                          boxShadow: isCur ? '0 0 0 2px var(--brand-ring)' : 'none'}}>
                                   {wn - qw[0] + 1}
                                 </div>
                               );
@@ -2729,20 +2740,7 @@ function TodosTab({data, upd}) {
 function ProcessesTab({data, upd}) {
   const [exp, setExp] = useState(null);
   const [procTab, setProcTab] = useState('processes');
-  const [copyQ, setCopyQ] = useState(getCurQ());
-  const [copyWn, setCopyWn] = useState(getCurWn());
   const ps = data.processes || [];
-  const copyStdToCalendar = () => {
-    const evts = data.stdWeeklyEvents || [];
-    if (!evts.length) return;
-    const wk2 = wKey(copyWn);
-    upd(d => {
-      if (!d.weeklyCalendar) d.weeklyCalendar = {};
-      if (!d.weeklyCalendar[wk2]) d.weeklyCalendar[wk2] = [];
-      d.weeklyCalendar[wk2] = d.weeklyCalendar[wk2].filter(e => !e.isStdWeek);
-      evts.forEach(e => { d.weeklyCalendar[wk2].push({...e, id: uid(), isStdWeek:true}); });
-    });
-  };
   return (
     <div>
       <PageTitle icon="procesos">Processes</PageTitle>
@@ -2795,21 +2793,7 @@ function ProcessesTab({data, upd}) {
         </div>
       )}
       {procTab === 'stdweek' && (
-        <div>
-          <StdWeekCalendar data={data} upd={upd}/>
-          <div style={{...S.card, marginTop:16}}>
-            <h3 style={S.h3}>Copy to Calendar week</h3>
-            <QBtns selQ={copyQ} onSelect={q => {
-              setCopyQ(q);
-              const qw2 = qWeeks(parseInt(q.split('-Q')[1]));
-              setCopyWn(qw2.includes(getCurWn()) ? getCurWn() : qw2[0]);
-            }}/>
-            <WkBtns selQ={copyQ} selWn={copyWn} onSelect={setCopyWn}/>
-            <Btn onClick={copyStdToCalendar}>
-              Copy {(data.stdWeeklyEvents || []).length} events to Week {copyWn} - {wDates(copyWn)}
-            </Btn>
-          </div>
-        </div>
+        <StdWeekCalendar data={data} upd={upd}/>
       )}
     </div>
   );
