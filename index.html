@@ -1319,23 +1319,9 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
               const rockRow = (
                 <tr key={'r' + rock.id} style={{background:'var(--surface-alt)', borderTop:'2px solid var(--border-strong)'}}>
                   <td style={{padding: '6px ' + labelPadX + 'px', fontSize: isMobile ? 11 : 13, color:'var(--text)',
+                              fontWeight:600,
                               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                      title={rock.title}>
-                    <div style={{display:'flex', alignItems:'center', gap:8, minWidth:0}}>
-                      <span style={{fontWeight:600, flex:'0 1 auto', overflow:'hidden', textOverflow:'ellipsis'}}>{rock.title}</span>
-                      {totalSteps > 0 && (
-                        <span title={doneSteps + ' de ' + totalSteps + ' steps hechos (' + pct + '%)'}
-                          style={{flex:'0 0 auto', display:'inline-flex', alignItems:'center', gap:4}}>
-                          <span style={{width:36, height:5, borderRadius:3, background:'var(--border-strong)', overflow:'hidden', display:'inline-block'}}>
-                            <span style={{display:'block', height:'100%', width:pct + '%',
-                                          background: pct === 100 ? 'var(--ok-line)' : 'var(--brand)',
-                                          transition:'width .3s ease'}}/>
-                          </span>
-                          <span style={{fontSize:10, color:'var(--muted)', fontWeight:600}}>{doneSteps}/{totalSteps}</span>
-                        </span>
-                      )}
-                    </div>
-                  </td>
+                      title={rock.title}>{rock.title}</td>
                   {qw.map(wn => {
                     const isCur = highlightWn && wn === highlightWn;
                     return (
@@ -2390,8 +2376,8 @@ function ScorecardTab({data, upd}) {
             <div>
               <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%'}}>
                 <colgroup>
-                  <col style={{width: isMobile ? 76 : '20%'}}/>
-                  <col style={{width: isMobile ? 34 : 56}}/>
+                  <col style={{width: isMobile ? 72 : '20%'}}/>
+                  <col style={{width: isMobile ? 48 : 66}}/>
                   {DAYS.map((_, i) => <col key={i}/>)}
                   {(!isMobile || editMode) && <col style={{width: isMobile ? 66 : 82}}/>}
                 </colgroup>
@@ -2419,11 +2405,20 @@ function ScorecardTab({data, upd}) {
                                   background:'transparent', padding:0}} placeholder="Metric..."/>
                       </td>
                       <td style={{padding:'6px 2px', textAlign:'center'}}>
-                        <input value={m.goal || ''}
-                          onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].goal = e.target.value; })}
-                          style={{width:'100%', border:'none', outline:'none', fontSize: isMobile ? 13 : 13,
-                                  fontFamily:'inherit', color:'var(--brand)', fontWeight:600,
-                                  background:'transparent', padding:0, textAlign:'center'}} placeholder="Goal..."/>
+                        {(() => {
+                          const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(selWn, di)] === 'ok' ? acc + 1 : acc), 0);
+                          return (
+                            <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:2, color:'var(--brand)', fontWeight:600, fontSize:13}}>
+                              <span>{cnt}</span>
+                              <span style={{color:'var(--muted)'}}>/</span>
+                              <input value={m.goal || ''}
+                                onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].goal = e.target.value; })}
+                                style={{width:22, border:'none', outline:'none', fontSize:13,
+                                        fontFamily:'inherit', color:'var(--brand)', fontWeight:600,
+                                        background:'transparent', padding:0, textAlign:'left'}} placeholder="—"/>
+                            </div>
+                          );
+                        })()}
                       </td>
                       {DAYS.map((_, di) => {
                         const date = dayStr(selWn, di);
