@@ -1281,6 +1281,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
   const labelW = isMobile ? 96 : 200;
   const labelPadX = isMobile ? 6 : 14;
   const stepIndent = isMobile ? 14 : 24;
+  const gutterW = rightGutterWidth ? (isMobile ? 54 : rightGutterWidth) : 0;
   return (
     <div>
       <div style={{overflowX: isMobile ? 'visible' : 'auto'}}>
@@ -1288,7 +1289,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
           <colgroup>
             <col style={{width: labelW}}/>
             {qw.map((_, i) => <col key={i}/>)}
-            {rightGutterWidth && <col style={{width: rightGutterWidth}}/>}
+            {rightGutterWidth && <col style={{width: gutterW}}/>}
           </colgroup>
           <thead>
             <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
@@ -2455,6 +2456,7 @@ function ScorecardTab({data, upd}) {
 }
 
 function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra}) {
+  const isMobile = useIsMobile();
   const weekCount = (m, wn) => DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
   if (!scorecard || !scorecard.length) return null;
   // Cuando se usa dentro del acordeón de Q Review (renderMetricExtra activo), evitamos
@@ -2463,26 +2465,27 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
   const bare = !!renderMetricExtra;
   const Wrapper = bare ? React.Fragment : 'div';
   const wrapProps = bare ? {} : {style: S.card};
+  const labelW = isMobile ? (renderMetricExtra ? 96 : 96) : (renderMetricExtra ? 200 : 130);
+  const gutterW = isMobile ? 54 : 70;
+  const labelPadX = isMobile ? 6 : 12;
   return (
     <Wrapper {...wrapProps}>
       {!renderMetricExtra && <H3>13-Week Summary</H3>}
-      <div style={{overflowX:'auto'}}>
-        <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth: renderMetricExtra ? 500 : 0}}>
+      <div style={{overflowX: isMobile ? 'visible' : 'auto'}}>
+        <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth: isMobile ? 0 : (renderMetricExtra ? 500 : 0)}}>
           <colgroup>
-            <col style={{width: renderMetricExtra ? 200 : 110}}/>
-            <col style={{width: 44}}/>
+            <col style={{width: labelW}}/>
             {qw.map((_, i) => <col key={i}/>)}
-            {renderMetricExtra && <col style={{width:70}}/>}
+            {renderMetricExtra && <col style={{width: gutterW}}/>}
           </colgroup>
           <thead>
             <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
-              <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}></th>
-              <th style={{padding:'8px 2px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
+              <th style={{padding: '8px ' + labelPadX + 'px', textAlign:'left', color:'var(--text)', fontSize: isMobile ? 12 : 13, fontWeight:700}}></th>
               {qw.map((wn, i) => (
                 <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                   style={{padding:'8px 0', textAlign:'center',
                           color: wn === selWn ? 'var(--brand)' : 'var(--text-2)',
-                          fontSize:11, cursor: onSelectWn ? 'pointer' : 'default',
+                          fontSize: isMobile ? 10 : 11, cursor: onSelectWn ? 'pointer' : 'default',
                           fontWeight: wn === selWn ? 800 : 600}}>{i + 1}</th>
               ))}
               {renderMetricExtra && <th/>}
@@ -2491,10 +2494,12 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
           <tbody>
             {scorecard.map(m => (
               <tr key={m.id}>
-                <td style={{padding:'7px 12px', fontSize:13, fontWeight:600, color:'var(--text)',
+                <td style={{padding: '7px ' + labelPadX + 'px', fontSize: isMobile ? 11 : 13, fontWeight:600, color:'var(--text)',
                             overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                    title={m.metric}>{m.metric}</td>
-                <td style={{padding:'7px 2px', textAlign:'center', fontSize:13, color:'var(--brand)', fontWeight:600}}>{m.goal || ''}</td>
+                    title={m.metric}>
+                  {m.metric}
+                  {m.goal && <span style={{color:'var(--muted)', fontWeight:500, marginLeft:isMobile ? 3 : 6, fontSize: isMobile ? 10 : 13}}>({m.goal})</span>}
+                </td>
                 {qw.map(wn => {
                   const cnt = weekCount(m, wn);
                   const goal = parseInt(m.goal || 0);
@@ -2507,16 +2512,16 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                       style={{padding:'2px 0', textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
                               background: isSel ? 'rgba(94,106,210,0.1)' : undefined,
                               outline: isSel ? '2px solid rgba(94,106,210,0.5)' : 'none', outlineOffset:-1}}>
-                      <div style={{height:26, borderRadius:4,
+                      <div style={{height: isMobile ? 22 : 26, borderRadius:4,
                                    display:'flex', alignItems:'center', justifyContent:'center',
-                                   fontSize:13, color:col, fontWeight:700}}>
+                                   fontSize: isMobile ? 11 : 13, color:col, fontWeight:700}}>
                         {cnt > 0 ? cnt : '·'}
                       </div>
                     </td>
                   );
                 })}
                 {renderMetricExtra && (
-                  <td style={{padding:'4px 8px', textAlign:'right'}}>{renderMetricExtra(m)}</td>
+                  <td style={{padding: isMobile ? '4px 4px' : '4px 8px', textAlign:'right'}}>{renderMetricExtra(m)}</td>
                 )}
               </tr>
             ))}
