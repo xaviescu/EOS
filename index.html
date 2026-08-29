@@ -1698,10 +1698,10 @@ function App({bundle, onLogout}) {
     {label:'Do / Capture', items: [
       ['projects','Projects'],
       ['todos','To-Dos'],
+      ['scorecard','Scorecard'],
       ['month','Month']
     ]},
     {label:'Review', items: [
-      ['scorecard','Scorecard'],
       ['l10_main','L10 Meetings'],
       ['qreview_main','Q Review']
     ]}
@@ -2472,21 +2472,23 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
     <Wrapper {...wrapProps}>
       {!renderMetricExtra && <H3>13-Week Summary</H3>}
       <div style={{overflowX:'auto'}}>
-        <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:500}}>
+        <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth: renderMetricExtra ? 500 : 0}}>
           <colgroup>
-            <col style={{width: renderMetricExtra ? 200 : 170}}/>
+            <col style={{width: renderMetricExtra ? 200 : 110}}/>
+            <col style={{width: 44}}/>
             {qw.map((_, i) => <col key={i}/>)}
             {renderMetricExtra && <col style={{width:70}}/>}
           </colgroup>
           <thead>
             <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
-              <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:14, fontWeight:700}}>Metric</th>
+              <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}></th>
+              <th style={{padding:'8px 2px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
               {qw.map((wn, i) => (
                 <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
-                  style={{padding:'8px 2px', textAlign:'center',
+                  style={{padding:'8px 0', textAlign:'center',
                           color: wn === selWn ? 'var(--brand)' : 'var(--text-2)',
                           fontSize:11, cursor: onSelectWn ? 'pointer' : 'default',
-                          fontWeight: wn === selWn ? 800 : 600}}>W{i + 1}</th>
+                          fontWeight: wn === selWn ? 800 : 600}}>{i + 1}</th>
               ))}
               {renderMetricExtra && <th/>}
             </tr>
@@ -2494,10 +2496,10 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
           <tbody>
             {scorecard.map(m => (
               <tr key={m.id}>
-                <td style={{padding:'7px 12px', fontSize:14, fontWeight:600, color:'var(--text)'}}>
-                  {m.metric}
-                  {m.goal && <span style={{fontSize:11, color:'var(--muted-soft)', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
-                </td>
+                <td style={{padding:'7px 12px', fontSize:13, fontWeight:600, color:'var(--text)',
+                            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                    title={m.metric}>{m.metric}</td>
+                <td style={{padding:'7px 2px', textAlign:'center', fontSize:13, color:'var(--brand)', fontWeight:600}}>{m.goal || ''}</td>
                 {qw.map(wn => {
                   const cnt = weekCount(m, wn);
                   const goal = parseInt(m.goal || 0);
@@ -2506,12 +2508,12 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
                   const col = cnt === 0 ? 'var(--muted-soft)' : hasGoal ? (cnt >= goal ? 'var(--ok-line)' : 'var(--err-line)') : 'var(--info-line)';
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
-                      style={{padding:2, textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
+                      style={{padding:'2px 0', textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
                               background: isSel ? 'rgba(94,106,210,0.1)' : undefined,
                               outline: isSel ? '2px solid rgba(94,106,210,0.5)' : 'none', outlineOffset:-1}}>
-                      <div style={{width:30, height:28, borderRadius:4,
+                      <div style={{height:26, borderRadius:4,
                                    display:'flex', alignItems:'center', justifyContent:'center',
-                                   fontSize:14, color:col, fontWeight:700, margin:'0 auto'}}>
+                                   fontSize:13, color:col, fontWeight:700}}>
                         {cnt > 0 ? cnt : '·'}
                       </div>
                     </td>
