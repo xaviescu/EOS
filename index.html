@@ -64,8 +64,8 @@
     --s-4: 16px; --s-5: 24px; --s-6: 32px;
 
     /* Tipografía */
-    --f-xs: 12px; --f-sm: 14px; --f-md: 16px;
-    --f-lg: 18px; --f-xl: 24px; --f-2xl: 32px;
+    --f-mini: 10px; --f-xs: 11px; --f-sm: 14px; --f-md: 14px;
+    --f-lg: 14px; --f-xl: 24px; --f-2xl: 32px;
 
     /* Elevación */
     --elev-1: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
@@ -102,6 +102,10 @@
     overflow-x:hidden;-webkit-text-size-adjust:100%;}
   /* Números tabulares en tablas — todas las cifras alinean en columnas. */
   table, .num{font-variant-numeric:tabular-nums;}
+  /* iOS Safari zoom fix — inputs a 16px SOLO en móvil para evitar autozoom. */
+  @media (max-width: 768px){
+    input:not([type="checkbox"]):not([type="radio"]), textarea, select{font-size:16px !important;}
+  }
   /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
   table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
   /* Table header brand — cabeceras de tabla con marca indigo. */
@@ -2156,7 +2160,7 @@ function RocksTab({data, upd}) {
                               const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
                               if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
                             })}
-                            style={{flex:'0 1 200px', minWidth:120, fontSize:16, fontWeight:500, color:'var(--text)',
+                            style={{flex:'0 1 200px', minWidth:120, fontSize:14, fontWeight:500, color:'var(--text)',
                                     textDecoration: 'none',
                                     border:'none', outline:'none', fontFamily:'inherit',
                                     background:'transparent', padding:0}}/>
@@ -2592,7 +2596,7 @@ function ProjectsTab({data, upd}) {
                     <input value={proj.name || ''}
                       onChange={e => upd(d => { d.weeklyProjects[wk][pi].name = e.target.value; })}
                       placeholder="Project name..."
-                      style={{width:'100%', border:'none', outline:'none', fontSize:16,
+                      style={{width:'100%', border:'none', outline:'none', fontSize:14,
                               fontWeight:700, fontFamily:'inherit', color:'var(--text)',
                               background:'transparent', padding:0}}/>
                   </td>
@@ -2673,7 +2677,7 @@ function TodosTab({data, upd}) {
             onChange={e => upd(d => { d.todos[ri].task = e.target.value; })}
             style={{width:'100%', border:'none', outline:'none', fontWeight:500,
                     color:'var(--text)', textDecoration: 'none',
-                    fontSize:16, marginBottom:4, background:'transparent',
+                    fontSize:14, marginBottom:4, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
           <div style={{fontSize:12, color:'var(--muted-soft)', display:'flex', gap:12, flexWrap:'wrap'}}>
             {t.startDate && <span>Start: {t.startDate}</span>}
@@ -2953,7 +2957,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         <H3 style={{marginBottom:8}}>Daily Highlight</H3>
         <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
           placeholder="Add today's highlight..."
-          style={{width:'100%', border:'none', outline:'none', fontSize:16,
+          style={{width:'100%', border:'none', outline:'none', fontSize:14,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
@@ -3030,7 +3034,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     })}
                     style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
                   <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
-                    style={{flex:1, border:'none', outline:'none', fontSize:16, fontWeight:500,
+                    style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
                             color:'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
@@ -3217,7 +3221,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         <H3 style={{marginBottom:8}}>Weekly Headlines</H3>
         <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
           placeholder="What stands out this week?"
-          style={{width:'100%', border:'none', outline:'none', fontSize:16,
+          style={{width:'100%', border:'none', outline:'none', fontSize:14,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
@@ -3389,7 +3393,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues}) {
                 const idx = d.todos.findIndex(x => x.id === t.id);
                 if (idx >= 0) d.todos[idx].task = ev.target.value;
               })}
-              style={{flex:1, border:'none', outline:'none', fontSize:16, fontWeight:500,
+              style={{flex:1, border:'none', outline:'none', fontSize:14, fontWeight:500,
                       textDecoration: 'none', color:'var(--text)',
                       background:'transparent', fontFamily:'inherit', padding:0}}/>
             {t.due && <span style={{fontSize:11, color: late ? 'var(--err-line)' : 'var(--muted-soft)'}}>{t.due}</span>}
@@ -3632,7 +3636,7 @@ function QReview({data, upd, qKey, qData}) {
         <H3 style={{marginBottom:8}}>Quarter Headlines</H3>
         <input value={rev.headlines || ''} onChange={e => setR('headlines', e.target.value)}
           placeholder="What stands out this quarter?"
-          style={{width:'100%', border:'none', outline:'none', fontSize:16,
+          style={{width:'100%', border:'none', outline:'none', fontSize:14,
                   padding:'2px 0', background:'transparent',
                   color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
