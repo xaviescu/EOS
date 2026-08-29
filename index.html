@@ -3280,6 +3280,7 @@ function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd}) {
 }
 
 function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
+  const isMobile = useIsMobile();
   if (!scorecard.length) return <EmptyState icon="chart" message="No metrics this quarter."/>;
   const setDay = (mi, date, st) => upd(d => {
     ensureQ(d, qKey);
@@ -3287,19 +3288,23 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
     const cur = d.quarters[qKey].scorecard[mi].dayData[date];
     d.quarters[qKey].scorecard[mi].dayData[date] = cur === st ? null : st;
   });
+  const labelW = isMobile ? 78 : 150;
+  const goalW = isMobile ? 44 : 55;
+  const gutterW = isMobile ? 52 : 72;
+  const labelPadX = isMobile ? 6 : 12;
   return (
-    <div style={{overflowX:'auto'}}>
-      <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:560}}>
+    <div style={{overflowX: isMobile ? 'visible' : 'auto'}}>
+      <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth: isMobile ? 0 : 560}}>
         <colgroup>
-          <col style={{width:150}}/><col style={{width:55}}/>
-          {DAYS.map((_, i) => <col key={i}/>)}<col style={{width:72}}/>
+          <col style={{width: labelW}}/><col style={{width: goalW}}/>
+          {DAYS.map((_, i) => <col key={i}/>)}<col style={{width: gutterW}}/>
         </colgroup>
         <thead>
           <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
-            <th style={{padding:'8px 12px', textAlign:'left', color:'var(--text)', fontSize:13, fontWeight:700}}></th>
-            <th style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>Goal</th>
+            <th style={{padding: '8px ' + labelPadX + 'px', textAlign:'left', color:'var(--text)', fontSize: isMobile ? 12 : 13, fontWeight:700}}></th>
+            <th style={{padding:'8px 2px', textAlign:'center', color:'var(--text)', fontSize: isMobile ? 12 : 13, fontWeight:700}}>Goal</th>
             {DAYS.map((day, di) => (
-              <th key={di} style={{padding:'8px 4px', textAlign:'center', color:'var(--text)', fontSize:13, fontWeight:700}}>
+              <th key={di} style={{padding: isMobile ? '8px 0' : '8px 4px', textAlign:'center', color:'var(--text)', fontSize: isMobile ? 12 : 13, fontWeight:700}}>
                 {day[0]}
               </th>
             ))}
@@ -3311,12 +3316,14 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
             const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(weekNum, di)] === 'ok' ? acc + 1 : acc), 0);
             return (
             <tr key={m.id}>
-              <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
-              <td style={{padding:'4px 4px', textAlign:'center'}}>
-                <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
-                  <span style={{width:14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
+              <td style={{padding: '4px ' + labelPadX + 'px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={m.metric}>
+                <div style={{fontSize: isMobile ? 12 : 13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{m.metric}</div>
+              </td>
+              <td style={{padding:'4px 2px', textAlign:'center'}}>
+                <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize: isMobile ? 12 : 13}}>
+                  <span style={{width: isMobile ? 12 : 14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
                   <span style={{color:'var(--muted)'}}>/</span>
-                  <span style={{width:14, textAlign:'left', display:'inline-block'}}>{m.goal || '—'}</span>
+                  <span style={{width: isMobile ? 12 : 14, textAlign:'left', display:'inline-block'}}>{m.goal || '—'}</span>
                 </div>
               </td>
               {DAYS.map((_, di) => {
@@ -3324,17 +3331,17 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
                 const st = m.dayData && m.dayData[date];
                 const info = getDayStatus(st);
                 return (
-                  <td key={di} style={{padding:2, textAlign:'center'}}>
+                  <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
                     <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
-                      style={{width:'100%', height:24, borderRadius:5,
+                      style={{width:'100%', height: isMobile ? 28 : 24, borderRadius:5,
                               border:'none', background:'transparent',
                               color: info[1],
                               cursor:'pointer', fontSize:13, fontWeight:700,
-                                      display:'inline-flex', alignItems:'center', justifyContent:'center'}}><DayTick st={st}/></button>
+                                      display:'inline-flex', alignItems:'center', justifyContent:'center'}}><DayTick st={st} size={isMobile ? 18 : 15}/></button>
                   </td>
                 );
               })}
-              <td style={{padding:'2px 6px', textAlign:'center', verticalAlign:'middle'}}>
+              <td style={{padding: isMobile ? '2px 2px' : '2px 6px', textAlign:'center', verticalAlign:'middle'}}>
                 <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
                   weekNum={weekNum} upd={upd} qKey={qKey}/>
               </td>
