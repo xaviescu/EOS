@@ -106,6 +106,11 @@
   @media (max-width: 768px){
     input:not([type="checkbox"]):not([type="radio"]), textarea, select{font-size:16px !important;}
   }
+  /* iOS PWA overscroll bounce fix — evita que el gris de fondo aparezca al hacer scroll
+     más allá del contenido. Solo en modo PWA (app instalada), Safari browser intacto. */
+  @media (display-mode: standalone){
+    html, body{overscroll-behavior:none; height:-webkit-fill-available;}
+  }
   /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
   table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
   /* Table header brand — cabeceras de tabla con marca indigo. */
@@ -2537,6 +2542,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
 }
 
 function ProjectsTab({data, upd}) {
+  const isMobile = useIsMobile();
+  const [editMode, setEditMode] = useState(false);
   const curWn = getCurWn();
   const [selQ, setSelQ] = useState(getCurQ());
   const [selWn, setSelWn] = useState(curWn);
@@ -2568,9 +2575,14 @@ function ProjectsTab({data, upd}) {
         setSelWn(qw2.includes(curWn) ? curWn : qw2[0]);
       }}/>
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
-      <div style={{display:'flex', gap:8, marginBottom:14}}>
+      <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap'}}>
         <Btn onClick={addProject} style={{fontSize:13}}>+ Project</Btn>
         <Btn v="sec" onClick={copyToNext} style={{fontSize:13}}>Copy to Next Week</Btn>
+        {isMobile && (
+          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+            {editMode ? 'Done' : 'Edit'}
+          </Btn>
+        )}
       </div>
       {projects.length === 0 &&
         <div style={{...S.card, textAlign:'center', color:'var(--muted-soft)', padding:28, fontSize:13}}>
@@ -2582,11 +2594,11 @@ function ProjectsTab({data, upd}) {
             <thead>
               <tr style={{borderBottom:'2px solid var(--border)'}}>
                 <th style={{fontSize:10, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase',
-                            letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width:'45%'}}>Project</th>
+                            letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width: isMobile ? '55%' : '45%'}}>Project</th>
                 <th style={{fontSize:10, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase',
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left'}}>Status</th>
-                <th style={{width:60}}/>
-                <th style={{width:60}}/>
+                <th style={{width: isMobile ? 48 : 60}}/>
+                {(!isMobile || editMode) && <th style={{width:60}}/>}
               </tr>
             </thead>
             <tbody>
@@ -2614,23 +2626,25 @@ function ProjectsTab({data, upd}) {
                               fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
                               whiteSpace:'nowrap'}}>+ To-do</button>
                   </td>
-                  <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
-                    <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'flex-end'}}>
-                      <MoveBtns
-                        disabledUp={pi === 0} disabledDown={pi === projects.length - 1}
-                        onUp={() => upd(d => {
-                          if (pi === 0) return;
-                          const arr = d.weeklyProjects[wk];
-                          const tmp = arr[pi]; arr[pi] = arr[pi-1]; arr[pi-1] = tmp;
-                        })}
-                        onDown={() => upd(d => {
-                          if (pi === d.weeklyProjects[wk].length - 1) return;
-                          const arr = d.weeklyProjects[wk];
-                          const tmp = arr[pi]; arr[pi] = arr[pi+1]; arr[pi+1] = tmp;
-                        })}/>
-                      <XBtn size={14} onClick={() => upd(d => { d.weeklyProjects[wk].splice(pi, 1); })}/>
-                    </div>
-                  </td>
+                  {(!isMobile || editMode) && (
+                    <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
+                      <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'flex-end'}}>
+                        <MoveBtns
+                          disabledUp={pi === 0} disabledDown={pi === projects.length - 1}
+                          onUp={() => upd(d => {
+                            if (pi === 0) return;
+                            const arr = d.weeklyProjects[wk];
+                            const tmp = arr[pi]; arr[pi] = arr[pi-1]; arr[pi-1] = tmp;
+                          })}
+                          onDown={() => upd(d => {
+                            if (pi === d.weeklyProjects[wk].length - 1) return;
+                            const arr = d.weeklyProjects[wk];
+                            const tmp = arr[pi]; arr[pi] = arr[pi+1]; arr[pi+1] = tmp;
+                          })}/>
+                        <XBtn size={14} onClick={() => upd(d => { d.weeklyProjects[wk].splice(pi, 1); })}/>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -2642,8 +2656,10 @@ function ProjectsTab({data, upd}) {
 }
 
 function TodosTab({data, upd}) {
+  const isMobile = useIsMobile();
   const [showF, setShowF] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({task:'', startDate: todayStr()});
   const [editingId, setEditingId] = useState(null);
   const today = todayStr();
@@ -2693,22 +2709,28 @@ function TodosTab({data, upd}) {
           )}
         </div>
         <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-          <button onClick={() => setEditingId(isEd ? null : t.id)}
-            style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                    color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
-            {isEd ? 'Close' : 'Edit'}
-          </button>
-          <MoveBtns
-            disabledUp={ri <= 0} disabledDown={ri >= data.todos.length - 1}
-            onUp={() => upd(d => {
-              if (ri <= 0) return;
-              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
-            })}
-            onDown={() => upd(d => {
-              if (ri >= d.todos.length - 1) return;
-              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
-            })}/>
-          <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
+          {(!isMobile || editMode) && (
+            <button onClick={() => setEditingId(isEd ? null : t.id)}
+              style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
+                      color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
+              {isEd ? 'Close' : 'Edit'}
+            </button>
+          )}
+          {(!isMobile || editMode) && (
+            <MoveBtns
+              disabledUp={ri <= 0} disabledDown={ri >= data.todos.length - 1}
+              onUp={() => upd(d => {
+                if (ri <= 0) return;
+                const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
+              })}
+              onDown={() => upd(d => {
+                if (ri >= d.todos.length - 1) return;
+                const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
+              })}/>
+          )}
+          {(!isMobile || editMode) && (
+            <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
+          )}
         </div>
       </div>
     );
@@ -2718,6 +2740,11 @@ function TodosTab({data, upd}) {
       <PageTitle icon="todos">To-Dos</PageTitle>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setShowF(true)} style={{fontSize:13}}>+ To-do</Btn>
+        {isMobile && (
+          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+            {editMode ? 'Done' : 'Edit'}
+          </Btn>
+        )}
       </div>
       {showF && (
         <InlineForm marginTop={0}>
@@ -2847,6 +2874,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
   const handleDayClick = ds => { setSelDay(ds); setDispWn(dateToWn(ds)); setShowCal(false); };
   const scorecard = qData.scorecard || [];
   const isMobile = useIsMobile();
+  const [editMode, setEditMode] = useState(false);
 
   // Meeting management for Daily Summary
   const [meetingForm, setMeetingForm] = useState(null);
@@ -3000,10 +3028,16 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
 
       {/* To-Dos */}
       <div className="card-hover" style={S.card}>
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:6, flexWrap:'wrap'}}>
           <H3 style={{marginBottom:0}}>To-Dos</H3>
-          <Btn onClick={() => setTodoForm({task:'', due:''})}
-            style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
+          <div style={{display:'flex', gap:6, alignItems:'center'}}>
+            <Btn onClick={() => setTodoForm({task:'', due:''})}
+              style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
+            {isMobile && (
+              <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
+                style={{fontSize:11, padding:'5px 12px'}}>{editMode ? 'Done' : 'Edit'}</Btn>
+            )}
+          </div>
         </div>
         {dayTodos.length === 0
           ? <EmptyState icon="check" message="No to-dos today." compact/>
@@ -3038,18 +3072,24 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                             color:'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-                    <button onClick={() => setEditingTodoId(isEd ? null : t.id)}
-                      style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                              color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
-                      {isEd ? 'Close' : 'Edit'}
-                    </button>
-                    <MoveBtns
-                      disabledUp={dti === 0} disabledDown={dti === dayTodos.length - 1}
-                      onUp={() => swapWithNeighbor(-1)} onDown={() => swapWithNeighbor(+1)}/>
-                    <XBtn size={16} onClick={() => upd(d => {
-                        const ri = d.todos.findIndex(x => x.id === t.id);
-                        if (ri >= 0) d.todos.splice(ri, 1);
-                    })}/>
+                    {(!isMobile || editMode) && (
+                      <button onClick={() => setEditingTodoId(isEd ? null : t.id)}
+                        style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
+                                color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
+                        {isEd ? 'Close' : 'Edit'}
+                      </button>
+                    )}
+                    {(!isMobile || editMode) && (
+                      <MoveBtns
+                        disabledUp={dti === 0} disabledDown={dti === dayTodos.length - 1}
+                        onUp={() => swapWithNeighbor(-1)} onDown={() => swapWithNeighbor(+1)}/>
+                    )}
+                    {(!isMobile || editMode) && (
+                      <XBtn size={16} onClick={() => upd(d => {
+                          const ri = d.todos.findIndex(x => x.id === t.id);
+                          if (ri >= 0) d.todos.splice(ri, 1);
+                      })}/>
+                    )}
                   </div>
                 </div>
                 {isEd && (
