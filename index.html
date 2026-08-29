@@ -107,6 +107,14 @@
     font-size:11px !important; font-weight:700 !important;
   }
   tr.th-brand th > div{color:var(--brand) !important;}
+
+  /* Dot indigo delante de h3 uppercase (section headers).
+     Se ancla al display:flex ya definido en S.h3. */
+  h3[style*="text-transform"]::before,
+  h3[style*="textTransform"]::before{
+    content:''; display:inline-block; width:5px; height:5px; border-radius:50%;
+    background:var(--brand); flex-shrink:0;
+  }
   /* Prevent iOS Safari from auto-zooming on input focus (happens when
      input font-size < 16px). Applies on touch devices only, so desktop
      keeps its compact input font-size. */
@@ -372,10 +380,10 @@ const SI = {
 // Day status: usado por Scorecard (main), Scorecard summary y L10Scorecard.
 // Tupla [bg, fg, label]. Fallback para status desconocido.
 const DAY_STATUS = {
-  ok:  ['var(--ok-bg)',  'var(--ok-fg)',  '✓'],
-  nok: ['var(--err-bg)', 'var(--err-fg)', 'X']
+  ok:  ['transparent', 'var(--text)',        '✓'],
+  nok: ['transparent', 'var(--muted-soft)',  '·']
 };
-const getDayStatus = st => DAY_STATUS[st] || ['var(--border)', 'var(--muted-soft)', '.'];
+const getDayStatus = st => DAY_STATUS[st] || ['transparent', 'var(--muted-soft)', '·'];
 const YEAR = 2026;
 const QS = ['Q1','Q2','Q3','Q4'];
 const qWeeks = q => Array.from({length:13}, (_,i) => (q-1)*13 + 1 + i);
@@ -529,11 +537,12 @@ function clearCfg() {
 // Style tokens
 // =====================================================================
 const S = {
-  card: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)', borderLeft:'3px solid var(--brand)'},
-  cardAlt: {background:'var(--surface-alt)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', border:'1px solid var(--border)', borderLeft:'3px solid var(--brand)'},
-  cardAccent: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'var(--s-5)', marginBottom:'var(--s-3)', boxShadow:'var(--elev-1)', borderLeft:'3px solid var(--brand)'},
+  card: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'18px', marginBottom:'var(--s-3)', borderLeft:'3px solid var(--brand)', border:'1px solid var(--border)', borderLeftWidth:'3px', borderLeftColor:'var(--brand)'},
+  cardAlt: {background:'var(--surface-alt)', borderRadius:'var(--r-md)', padding:'18px', marginBottom:'var(--s-3)', border:'1px solid var(--border)', borderLeft:'3px solid var(--brand)'},
+  cardAccent: {background:'var(--surface)', borderRadius:'var(--r-md)', padding:'18px', marginBottom:'var(--s-3)', borderLeft:'3px solid var(--brand)', border:'1px solid var(--border)', borderLeftWidth:'3px', borderLeftColor:'var(--brand)'},
   h2:   {fontSize:'var(--f-xl)', fontWeight:600, color:'var(--text)', marginBottom:'var(--s-5)', marginTop:0, letterSpacing:-0.2},
-  h3:   {fontSize:'var(--f-xs)', fontWeight:700, color:'var(--muted)', marginBottom:'var(--s-2)', marginTop:0, textTransform:'uppercase', letterSpacing:0.6},
+  h3:   {fontSize:'var(--f-xs)', fontWeight:700, color:'var(--muted)', marginBottom:'var(--s-2)', marginTop:0, textTransform:'uppercase', letterSpacing:0.6, display:'flex', alignItems:'center', gap:8},
+  h3Dot: {width:5, height:5, borderRadius:'50%', background:'var(--brand)', flexShrink:0, display:'inline-block'},
   lbl:  {fontSize:'var(--f-xs)', color:'var(--muted-soft)', display:'block', marginBottom:'var(--s-1)', fontWeight:700, textTransform:'uppercase'},
   inp:  {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:14, boxSizing:'border-box', outline:'none', fontFamily:'inherit', color:'var(--text)'},
   ta:   {width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:'var(--r-md)', fontSize:14, boxSizing:'border-box', minHeight:80, resize:'vertical', outline:'none', fontFamily:'inherit', color:'var(--text)'},
@@ -967,13 +976,9 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
         width:'100%', minWidth: compact ? 0 : 680, position:'relative'
       }}>
-        {/* Header — hora */}
+        {/* Header — hora (vacío, la columna se entiende sola) */}
         <div style={{gridRow:1, gridColumn:1, background:'var(--brand-soft)',
-                     borderBottom:'2px solid var(--brand)',
-                     padding: compact ? '3px 4px' : '5px 6px',
-                     color:'var(--brand)', fontSize:11, fontWeight:700,
-                     textTransform:'uppercase', letterSpacing:0.6,
-                     display:'flex', alignItems:'flex-end', justifyContent:'flex-end'}}>h</div>
+                     borderBottom:'2px solid var(--brand)'}}/>
         {/* Header — días */}
         {DAYS.map((day, di) => (
           <div key={'h-'+di}
@@ -990,15 +995,17 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
               <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2, opacity:0.85}}>{dayLabels[di].sub}</div>}
           </div>
         ))}
-        {/* Hour labels (fila por cada slot) */}
+        {/* Hour labels — solo horas en punto, cada 30min sin etiqueta para menos ruido */}
         {SLOTS.map((slot, si) => (
           <div key={'l-'+si}
             style={{gridRow: si+2, gridColumn: 1,
-                    background:'var(--surface-alt)', textAlign:'right',
-                    padding: compact ? '0 4px' : '1px 6px', fontSize: compact ? 7 : 8,
-                    color:'var(--muted-soft)', fontWeight:700, whiteSpace:'nowrap',
-                    borderTop: si > 0 ? '1px solid var(--border)' : 'none',
-                    lineHeight:1, display:'flex', alignItems:'flex-start', justifyContent:'flex-end'}}>{slot.lbl}</div>
+                    background:'transparent', textAlign:'right',
+                    padding: compact ? '0 4px' : '1px 6px',
+                    fontSize: compact ? 8 : 9,
+                    color:'var(--muted-soft)', fontWeight:500, whiteSpace:'nowrap',
+                    lineHeight:1, display:'flex', alignItems:'flex-start', justifyContent:'flex-end'}}>
+            {slot.m === 0 ? slot.lbl : ''}
+          </div>
         ))}
         {/* Celdas vacías clicables por día × slot */}
         {SLOTS.map((slot, si) =>
@@ -2367,7 +2374,7 @@ function ScorecardTab({data, upd}) {
                 </thead>
                 <tbody>
                   {scorecard.map((m, mi) => (
-                    <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
+                    <tr key={m.id}>
                       <td style={{padding:'6px 12px'}}>
                         <input value={m.metric}
                           onChange={e => upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard[mi].metric = e.target.value; })}
@@ -2391,7 +2398,7 @@ function ScorecardTab({data, upd}) {
                             <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
                               style={{width:'100%', height:24, borderRadius:5,
                                       border:'none', background:'transparent',
-                                      color: st === 'ok' ? 'var(--ok-line)' : st === 'nok' ? 'var(--err-line)' : 'var(--muted-soft)',
+                                      color: info[1],
                                       cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
                           </td>
                         );
@@ -2452,7 +2459,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra})
           </thead>
           <tbody>
             {scorecard.map(m => (
-              <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
+              <tr key={m.id}>
                 <td style={{padding:'7px 12px', fontSize:14, fontWeight:600, color:'var(--text)'}}>
                   {m.metric}
                   {m.goal && <span style={{fontSize:11, color:'var(--muted-soft)', fontWeight:400, marginLeft:8}}>/{m.goal}</span>}
@@ -2543,7 +2550,7 @@ function ProjectsTab({data, upd}) {
             </thead>
             <tbody>
               {projects.map((proj, pi) => (
-                <tr key={proj.id} style={{borderBottom:'1px solid var(--surface-alt)'}}>
+                <tr key={proj.id}>
                   <td style={{padding:'7px 12px 7px 0', verticalAlign:'middle'}}>
                     <input value={proj.name || ''}
                       onChange={e => upd(d => { d.weeklyProjects[wk][pi].name = e.target.value; })}
@@ -2898,62 +2905,64 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
   return (
     <div>
       <PageTitle icon="diario">Daily Summary</PageTitle>
-      <div style={{display:'flex', alignItems:'center', gap: isMobile ? 6 : 10, marginBottom: isMobile ? 8 : 14, flexWrap:'wrap'}}>
+      {/* Toolbar: date picker + Today + week nav + week label */}
+      <div style={{display:'flex', alignItems:'center', gap: isMobile ? 6 : 10, marginBottom: 12, flexWrap:'wrap'}}>
         <DatePicker value={selDay}
           onChange={ds => { if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
           style={{width: isMobile ? 130 : 140}}/>
         <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec"
-          style={isMobile ? {padding:'6px 10px', fontSize:12} : {}}>Today</Btn>
-        <div style={{display:'flex', gap:4, alignItems:'center', marginLeft: isMobile ? 'auto' : 0}}>
+          style={isMobile ? {padding:'6px 10px', fontSize:12} : {padding:'6px 12px', fontSize:12}}>Today</Btn>
+        <div style={{display:'flex', gap:4, alignItems:'center'}}>
           <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
-            style={{height:34, width:34, boxSizing:'border-box', borderRadius:8,
+            style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
                     fontSize:14, color:'var(--text-2)', padding:0, display:'flex',
-                    alignItems:'center', justifyContent:'center'}}>&lt;</button>
+                    alignItems:'center', justifyContent:'center'}}>‹</button>
           <button onClick={() => setShowCal(s => !s)}
-            style={{height:34, boxSizing:'border-box', borderRadius:8,
+            style={{height:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid ' + (showCal ? 'var(--brand)' : 'var(--border-strong)'),
-                    background: showCal ? 'var(--brand)' : 'white',
-                    cursor:'pointer', fontSize:12, fontWeight:700,
+                    background: showCal ? 'var(--brand)' : 'var(--surface)',
+                    cursor:'pointer', fontSize:12, fontWeight:600,
                     color: showCal ? 'white' : 'var(--text-2)',
-                    padding:'0 14px', display:'flex',
+                    padding:'0 12px', display:'flex',
                     alignItems:'center', justifyContent:'center'}}>Calendar</button>
           <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
-            style={{height:34, width:34, boxSizing:'border-box', borderRadius:8,
+            style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
                     fontSize:14, color:'var(--text-2)', padding:0, display:'flex',
-                    alignItems:'center', justifyContent:'center'}}>&gt;</button>
+                    alignItems:'center', justifyContent:'center'}}>›</button>
         </div>
-        {!isMobile && <div style={{fontSize:14, color:'var(--muted)'}}>{DAYS[dayOfWeek]} - Week {wn} - Q{q}</div>}
+        <div style={{fontSize:13, color:'var(--muted)', marginLeft: isMobile ? 0 : 'auto',
+                     letterSpacing:0.2}}>{DAYS[dayOfWeek]} · Week {wn} · Q{q}</div>
       </div>
-      {isMobile && <div style={{fontSize:12, color:'var(--muted)', marginBottom:8}}>{DAYS[dayOfWeek]} - Week {wn} - Q{q}</div>}
-      <div style={{display:'flex', gap:4, marginBottom:8, alignItems:'center'}}>
+
+      {/* Day selector como underline tabs */}
+      <div className="tabbar" style={{marginBottom:16}}>
         {DAYS.map((day, di) => {
           const ds = dayStr(dispWn, di);
           const isActive = ds === selDay;
           const isToday = ds === today;
           return (
             <button key={di} onClick={() => handleDayClick(ds)}
-              style={{flex:'1 1 0', minWidth:0, padding: isMobile ? '6px 2px' : '8px 6px',
-                      borderRadius:8, border:'none', cursor:'pointer',
-                      background: isActive ? 'var(--brand)' : isToday ? 'rgba(94,106,210,0.15)' : 'var(--border)',
-                      color: isActive ? 'white' : isToday ? 'var(--brand)' : 'var(--text-2)',
-                      fontWeight: (isActive || isToday) ? 700 : 400,
-                      fontSize: isMobile ? 11 : 12, lineHeight:1.3, textAlign:'center'}}>
-              <div>{day.slice(0, 3)}</div>
-              <div style={{fontSize: isMobile ? 10 : 11, opacity:0.85}}>{dayShort(dispWn, di)}</div>
+              className={'tab-underline' + (isActive ? ' active' : '')}
+              style={{padding:'8px 4px', flex:'1 1 0', minWidth:0, lineHeight:1.2,
+                      color: isActive ? 'var(--brand)' : isToday ? 'var(--brand)' : 'var(--muted)'}}>
+              <div style={{fontSize:12, fontWeight: (isActive || isToday) ? 700 : 500}}>{day.slice(0, 3)}</div>
+              <div style={{fontSize:10, opacity:0.75, marginTop:2, fontWeight:500}}>{dayShort(dispWn, di)}</div>
             </button>
           );
         })}
       </div>
-      {showCal && <div style={{marginBottom:16, marginTop:8}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true}/></div>}
-      <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
-        <span style={{fontSize:12, color:'var(--muted-soft)', flexShrink:0}}>Note</span>
+      {showCal && <div style={{marginBottom:16}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true}/></div>}
+
+      {/* Note como primera card */}
+      <div className="card-hover" style={S.card}>
+        <h3 style={{...S.h3, marginBottom:8}}>Highlight del día</h3>
         <input value={monthNote} onChange={e => setMonthNote(e.target.value)}
           placeholder="Add today's highlight..."
-          style={{flex:1, border:'none', borderBottom:'2px solid var(--border)',
-                  outline:'none', fontSize:14, padding:'4px 6px',
-                  background:'transparent', color:'var(--text)', fontFamily:'inherit'}}/>
+          style={{width:'100%', border:'none', outline:'none', fontSize:15,
+                  padding:'2px 0', background:'transparent',
+                  color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
       {/* Meetings */}
       <div className="card-hover" style={S.card}>
@@ -3135,7 +3144,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               </thead>
               <tbody>
                 {scorecard.map((m, mi) => (
-                  <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
+                  <tr key={m.id}>
                     <td style={{padding:'4px 12px'}}>
                       <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
                     </td>
@@ -3156,7 +3165,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                             })}
                             style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
                                     border:'none', background:'transparent',
-                                    color: st === 'ok' ? 'var(--ok-line)' : st === 'nok' ? 'var(--err-line)' : 'var(--muted-soft)',
+                                    color: info[1],
                                     cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
                         </td>
                       );
@@ -3219,19 +3228,24 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
   return (
     <div>
       {embedded && (
-        <div style={{...S.card, display:'flex', alignItems:'center', justifyContent:'space-between',
-                     padding:'10px 16px', marginBottom:12, background:'var(--surface-alt)'}}>
-          <div style={{fontSize:13, color:'var(--muted)'}}>Week {localWn} of {qKey.split('-')[1]} - {wDates(weekNum)}</div>
-          {wData.rating && <div style={{background:'var(--brand)', color:'white', borderRadius:8,
-                                        padding:'6px 14px', fontWeight:700, fontSize:16}}>{wData.rating}/10</div>}
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                     marginBottom:12, gap:10, flexWrap:'wrap'}}>
+          <div style={{fontSize:13, color:'var(--muted)', letterSpacing:0.2}}>
+            Week {localWn} · {qKey.split('-')[1]} · {wDates(weekNum)}
+          </div>
+          {wData.rating && <div style={{background:'var(--brand)', color:'white', borderRadius:'var(--r-sm)',
+                                        padding:'4px 10px', fontWeight:700, fontSize:13}}>{wData.rating}/10</div>}
         </div>
       )}
-      <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
+
+      {/* Headlines como primera card (mismo patrón que Daily → Highlight del día) */}
+      <div className="card-hover" style={S.card}>
+        <h3 style={{...S.h3, marginBottom:8}}>Headlines de la semana</h3>
         <input value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
-          placeholder="Headlines this week..."
-          style={{flex:1, border:'none', borderBottom:'2px solid var(--border)',
-                  outline:'none', fontSize:14, padding:'4px 6px',
-                  background:'transparent', color:'var(--text)', fontFamily:'inherit'}}/>
+          placeholder="¿Qué destacas de esta semana?"
+          style={{width:'100%', border:'none', outline:'none', fontSize:15,
+                  padding:'2px 0', background:'transparent',
+                  color:'var(--text)', fontFamily:'inherit'}}/>
       </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
@@ -3278,19 +3292,12 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
 function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd}) {
   if (!rocks.length) return <EmptyState icon="target" message="Sin Rocks este trimestre. Créalos en la pestaña Rocks."/>;
   return (
-    <div>
-      <div style={{marginBottom:12}}>
-        {rocks.map(r => (
-          <div key={r.id} style={{display:'flex', alignItems:'center', gap:8,
-                                  padding:'7px 0', borderBottom:'1px solid var(--surface-alt)'}}>
-            <div style={{flex:1, fontSize:14, fontWeight:700, color:'var(--text)'}}>{r.title}</div>
-            <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
-              weekNum={weekNum} upd={upd} qKey={qKey}/>
-          </div>
-        ))}
-      </div>
-      <GanttChart rocks={rocks} wr={wr} qw={qw} upd={upd} qKey={qKey} highlightWn={weekNum}/>
-    </div>
+    <GanttChart rocks={rocks} wr={wr} qw={qw} upd={upd} qKey={qKey} highlightWn={weekNum}
+      rightGutterWidth={70}
+      renderRockGutter={r => (
+        <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
+          weekNum={weekNum} upd={upd} qKey={qKey}/>
+      )}/>
   );
 }
 
@@ -3324,7 +3331,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
         </thead>
         <tbody>
           {scorecard.map((m, mi) => (
-            <tr key={m.id} style={{borderTop:'1px solid var(--surface-alt)'}}>
+            <tr key={m.id}>
               <td style={{padding:'4px 12px'}}><div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div></td>
               <td style={{padding:'4px 4px', textAlign:'center'}}><div style={{fontSize:13, fontWeight:600, color:'var(--brand)'}}>{m.goal || ''}</div></td>
               {DAYS.map((_, di) => {
@@ -3336,7 +3343,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
                     <button onClick={() => setDay(mi, date, st === 'ok' ? 'nok' : st === 'nok' ? null : 'ok')}
                       style={{width:'100%', height:24, borderRadius:5,
                               border:'none', background:'transparent',
-                              color: st === 'ok' ? 'var(--ok-line)' : st === 'nok' ? 'var(--err-line)' : 'var(--muted-soft)',
+                              color: info[1],
                               cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
                   </td>
                 );
@@ -3446,19 +3453,12 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues}) {
   });
   return (
     <table style={{width:'100%', borderCollapse:'collapse'}}>
-      <thead>
-        <tr style={{borderBottom:'2px solid var(--border)'}}>
-          <th style={{fontSize:10, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase',
-                      letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width:'45%'}}>Project</th>
-          <th style={{fontSize:10, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase',
-                      letterSpacing:0.5, padding:'0 0 8px', textAlign:'left'}}>Status</th>
-          <th style={{width:70}}/>
-          <th style={{width:70}}/>
-        </tr>
-      </thead>
+      <colgroup>
+        <col style={{width:'45%'}}/><col/><col style={{width:70}}/><col style={{width:70}}/>
+      </colgroup>
       <tbody>
         {projects.map(proj => (
-          <tr key={proj.id} style={{borderBottom:'1px solid var(--surface-alt)'}}>
+          <tr key={proj.id}>
             <td style={{padding:'7px 12px 7px 0', verticalAlign:'middle',
                         fontSize:14, fontWeight:700, color:'var(--text)',
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
