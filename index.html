@@ -380,10 +380,20 @@ const SI = {
 // Day status: usado por Scorecard (main), Scorecard summary y L10Scorecard.
 // Tupla [bg, fg, label]. Fallback para status desconocido.
 const DAY_STATUS = {
-  ok:  ['transparent', 'var(--ok-fg)',  '✓'],
-  nok: ['transparent', 'var(--err-fg)', '×']
+  ok:  ['transparent', 'var(--text)',  '✓'],
+  nok: ['transparent', 'var(--text)',  '×']
 };
 const getDayStatus = st => DAY_STATUS[st] || ['transparent', 'var(--muted-soft)', '·'];
+// Renderizado SVG expresivo del tick de scorecard.
+function DayTick({st, size}) {
+  const sz = size || 16;
+  const props = {width:sz, height:sz, viewBox:'0 0 24 24', fill:'none',
+                 stroke:'currentColor', strokeWidth:2.5, strokeLinecap:'round', strokeLinejoin:'round',
+                 style:{display:'inline-block', verticalAlign:'middle'}};
+  if (st === 'ok')  return <svg {...props}><polyline points="20 6 9 17 4 12"/></svg>;
+  if (st === 'nok') return <svg {...props}><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>;
+  return <span style={{color:'var(--muted-soft)', fontSize:14, fontWeight:700}}>·</span>;
+}
 const YEAR = 2026;
 const QS = ['Q1','Q2','Q3','Q4'];
 const qWeeks = q => Array.from({length:13}, (_,i) => (q-1)*13 + 1 + i);
@@ -845,19 +855,15 @@ function Modal({onClose, children}) {
 
 function QBtns({selQ, onSelect}) {
   return (
-    <div style={{display:'flex', gap:8, marginBottom:18, flexWrap:'wrap'}}>
+    <div className="tabbar">
       {QS.map(q => {
         const qk = YEAR + '-' + q;
         const isAct = qk === selQ;
         const isCur = qk === getCurQ();
         return (
-          <button key={q} onClick={() => onSelect(qk)} className="btn"
-            style={{padding:'7px 16px', borderRadius:'var(--r-md)',
-                    border:'1px solid ' + (isAct ? 'var(--brand)' : isCur ? 'var(--brand-ring)' : 'var(--border)'),
-                    cursor:'pointer',
-                    background: isAct ? 'var(--brand)' : 'var(--surface)',
-                    color: isAct ? 'white' : isCur ? 'var(--brand)' : 'var(--text-2)',
-                    fontWeight:700, fontSize:'var(--f-sm)', position:'relative'}}>
+          <button key={q} onClick={() => onSelect(qk)}
+            className={'tab-underline' + (isAct ? ' active' : '')}
+            style={!isAct && isCur ? {color:'var(--brand)'} : {}}>
             {q} {YEAR}
           </button>
         );
@@ -871,21 +877,16 @@ function WkBtns({selQ, selWn, onSelect}) {
   const qw = qWeeks(qn);
   const curWn = getCurWn();
   return (
-    <div style={{display:'flex', gap:4, flexWrap:'wrap', marginBottom:16}}>
+    <div className="tabbar">
       {qw.map(wn => {
         const isSel = wn === selWn;
         const isCur = wn === curWn;
         return (
           <button key={wn} onClick={() => onSelect(wn)} title={wDates(wn)}
-            style={{padding:'6px 8px', borderRadius:7,
-                    border:'1px solid ' + (isSel ? 'var(--brand)' : isCur ? 'rgba(94,106,210,0.5)' : 'var(--border)'),
-                    cursor:'pointer',
-                    background: isSel ? 'var(--brand)' : isCur ? 'rgba(94,106,210,0.08)' : 'white',
-                    color: isSel ? 'white' : isCur ? 'var(--brand)' : 'var(--text-2)',
-                    fontWeight: (isSel || isCur) ? 700 : 400,
-                    fontSize:11, textAlign:'center', minWidth:44}}>
-            <div style={{fontWeight:700, fontSize:12}}>W{wn - qw[0] + 1}</div>
-            <div style={{fontSize:9, opacity:0.8}}>{dayShort(wn, 0)}</div>
+            className={'tab-underline' + (isSel ? ' active' : '')}
+            style={Object.assign({padding:'8px 10px', minWidth:0, flex:'0 0 auto'},
+                    !isSel && isCur ? {color:'var(--brand)'} : {})}>
+            W{wn - qw[0] + 1}
           </button>
         );
       })}
@@ -1208,14 +1209,11 @@ function StdWeekCalendar({data, upd}) {
   };
   return (
     <div>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:8, flexWrap:'wrap'}}>
-        <div style={{fontSize:13, color:'var(--muted)'}}>Template - click any slot to add</div>
-        <div style={{display:'flex', gap:6, alignItems:'center'}}>
-          <Btn v="sec" onClick={() => setCopyOpen(o => !o)}
-            style={{fontSize:11, padding:'5px 12px'}}>Copiar a semana</Btn>
-          <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
-            style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
-        </div>
+      <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
+        <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
+          style={{fontSize:12}}>+ Event</Btn>
+        <Btn v="sec" onClick={() => setCopyOpen(o => !o)}
+          style={{fontSize:12}}>Copiar a semana</Btn>
       </div>
       {copyOpen && (
         <InlineForm marginTop={0}>
@@ -1960,17 +1958,17 @@ function MonthTab({data, upd, goToDay}) {
   return (
     <div>
       <PageTitle icon="month">Month {YEAR}</PageTitle>
-      <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:20}}>
-        {MONTHS_F.map((m, i) => (
-          <button key={i} onClick={() => setSelM(i)} className="btn"
-            style={{padding:'6px 12px', borderRadius:'var(--r-md)',
-                    border:'1px solid ' + (i === selM ? 'var(--brand)' : 'var(--border)'), cursor:'pointer',
-                    background: i === selM ? 'var(--brand)' : 'var(--surface)',
-                    color: i === selM ? 'white' : i === new Date().getMonth() ? 'var(--brand)' : 'var(--text-2)',
-                    fontWeight: i === selM ? 700 : 400, fontSize:'var(--f-sm)'}}>
-            {m.slice(0, 3)}
-          </button>
-        ))}
+      <div className="tabbar">
+        {MONTHS_F.map((m, i) => {
+          const isCur = i === new Date().getMonth();
+          return (
+            <button key={i} onClick={() => setSelM(i)}
+              className={'tab-underline' + (i === selM ? ' active' : '')}
+              style={i !== selM && isCur ? {color:'var(--brand)'} : {}}>
+              {m.slice(0, 3)}
+            </button>
+          );
+        })}
       </div>
       <div style={S.card}>
         <h3 style={S.h3}>{MONTHS_F[selM]} {YEAR}</h3>
@@ -2090,7 +2088,7 @@ function RocksTab({data, upd}) {
                       const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
                       if (idx >= 0) d.quarters[selQ].rocks[idx].title = e.target.value;
                     })}
-                    style={{flex:1, minWidth:130, fontWeight:700, color:'var(--text)', fontSize:15,
+                    style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:14,
                             border:'none', outline:'none', fontFamily:'inherit',
                             background:'transparent', padding:0}} placeholder="Rock title..."/>
                   <StatusPill status={rock.status || 'on-track'}
@@ -2140,7 +2138,7 @@ function RocksTab({data, upd}) {
                   </div>
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
-                  {steps.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>No weekly steps yet.</div>}
+                  {steps.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:12, marginBottom:10, fontStyle:'italic'}}>Sin steps aún.</div>}
                   {steps.map((step, si) => {
                     const sw2 = step.startWeek || step.weekNum || qw[0];
                     const ew2 = step.endWeek || step.weekNum || qw[0];
@@ -2157,7 +2155,7 @@ function RocksTab({data, upd}) {
                               const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
                               if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
                             })}
-                            style={{flex:'0 1 200px', minWidth:120, fontSize:14, fontWeight:600, color:'var(--text)',
+                            style={{flex:'0 1 200px', minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
                                     textDecoration: 'none',
                                     border:'none', outline:'none', fontFamily:'inherit',
                                     background:'transparent', padding:0}}/>
@@ -2410,7 +2408,8 @@ function ScorecardTab({data, upd}) {
                               style={{width:'100%', height:24, borderRadius:5,
                                       border:'none', background:'transparent',
                                       color: info[1],
-                                      cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
+                                      cursor:'pointer', fontSize:14, fontWeight:700,
+                                      display:'inline-flex', alignItems:'center', justifyContent:'center'}}><DayTick st={st}/></button>
                           </td>
                         );
                       })}
@@ -2739,18 +2738,22 @@ function TodosTab({data, upd}) {
 
 function ProcessesTab({data, upd}) {
   const [exp, setExp] = useState(null);
-  const [procTab, setProcTab] = useState('processes');
+  const [procTab, setProcTab] = useState('stdweek');
   const ps = data.processes || [];
   return (
     <div>
       <PageTitle icon="procesos">Processes</PageTitle>
       <div style={{display:'flex', gap:8, marginBottom:18}}>
-        <Btn onClick={() => setProcTab('processes')} v={procTab === 'processes' ? 'pri' : 'sec'}>Processes</Btn>
         <Btn onClick={() => setProcTab('stdweek')} v={procTab === 'stdweek' ? 'pri' : 'sec'}>Std Week</Btn>
+        <Btn onClick={() => setProcTab('processes')} v={procTab === 'processes' ? 'pri' : 'sec'}>Processes</Btn>
       </div>
       {procTab === 'processes' && (
         <div>
-          {ps.length === 0 && <div style={{...S.card, textAlign:'center', color:'var(--muted-soft)', padding:32, fontSize:15}}>Define your core processes.</div>}
+          <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
+            <Btn onClick={() => upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); })}
+              style={{fontSize:12}}>+ Process</Btn>
+          </div>
+          {ps.length === 0 && <EmptyState icon="target" message="Define tus core processes. Añade el primero arriba."/>}
           {ps.map((p, i) => (
             <div key={p.id || i} style={{...S.card, padding:0, overflow:'hidden'}}>
               <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
@@ -2788,8 +2791,6 @@ function ProcessesTab({data, upd}) {
               )}
             </div>
           ))}
-          <Btn onClick={() => upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); })}
-            style={{marginTop:4}}>+ Process</Btn>
         </div>
       )}
       {procTab === 'stdweek' && (
@@ -3071,38 +3072,6 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         )}
       </div>
 
-      {/* Rocks */}
-      <div className="card-hover" style={S.cardAccent}>
-        <h3 style={S.h3}>Rocks</h3>
-        {wrThisWeek.length === 0
-          ? <EmptyState icon="target" message="Sin steps de rocks esta semana." compact/>
-          : wrThisWeek.map(({rock, steps}) => (
-            <div key={rock.id} style={{marginBottom:10}}>
-              <div style={{fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:4}}>{rock.title}</div>
-              {steps.map(step => {
-                const done = isWkDone(step, wn);
-                return (
-                  <div key={step.id} style={{display:'flex', alignItems:'center', gap:8, padding:'4px 0', opacity: done ? 0.5 : 1}}>
-                    <input type="checkbox" checked={done}
-                      onChange={() => upd(d => {
-                        ensureQ(d, curQ);
-                        const idx = (d.quarters[curQ].weeklyRocks[rock.id] || []).findIndex(s => s.id === step.id);
-                        if (idx >= 0) {
-                          if (!d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone)
-                            d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone = {};
-                          d.quarters[curQ].weeklyRocks[rock.id][idx].weeklyDone[wn] = !done;
-                        }
-                      })}
-                      style={{width:15, height:15, cursor:'pointer'}}/>
-                    <span style={{fontSize:14, color:'var(--text)'}}>{step.text}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ))
-        }
-      </div>
-
       {/* Weekly Scorecard */}
       {scorecard.length > 0 && (
         <div className="card-hover" style={S.cardAccent}>
@@ -3150,7 +3119,8 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                             style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
                                     border:'none', background:'transparent',
                                     color: info[1],
-                                    cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
+                                    cursor:'pointer', fontSize:14, fontWeight:700,
+                                      display:'inline-flex', alignItems:'center', justifyContent:'center'}}><DayTick st={st}/></button>
                         </td>
                       );
                     })}
@@ -3161,6 +3131,24 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           </div>
         </div>
       )}
+
+      {/* Rocks — foto de las 13 semanas del trimestre */}
+      <div className="card-hover" style={{...S.cardAccent, padding:0, overflow:'hidden'}}>
+        <div style={{padding:'14px 18px 4px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap'}}>
+          <h3 style={{...S.h3, marginBottom:0}}>Rocks</h3>
+          <div style={{fontSize:11, color:'var(--muted-soft)', letterSpacing:0.3}}>
+            {curQ.split('-')[1]} · W{wn - qWeeks(q)[0] + 1} of 13
+          </div>
+        </div>
+        {rocks.length === 0
+          ? <div style={{padding:'0 18px 14px'}}>
+              <EmptyState icon="target" message="Sin Rocks este trimestre." compact/>
+            </div>
+          : <div style={{padding:'6px 12px 14px'}}>
+              <GanttChart rocks={rocks} wr={wr} qw={qWeeks(q)} upd={upd} qKey={curQ} highlightWn={wn}/>
+            </div>
+        }
+      </div>
 
       {meetingForm && <EventModal form={meetingForm} setForm={setMeetingForm}
         onSave={saveMeeting} onClose={() => setMeetingForm(null)}
@@ -3328,7 +3316,8 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues}) {
                       style={{width:'100%', height:24, borderRadius:5,
                               border:'none', background:'transparent',
                               color: info[1],
-                              cursor:'pointer', fontSize:14, fontWeight:700}}>{info[2]}</button>
+                              cursor:'pointer', fontSize:14, fontWeight:700,
+                                      display:'inline-flex', alignItems:'center', justifyContent:'center'}}><DayTick st={st}/></button>
                   </td>
                 );
               })}
