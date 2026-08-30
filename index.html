@@ -3033,8 +3033,7 @@ function TodosTab({data, upd}) {
                     fontFamily:'inherit', padding:0}}/>
         ) : (
           <div style={{flex:1, minWidth:120, fontWeight:500, color:'var(--text)', fontSize:13,
-                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                       textDecoration: t.done ? 'line-through' : 'none'}}
+                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                title={t.task}>{t.task}</div>
         )}
         {t.done && t.completedDate && !editMode && (
@@ -3622,11 +3621,11 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'ids' && <L10Issues upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum} editMode={editable('ids')}/>}
               {seg.k === 'conclude' && (() => {
                 const qFields = [
-                  {k:'headlines', label:'Headlines', ph:'What stands out this week?'},
                   {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this week?'},
                   {k:'priorities', label:'Priorities', ph:'Review planner / assess priorities. Happy with how you spent time? If not, steps?'},
                   {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this week?'},
-                  {k:'improvements', label:'Improvements', ph:'3 things to improve next week. What concrete actions can you take?'}
+                  {k:'improvements', label:'Improvements', ph:'3 things to improve next week. What concrete actions can you take?'},
+                  {k:'headlines', label:'Headlines', ph:'What stands out this week?'}
                 ];
                 return (
                   <div>
@@ -3758,23 +3757,32 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
   const showEdit = !!editMode;
   mode = mode || 'review';
   const today = todayStr();
+  const nextMon = nextMondayStr(weekNum);
   const [showF, setShowF] = useState(false);
-  const [form, setForm] = useState({task:'', due:''});
+  const [form, setForm] = useState({task:''});
   const [editingDateId, setEditingDateId] = useState(null);
   const add = () => {
     if (!form.task) return;
-    const startDate = dayStr(weekNum, 0);
-    upd(d => { d.todos.push({id: uid(), ...form, startDate, done:false, completedDate:null}); });
-    setForm({task:'', due:''}); setShowF(false);
+    upd(d => { d.todos.push({id: uid(), task: form.task, startDate: nextMon, due: '',
+                             done:false, completedDate:null, fromL10Week: weekNum}); });
+    setForm({task:''}); setShowF(false);
   };
   const updField = (id, field, val) => upd(d => {
     const idx = d.todos.findIndex(x => x.id === id);
     if (idx >= 0) d.todos[idx][field] = val;
   });
+  const moveUp = id => upd(d => {
+    const idx = d.todos.findIndex(x => x.id === id);
+    if (idx > 0) { const t = d.todos[idx]; d.todos[idx] = d.todos[idx-1]; d.todos[idx-1] = t; }
+  });
+  const moveDown = id => upd(d => {
+    const idx = d.todos.findIndex(x => x.id === id);
+    if (idx >= 0 && idx < d.todos.length - 1) { const t = d.todos[idx]; d.todos[idx] = d.todos[idx+1]; d.todos[idx+1] = t; }
+  });
   // Renders one todo row (checkbox + task + optional startDate + edit controls).
   const renderRow = t => {
-    const late = !t.done && t.due && t.due < today;
     const isEd = editingDateId === t.id;
+    const idxInAll = data.todos.findIndex(x => x.id === t.id);
     return (
       <div key={t.id}>
         <div style={{display:'flex', alignItems:'center', gap:9,
@@ -3796,8 +3804,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
                       color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
           ) : (
             <div style={{flex:1, minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
-                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                         textDecoration: t.done ? 'line-through' : 'none'}}
+                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                  title={t.task}>{t.task}</div>
           )}
           {showEdit && (
@@ -3812,6 +3819,13 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
                       flexShrink:0}}>
               {isEd ? 'Close' : 'Edit'}
             </button>
+          )}
+          {showEdit && mode === 'new' && (
+            <MoveBtns
+              disabledUp={idxInAll <= 0}
+              disabledDown={idxInAll >= data.todos.length - 1}
+              onUp={() => moveUp(t.id)}
+              onDown={() => moveDown(t.id)}/>
           )}
           {showEdit && (
             <XBtn size={16} onClick={() => upd(d => {
@@ -3831,6 +3845,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
     );
   };
   // MODE = 'review' — traditional pre-existing pending/completed todos of this L10 week.
+  // No +Task button here — new todos always go via mode='new'.
   if (mode === 'review') {
     const visible = data.todos.filter(t => {
       const createdWeek = t.startDate ? dateToWn(t.startDate) : 1;
@@ -3846,32 +3861,29 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
       <div>
         {visible.map(renderRow)}
         {!visible.length && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'4px 0'}}>No to-dos to review.</div>}
-        {showEdit && (!showF
-          ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:13, padding:'6px 12px'}}>+ Task</Btn>
-          : (
-            <InlineForm>
-              <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
-              <Fld label="Due date" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
-              <div style={{display:'flex', gap:7}}>
-                <Btn onClick={add} style={{fontSize:13}}>Save</Btn>
-                <Btn v="sec" onClick={() => setShowF(false)} style={{fontSize:13}}>Cancel</Btn>
-              </div>
-            </InlineForm>
-          )
-        )}
       </div>
     );
   }
-  // MODE = 'new' — carryover (pending) + new for next week (created in this meeting).
-  const nextMon = nextMondayStr(weekNum);
+  // MODE = 'new' — three categories:
+  //  1. CARRYOVER: pending w/ startDate < next Monday (or missing) and not from this L10
+  //  2. NEXT WEEK CARRYOVER: pending w/ startDate === next Monday, not from this L10
+  //  3. NEXT WEEK L10: created in this L10 session (fromL10Week === weekNum)
   const carryover = data.todos.filter(t => {
     if (t.done) return false;
     if (t.fromL10Week === weekNum) return false;
-    const createdWeek = t.startDate ? dateToWn(t.startDate) : 1;
-    if (createdWeek > weekNum + 1) return false;
-    return true;
+    if (!t.startDate) return true;
+    return t.startDate < nextMon;
+  });
+  const nextCarry = data.todos.filter(t => {
+    if (t.done) return false;
+    if (t.fromL10Week === weekNum) return false;
+    return t.startDate === nextMon;
   });
   const forNext = data.todos.filter(t => t.fromL10Week === weekNum);
+  const Header = ({label}) => (
+    <div style={{fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
+                 letterSpacing:0.5, marginTop:16, marginBottom:4}}>{label}</div>
+  );
   return (
     <div>
       <div style={{fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
@@ -3880,12 +3892,28 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
         <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0 8px'}}>No carryover pending.</div>
       )}
       {carryover.map(renderRow)}
-      <div style={{fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
-                   letterSpacing:0.5, marginTop:16, marginBottom:4}}>Next week ({nextMon})</div>
+      <Header label={'Next week carryover (' + nextMon + ')'}/>
+      {nextCarry.length === 0 && (
+        <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0 8px'}}>None.</div>
+      )}
+      {nextCarry.map(renderRow)}
+      <Header label={'Next week L10 (' + nextMon + ')'}/>
       {forNext.length === 0 && (
-        <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>No new to-dos yet. Create from IDS above.</div>
+        <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>No new to-dos yet. Create from IDS above or use + To-do.</div>
       )}
       {forNext.map(renderRow)}
+      {showEdit && (!showF
+        ? <Btn onClick={() => setShowF(true)} style={{marginTop:12, fontSize:13, padding:'6px 12px'}}>+ To-do</Btn>
+        : (
+          <InlineForm>
+            <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
+            <div style={{display:'flex', gap:7}}>
+              <Btn onClick={add} style={{fontSize:13}}>Save</Btn>
+              <Btn v="sec" onClick={() => { setShowF(false); setForm({task:''}); }} style={{fontSize:13}}>Cancel</Btn>
+            </div>
+          </InlineForm>
+        )
+      )}
     </div>
   );
 }
@@ -3902,8 +3930,11 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
   });
   const createTodoFromProject = (proj) => upd(d => {
     const taskName = (proj.name || '(unnamed)') + (proj.textStatus ? ' — ' + proj.textStatus : '');
-    d.todos.push({id: uid(), task: taskName, startDate: todayStr(), due: '', done: false, completedDate: null});
+    d.todos.push({id: uid(), task: taskName, startDate: nextMondayStr(weekNum), due: '',
+                  done: false, completedDate: null,
+                  fromL10Week: weekNum, fromProjectId: proj.id});
   });
+  const hasActiveTodoFor = (pid) => (data.todos || []).some(t => t.fromProjectId === pid && !t.done);
   return (
     <table style={{width:'100%', borderCollapse:'collapse'}}>
       <colgroup>
@@ -3912,7 +3943,9 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
         {showEdit && <col style={{width:70}}/>}
       </colgroup>
       <tbody>
-        {projects.map(proj => (
+        {projects.map(proj => {
+          const activeTd = hasActiveTodoFor(proj.id);
+          return (
           <tr key={proj.id}>
             <td style={{padding:'7px 12px 7px 0', verticalAlign:'middle',
                         fontSize:13, fontWeight:700, color:'var(--text)',
@@ -3928,9 +3961,12 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
             {showEdit && (
               <td style={{textAlign:'center', verticalAlign:'middle', padding:'4px 6px'}}>
                 <button onClick={() => createTodoFromProject(proj)}
-                  style={{padding:'2px 8px', borderRadius:'var(--r-md)', border:'1px solid var(--border-strong)', cursor:'pointer',
-                          fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
-                          whiteSpace:'nowrap'}}>+ To-do</button>
+                  style={{padding:'2px 8px', borderRadius:'var(--r-md)',
+                          border:'1px solid ' + (activeTd ? 'var(--brand)' : 'var(--border-strong)'),
+                          cursor:'pointer', fontSize:10, fontWeight:700,
+                          background: activeTd ? 'var(--brand-soft)' : 'var(--surface)',
+                          color: activeTd ? 'var(--brand)' : 'var(--text-2)',
+                          whiteSpace:'nowrap'}}>{activeTd ? 'To-do' : '+ To-do'}</button>
               </td>
             )}
             {showEdit && (
@@ -3940,7 +3976,8 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
               </td>
             )}
           </tr>
-        ))}
+          );
+        })}
       </tbody>
     </table>
   );
@@ -3998,18 +4035,17 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
           style={{padding:'10px 12px', marginBottom:6,
                   background: 'var(--surface-alt)',
                   borderRadius:'var(--r-sm)',
-                  borderLeft:'3px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--brand)'),
-                  opacity: issue.solved ? 0.65 : 1}}>
+                  borderLeft:'3px solid var(--brand)'}}>
           <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
             <button onClick={() => toggleSolved(issue.id)}
               title={issue.solved ? 'Mark unsolved' : 'Mark solved'}
               style={{width:20, height:20, borderRadius:'50%', flexShrink:0,
-                      border:'2px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--border-strong)'),
-                      background: issue.solved ? 'var(--ok-line)' : 'transparent',
+                      border:'2px solid var(--border-strong)',
+                      background: 'transparent',
                       cursor:'pointer', padding:0, display:'flex',
                       alignItems:'center', justifyContent:'center'}}>
               {issue.solved && (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text)"
                      strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
@@ -4021,11 +4057,9 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
                   onChange={e => setField(issue.id, 'sourceName', e.target.value)}
                   placeholder="Issue title..."
                   style={{width:'100%', border:'none', outline:'none', fontSize:13, fontWeight:600,
-                          color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0,
-                          textDecoration: issue.solved ? 'line-through' : 'none'}}/>
+                          color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
               ) : (
-                <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
-                             textDecoration: issue.solved ? 'line-through' : 'none'}}>
+                <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
                   {issue.sourceName || '(untitled)'}
                 </div>
               )}
@@ -4190,18 +4224,17 @@ function QReview({data, upd, qKey, qData}) {
                         style={{padding:'10px 12px', marginBottom:6,
                                 background:'var(--surface-alt)',
                                 borderRadius:'var(--r-sm)',
-                                borderLeft:'3px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--brand)'),
-                                opacity: issue.solved ? 0.65 : 1}}>
+                                borderLeft:'3px solid var(--brand)'}}>
                         <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
                           <button onClick={() => toggleSolvedQR(issue.id)}
                             title={issue.solved ? 'Mark unsolved' : 'Mark solved'}
                             style={{width:20, height:20, borderRadius:'50%', flexShrink:0,
-                                    border:'2px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--border-strong)'),
-                                    background: issue.solved ? 'var(--ok-line)' : 'transparent',
+                                    border:'2px solid var(--border-strong)',
+                                    background: 'transparent',
                                     cursor:'pointer', padding:0, display:'flex',
                                     alignItems:'center', justifyContent:'center'}}>
                             {issue.solved && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text)"
                                    strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="20 6 9 17 4 12"/>
                               </svg>
@@ -4213,11 +4246,9 @@ function QReview({data, upd, qKey, qData}) {
                                 onChange={e => setIssueField(issue.id, 'sourceName', e.target.value)}
                                 placeholder="Issue title..."
                                 style={{width:'100%', border:'none', outline:'none', fontSize:13, fontWeight:600,
-                                        color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0,
-                                        textDecoration: issue.solved ? 'line-through' : 'none'}}/>
+                                        color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
                             ) : (
-                              <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
-                                           textDecoration: issue.solved ? 'line-through' : 'none'}}>
+                              <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
                                 {issue.sourceName || '(untitled)'}
                               </div>
                             )}
@@ -4276,8 +4307,7 @@ function QReview({data, upd, qKey, qData}) {
                           })}
                           style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
                         <div style={{flex:1, fontSize:13, fontWeight:500, color:'var(--text)',
-                                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                                     textDecoration: t.done ? 'line-through' : 'none'}}
+                                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                              title={t.task}>{t.task}</div>
                         {t.startDate && <span style={{fontSize:11, color:'var(--muted-soft)', flexShrink:0}}>Start: {t.startDate}</span>}
                       </div>
@@ -4292,11 +4322,11 @@ function QReview({data, upd, qKey, qData}) {
               )}
               {seg.k === 'conclude' && (() => {
                 const qFields = [
-                  {k:'headlines', label:'Headlines', ph:'What stands out this quarter?'},
                   {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this quarter?'},
                   {k:'priorities', label:'Priorities', ph:'Review planner / assess priorities. Happy with how you spent time? If not, steps?'},
                   {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this quarter?'},
-                  {k:'improvements', label:'Improvements', ph:'3 things to improve next quarter. What concrete actions can you take?'}
+                  {k:'improvements', label:'Improvements', ph:'3 things to improve next quarter. What concrete actions can you take?'},
+                  {k:'headlines', label:'Headlines', ph:'What stands out this quarter?'}
                 ];
                 return (
                   <div>
