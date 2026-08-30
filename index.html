@@ -465,92 +465,6 @@ const LIFE_AREAS = [
   {k:'career', label:'Career'},
   {k:'joy',    label:'Joy'}
 ];
-const DEFAULT_AREAS = {
-  selfm: {
-    phrase: 'SOY FELIZ (peace of mind, purposeful, encouraging & continuous learning)',
-    roles: ['Peace of Mind', 'Growth'],
-    values: [
-      'Purposeful / goal oriented (Structure = Freedom)',
-      'Proactive / initiative-taking (q2)',
-      "Accountable / responsible (don't play the victim's role)",
-      'Embrace the Present / we had today / be spontaneous',
-      'Grateful (peace of mind, we own our feelings)',
-      'Encouraging (idolize / no cynicism / joy builder / understand & build from differences)',
-      'Do not blame, understand (comprehend)',
-      'Be a good man (integrity, kindness, respect, generosity, appreciation)',
-      'Temperance (stoic)',
-      "Fixer / Helpful. Look for opportunities to help and perform stoically. Give me a challenge and I'll give you a solution",
-      'Synergistic / Be close to successful people / Multipliers',
-      "Self-awareness. Reflection (sharpen the saw). Always written. If you're thinking without writing, you only think you're thinking",
-      'Serenity prayer: Serenity to accept things I cannot change, courage to change things I can and wisdom to know the difference',
-      'Parkinson Law: tasks can expand to fill the time you allow them. Take action and set ST deadlines for each step to avoid procrastination',
-      'Power thinking: la gente usa positive thinking para fingir que todo es de color de rosa. Con power thinking entendemos que todo es neutro, nada tiene significado excepto el que le damos',
-      'Be/Do/Have (rich) instead of Have/Do/Be (poor)',
-      'Effort / discipline',
-      'Wisdom',
-      'Continuous Development / Self-improvement',
-      'Mentored'
-    ],
-    vision: [
-      'I strive to be self-aware, focused, with clear goals and a positive outlook on life',
-      'I am committed to continuous learning, disciplined effort, and personal development to reach my full potential',
-      'I value the wisdom and guidance of my mentors, actively seeking their advice and learning from their experiences. I maintain a proactive approach to these relationships, showing appreciation and applying their insights to my personal and professional growth'
-    ]
-  },
-  health: {
-    phrase: 'SOY DEPORTISTA (activo y saludable)',
-    roles: ['Athlete'],
-    values: ['Athletic', 'Healthy / nutrition', 'Rested / Rejuvenated'],
-    vision: [
-      'I prioritize my physical and mental well-being by staying fit, eating nutritious foods, getting quality sleep and maintaining high energy levels'
-    ]
-  },
-  family: {
-    phrase: 'SOY EL MARIDO AL QUE SU MUJER QUIERE, EL PADRE EN EL QUE CONFIAR Y EL FAMILIAR QUE SIEMPRE ESTÁ CUANDO SE LE NECESITA',
-    roles: ['Husband', 'Father', 'Son', 'Family'],
-    values: [
-      'Loving relationships',
-      'Quality time',
-      'Support / Respect / Never criticize',
-      'Deep Connections',
-      'Trustful'
-    ],
-    vision: [
-      'I nurture loving and supportive relationships with my spouse, children, family, friends and mentors, fostering deep connections and trust',
-      'Husband: I strive to be a loving and supportive partner, fostering a deep and meaningful connection with my spouse. I prioritize open communication, mutual respect, and shared experiences to strengthen our bond',
-      'Parent: I aim to be a present and engaged parent, creating a nurturing environment where my children feel loved, supported, and encouraged to grow. I focus on building strong connections through quality time, guidance and understanding',
-      'Son: I seek to honor and support my parents, showing gratitude for their guidance and care. I maintain a respectful and loving relationship, offering my help and companionship whenever needed',
-      'Family: I cherish my family relationships, working to create a sense of unity and mutual respect. I idolize the values and traditions that bind us together, ensuring that we remain connected and supportive of one another'
-    ]
-  },
-  career: {
-    phrase: 'SOY LIBRE FINANCIERAMENTE, EMPRESARIO Y TENGO EL COMPROMISO DE ENSEÑAR LO APRENDIDO TANTO A NIVEL EDUCATIVO COMO AYUDANDO A OTRAS EMPRESAS',
-    roles: ['AZ Partner', 'Real Estate Promoter', 'Professor', 'Board Member', 'Successful Investor'],
-    values: [
-      'Purpose',
-      'Expert / Excellence / extra mile',
-      'Up-to-date / Forward thinking',
-      'Diversified / strategic / transformative',
-      'Synergistic / Be close to successful people / Multipliers',
-      'Invest wisely (goals, risks, diversified, research)',
-      'Legacy-building',
-      "Don't work for money (money must work for you)"
-    ],
-    vision: [
-      'I aim for excellence and achievement in my professional roles, contributing meaningfully as a partner, professor and board member',
-      'I seek financial freedom and security through careful planning, wise investments and organized management of my resources'
-    ]
-  },
-  joy: {
-    phrase: 'SOY AVENTURERO / HAGO FELIZ A LOS DEMÁS',
-    roles: ['Joy Builder', 'Friend'],
-    values: ['Happy', 'Adventurous / New experiences', 'Social Connection'],
-    vision: [
-      'Fun | I embrace joy and happiness by exploring new experiences, connecting socially, and ensuring that fun and relaxation are integral parts of my life, balancing work and play to avoid burnout and maintain a happy, fulfilling life',
-      'Friends | I aim to be a trustworthy and dependable friend, fostering deep and lasting connections. I prioritize honesty, loyalty, and mutual support, always being there for my friends in times of need'
-    ]
-  }
-};
 const emptyArea = () => ({phrase:'', roles:[], values:[], vision:[]});
 const INIT_V = {values:[], ltView:'', threeYearView:'', oneYearView:'', areas:{}};
 const INIT = {
@@ -616,17 +530,13 @@ const normalizeData = p => {
   const areasSrc = vSrc.areas || {};
   const areas = {};
   LIFE_AREAS.forEach(a => {
-    const cur = areasSrc[a.k];
-    if (cur && (cur.phrase || (cur.roles||[]).length || (cur.values||[]).length || (cur.vision||[]).length)) {
-      areas[a.k] = {
-        phrase: cur.phrase || '',
-        roles: cur.roles || [],
-        values: cur.values || [],
-        vision: cur.vision || []
-      };
-    } else {
-      areas[a.k] = JSON.parse(JSON.stringify(DEFAULT_AREAS[a.k] || emptyArea()));
-    }
+    const cur = areasSrc[a.k] || {};
+    areas[a.k] = {
+      phrase: cur.phrase || '',
+      roles: cur.roles || [],
+      values: cur.values || [],
+      vision: cur.vision || []
+    };
   });
   base.vision = {...INIT_V, ...vSrc, areas};
   return base;
@@ -711,7 +621,10 @@ const S = {
 // in the app so the calendar dropdown always starts the week on Monday).
 function DatePicker({value, onChange, placeholder, style}) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({top:0, left:0, openUp:false});
   const ref = useRef();
+  const popRef = useRef();
+  const inputRef = useRef();
   const initial = () => {
     if (value) {
       const parts = value.split('-');
@@ -723,9 +636,38 @@ function DatePicker({value, onChange, placeholder, style}) {
   const [viewMonth, setViewMonth] = useState(initial);
 
   useEffect(() => {
-    const onClick = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onClick = e => {
+      if (ref.current && !ref.current.contains(e.target)
+          && !(popRef.current && popRef.current.contains(e.target))) setOpen(false);
+    };
     if (open) document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  // Position the popup as position:fixed so it escapes overflow:hidden parents.
+  useEffect(() => {
+    if (!open || !inputRef.current) return;
+    const compute = () => {
+      const r = inputRef.current.getBoundingClientRect();
+      const popH = 300; // approximate max height
+      const vpH = window.innerHeight;
+      const openUp = (r.bottom + popH + 8 > vpH) && (r.top - popH - 8 > 0);
+      const popW = 248;
+      let left = r.left;
+      if (left + popW + 8 > window.innerWidth) left = Math.max(8, window.innerWidth - popW - 8);
+      setPos({
+        top: openUp ? (r.top - popH - 4) : (r.bottom + 4),
+        left,
+        openUp
+      });
+    };
+    compute();
+    window.addEventListener('scroll', compute, true);
+    window.addEventListener('resize', compute);
+    return () => {
+      window.removeEventListener('scroll', compute, true);
+      window.removeEventListener('resize', compute);
+    };
   }, [open]);
 
   // Keep the visible month synced when the value changes externally
@@ -774,13 +716,14 @@ function DatePicker({value, onChange, placeholder, style}) {
 
   return (
     <div ref={ref} style={{position:'relative', ...(style || {})}}>
-      <input value={value || ''} readOnly placeholder={placeholder || 'YYYY-MM-DD'}
+      <input ref={inputRef} value={value || ''} readOnly placeholder={placeholder || 'YYYY-MM-DD'}
         onClick={() => setOpen(o => !o)}
         style={{...S.inp, cursor:'pointer', backgroundImage:'none'}}/>
       {open && (
-        <div style={{position:'absolute', top:'calc(100% + 4px)', left:0, background:'var(--surface)',
-                     borderRadius:'var(--r-md)', boxShadow:'var(--elev-3)', padding:10,
-                     zIndex:200, width:248, border:'1px solid var(--border)'}}>
+        <div ref={popRef}
+          style={{position:'fixed', top:pos.top, left:pos.left, background:'var(--surface)',
+                  borderRadius:'var(--r-md)', boxShadow:'var(--elev-3)', padding:10,
+                  zIndex:9999, width:248, border:'1px solid var(--border)'}}>
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
             <button onClick={prevMonth} className="dp-nav" title="Mes anterior" style={navBtn}>{chev('left')}</button>
             <div style={{fontWeight:700, fontSize:13, color:'var(--text)'}}>{monthNames[month]} {year}</div>
@@ -4321,9 +4264,11 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
       id: uid(), task: taskName,
       startDate: nextMondayStr(weekNum),
       due: '', done: false, completedDate: null,
-      fromL10Week: weekNum
+      fromL10Week: weekNum,
+      fromIssueId: issue.id
     });
   });
+  const hasActiveTodoForIssue = (iid) => (data.todos || []).some(t => t.fromIssueId === iid && !t.done);
   const addIssue = () => {
     upd(d => {
       ensureQ(d, qKey);
@@ -4398,10 +4343,20 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
                   onChange={e => setField(issue.id, 'action', e.target.value)}
                   placeholder="Action..."
                   style={{...S.inp, flex:'1 1 120px', fontSize:12, padding:'5px 10px'}}/>
-                <button onClick={() => createTodoFromIssue(issue)}
-                  style={{padding:'5px 10px', borderRadius:'var(--r-sm)', border:'1px solid var(--brand)',
-                          background:'var(--brand)', color:'white', cursor:'pointer',
-                          fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>+ To-do</button>
+                {(() => {
+                  const hasTd = hasActiveTodoForIssue(issue.id);
+                  return (
+                    <button onClick={() => createTodoFromIssue(issue)}
+                      style={{padding:'5px 10px', borderRadius:'var(--r-sm)',
+                              border:'1px solid var(--brand)',
+                              background: hasTd ? 'var(--brand-soft)' : 'var(--brand)',
+                              color: hasTd ? 'var(--brand)' : 'white',
+                              cursor:'pointer',
+                              fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>
+                      {hasTd ? 'To-do' : '+ To-do'}
+                    </button>
+                  );
+                })()}
                 <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>
               </div>
             )}
@@ -4475,9 +4430,11 @@ function QReview({data, upd, qKey, qData}) {
       id: uid(), task: taskName,
       startDate: nextMondayStr(),
       due: '', done: false, completedDate: null,
-      fromQReviewQKey: qKey
+      fromQReviewQKey: qKey,
+      fromIssueId: issue.id
     });
   });
+  const hasActiveTodoForIssue = (iid) => (data.todos || []).some(t => t.fromIssueId === iid && !t.done);
   const toggleSolvedQR = id => upd(d => {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
@@ -4583,10 +4540,20 @@ function QReview({data, upd, qKey, qData}) {
                                 onChange={e => setIssueField(issue.id, 'action', e.target.value)}
                                 placeholder="Action..."
                                 style={{...S.inp, flex:'1 1 120px', fontSize:12, padding:'5px 10px'}}/>
-                              <button onClick={() => createTodoFromIssueQR(issue)}
-                                style={{padding:'5px 10px', borderRadius:'var(--r-sm)', border:'1px solid var(--brand)',
-                                        background:'var(--brand)', color:'white', cursor:'pointer',
-                                        fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>+ To-do</button>
+                              {(() => {
+                                const hasTd = hasActiveTodoForIssue(issue.id);
+                                return (
+                                  <button onClick={() => createTodoFromIssueQR(issue)}
+                                    style={{padding:'5px 10px', borderRadius:'var(--r-sm)',
+                                            border:'1px solid var(--brand)',
+                                            background: hasTd ? 'var(--brand-soft)' : 'var(--brand)',
+                                            color: hasTd ? 'var(--brand)' : 'white',
+                                            cursor:'pointer',
+                                            fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>
+                                    {hasTd ? 'To-do' : '+ To-do'}
+                                  </button>
+                                );
+                              })()}
                               <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>
                             </div>
                           )}
