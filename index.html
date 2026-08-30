@@ -4069,7 +4069,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
                         style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)',
                                 cursor:'pointer', fontWeight:700, fontSize:13, padding:0,
                                 background: wData.rating === n ? 'var(--brand)' : 'white',
-                                color: wData.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                                color: wData.rating === n ? 'white' : 'var(--brand)'}}>{n}</button>
                     ))}
                   </div>
                   <div style={{marginTop:14, borderTop:'1px solid var(--surface-alt)'}}>
@@ -4081,9 +4081,9 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
                           <div style={{flex:'0 0 90px', fontSize:13, fontWeight:700, color:'var(--text)'}}>{a.label}</div>
                           <select value={ar.score || ''}
                             onChange={e => setAR(a.k, 'score', e.target.value ? parseInt(e.target.value) : null)}
-                            style={{flex:'0 0 60px', padding:'4px 6px', fontSize:12, fontWeight:700,
+                            style={{flex:'0 0 60px', padding:'4px 6px', fontSize:13, fontWeight:700,
                                     borderRadius:'var(--r-sm)', border:'1px solid var(--border)',
-                                    background:'white', color:'var(--text)', cursor:'pointer',
+                                    background:'white', color:'var(--brand)', cursor:'pointer',
                                     fontFamily:'inherit'}}>
                             <option value="">—</option>
                             {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
@@ -4836,7 +4836,7 @@ function QReview({data, upd, qKey, qData}) {
                         style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)', cursor:'pointer',
                                 fontWeight:700, fontSize:13, padding:0,
                                 background: rev.rating === n ? 'var(--brand)' : 'white',
-                                color: rev.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                                color: rev.rating === n ? 'white' : 'var(--brand)'}}>{n}</button>
                     ))}
                   </div>
                   <div style={{marginTop:14, borderTop:'1px solid var(--surface-alt)'}}>
@@ -4848,9 +4848,9 @@ function QReview({data, upd, qKey, qData}) {
                           <div style={{flex:'0 0 90px', fontSize:13, fontWeight:700, color:'var(--text)'}}>{a.label}</div>
                           <select value={ar.score || ''}
                             onChange={e => setQAR(a.k, 'score', e.target.value ? parseInt(e.target.value) : null)}
-                            style={{flex:'0 0 60px', padding:'4px 6px', fontSize:12, fontWeight:700,
+                            style={{flex:'0 0 60px', padding:'4px 6px', fontSize:13, fontWeight:700,
                                     borderRadius:'var(--r-sm)', border:'1px solid var(--border)',
-                                    background:'white', color:'var(--text)', cursor:'pointer',
+                                    background:'white', color:'var(--brand)', cursor:'pointer',
                                     fontFamily:'inherit'}}>
                             <option value="">—</option>
                             {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
