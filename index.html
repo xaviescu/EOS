@@ -4226,13 +4226,13 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
     if (idx >= 0 && idx < d.todos.length - 1) { const t = d.todos[idx]; d.todos[idx] = d.todos[idx+1]; d.todos[idx+1] = t; }
   });
   // Renders one todo row (checkbox + task + optional startDate + edit controls).
-  const renderRow = t => {
+  const renderRow = (t, i) => {
     const isEd = editingDateId === t.id;
     const idxInAll = data.todos.findIndex(x => x.id === t.id);
     return (
       <div key={t.id}>
         <div style={{display:'flex', alignItems:'center', gap:9,
-                     padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
+                     padding:'8px 4px', borderBottom:'1px solid var(--surface-alt)',
                      opacity: t.done ? 0.45 : 1, flexWrap:'wrap'}}>
           {mode !== 'new' && (
             <input type="checkbox" checked={t.done}
@@ -4244,6 +4244,10 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
                 }
               })}
               style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+          )}
+          {mode === 'new' && typeof i === 'number' && (
+            <span style={{fontSize:11, fontWeight:700, color:'var(--brand)', flexShrink:0,
+                          minWidth:20, textAlign:'right'}}>{i + 1}.</span>
           )}
           {showEdit ? (
             <input value={t.task}
