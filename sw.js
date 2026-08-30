@@ -4,12 +4,19 @@
 // - New SW activates immediately on install (skipWaiting) and forces open tabs
 //   to reload so the new version takes effect without "clear cache" dance.
 
-const CACHE = 'eos-xe-v12';
+const CACHE = 'eos-xe-v13';
 const SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon-v2.svg',
+  './icon-v2-57.png',
+  './icon-v2-72.png',
+  './icon-v2-76.png',
+  './icon-v2-114.png',
+  './icon-v2-120.png',
+  './icon-v2-144.png',
+  './icon-v2-152.png',
   './icon-v2-180.png',
   './icon-v2-192.png',
   './icon-v2-512.png'
