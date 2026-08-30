@@ -2999,12 +2999,18 @@ function TodosTab({data, upd}) {
     upd(d => { d.todos.push({id: uid(), ...form, done:false, completedDate:null}); });
     setForm({task:'', startDate: todayStr()}); setShowF(false);
   };
-  const pending = data.todos.filter(t => !t.done);
+  // Sort by startDate ascending (oldest first); undated go last
+  const sortByStart = (a, b) => {
+    const A = a.startDate || '9999-12-31';
+    const B = b.startDate || '9999-12-31';
+    return A < B ? -1 : A > B ? 1 : 0;
+  };
+  const pending = data.todos.filter(t => !t.done).sort(sortByStart);
   // Completed: only those completed during the CURRENT week
   const done = data.todos.filter(t => {
     if (!t.done || !t.completedDate) return false;
     return dateToWn(t.completedDate) === curWn;
-  });
+  }).sort(sortByStart);
   const TRow = ({t, isLast}) => {
     const ri = data.todos.indexOf(t);
     const isEd = editingId === t.id;
@@ -3594,17 +3600,6 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         </div>
       )}
 
-      {/* Headlines as first card (same pattern as Daily → Highlight) */}
-      <div className="card-hover" style={S.card}>
-        <H3 style={{marginBottom:8}}>Weekly Headlines</H3>
-        <textarea value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
-          placeholder="What stands out this week?"
-          rows={1}
-          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-          style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                  padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
-                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5}}/>
-      </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
           <div style={{padding:'13px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
@@ -3625,21 +3620,41 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'rocks' && <L10Rocks rocks={qData.rocks || []} wr={qData.weeklyRocks || {}} qw={weeks} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} upd={upd} editMode={editable('rocks')}/>}
               {seg.k === 'projects' && <L10Projects data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('projects')}/>}
               {seg.k === 'ids' && <L10Issues upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum} editMode={editable('ids')}/>}
-              {seg.k === 'conclude' && (
-                <div>
-                  <Fld label="Notes" value={wData.conclusionNotes || ''} onChange={v => setWD('conclusionNotes', v)} placeholder="Agreements and next steps..." multi/>
-                  <label style={S.lbl}>Week rating (1-10)</label>
-                  <div style={{display:'flex', gap:4, marginTop:6}}>
-                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                      <button key={n} onClick={() => setWD('rating', wData.rating === n ? null : n)}
-                        style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)',
-                                cursor:'pointer', fontWeight:700, fontSize:13, padding:0,
-                                background: wData.rating === n ? 'var(--brand)' : 'white',
-                                color: wData.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+              {seg.k === 'conclude' && (() => {
+                const qFields = [
+                  {k:'headlines', label:'Headlines', ph:'What stands out this week?'},
+                  {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this week?'},
+                  {k:'priorities', label:'Priorities', ph:'Review planner / assess priorities. Happy with how you spent time? If not, steps?'},
+                  {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this week?'},
+                  {k:'improvements', label:'Improvements', ph:'3 things to improve next week. What concrete actions can you take?'}
+                ];
+                return (
+                  <div>
+                    {qFields.map(f => (
+                      <div key={f.k} style={{marginBottom:16}}>
+                        <label style={S.lbl}>{f.label}</label>
+                        <textarea value={wData[f.k] || ''} onChange={e => setWD(f.k, e.target.value)}
+                          placeholder={f.ph} rows={1}
+                          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                          style={{width:'100%', border:'none', outline:'none', fontSize:13,
+                                  padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
+                                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                                  borderBottom:'1px solid var(--surface-alt)'}}/>
+                      </div>
                     ))}
+                    <label style={S.lbl}>Week rating (1-10)</label>
+                    <div style={{display:'flex', gap:4, marginTop:6}}>
+                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                        <button key={n} onClick={() => setWD('rating', wData.rating === n ? null : n)}
+                          style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)',
+                                  cursor:'pointer', fontWeight:700, fontSize:13, padding:0,
+                                  background: wData.rating === n ? 'var(--brand)' : 'white',
+                                  color: wData.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>
@@ -3745,91 +3760,132 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
   const today = todayStr();
   const [showF, setShowF] = useState(false);
   const [form, setForm] = useState({task:'', due:''});
+  const [editingDateId, setEditingDateId] = useState(null);
   const add = () => {
     if (!form.task) return;
-    // Use the viewing L10 week's Monday as start date so the new todo
-    // appears in this week's L10 (and onwards) regardless of which
-    // calendar week you're really in.
     const startDate = dayStr(weekNum, 0);
     upd(d => { d.todos.push({id: uid(), ...form, startDate, done:false, completedDate:null}); });
     setForm({task:'', due:''}); setShowF(false);
   };
-  // Visibility rules:
-  // - review mode: pre-existing pending/completed todos of this L10 week (default).
-  // - new mode: all pending todos (includes those created in this meeting from IDS).
+  const updField = (id, field, val) => upd(d => {
+    const idx = d.todos.findIndex(x => x.id === id);
+    if (idx >= 0) d.todos[idx][field] = val;
+  });
+  // Renders one todo row (checkbox + task + optional startDate + edit controls).
+  const renderRow = t => {
+    const late = !t.done && t.due && t.due < today;
+    const isEd = editingDateId === t.id;
+    return (
+      <div key={t.id}>
+        <div style={{display:'flex', alignItems:'center', gap:9,
+                     padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
+                     opacity: t.done ? 0.45 : 1, flexWrap:'wrap'}}>
+          <input type="checkbox" checked={t.done}
+            onChange={e => upd(d => {
+              const idx = d.todos.findIndex(x => x.id === t.id);
+              if (idx >= 0) {
+                d.todos[idx].done = e.target.checked;
+                d.todos[idx].completedDate = e.target.checked ? todayStr() : null;
+              }
+            })}
+            style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+          {showEdit ? (
+            <input value={t.task}
+              onChange={ev => updField(t.id, 'task', ev.target.value)}
+              style={{flex:1, minWidth:120, border:'none', outline:'none', fontSize:13, fontWeight:500,
+                      color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
+          ) : (
+            <div style={{flex:1, minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
+                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                         textDecoration: t.done ? 'line-through' : 'none'}}
+                 title={t.task}>{t.task}</div>
+          )}
+          {showEdit && (
+            <span style={{fontSize:11, color:'var(--muted-soft)', flexShrink:0}}>
+              Start: {t.startDate || '—'}
+            </span>
+          )}
+          {showEdit && (
+            <button onClick={() => setEditingDateId(isEd ? null : t.id)}
+              style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
+                      color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:'var(--r-xs)',
+                      flexShrink:0}}>
+              {isEd ? 'Close' : 'Edit'}
+            </button>
+          )}
+          {showEdit && (
+            <XBtn size={16} onClick={() => upd(d => {
+                const idx = d.todos.findIndex(x => x.id === t.id);
+                if (idx >= 0) d.todos.splice(idx, 1);
+              })}/>
+          )}
+        </div>
+        {isEd && (
+          <div style={{padding:10, background:'var(--surface-alt)', borderRadius:'var(--r-sm)', marginTop:4, marginBottom:6}}>
+            <label style={S.lbl}>Start date</label>
+            <DatePicker value={t.startDate || ''}
+              onChange={v => { updField(t.id, 'startDate', v); setEditingDateId(null); }}/>
+          </div>
+        )}
+      </div>
+    );
+  };
+  // MODE = 'review' — traditional pre-existing pending/completed todos of this L10 week.
+  if (mode === 'review') {
+    const visible = data.todos.filter(t => {
+      const createdWeek = t.startDate ? dateToWn(t.startDate) : 1;
+      if (createdWeek > weekNum) return false;
+      if (t.fromL10Week === weekNum) return false;
+      if (t.done && t.completedDate) {
+        const completionWeek = dateToWn(t.completedDate);
+        if (completionWeek < weekNum) return false;
+      }
+      return true;
+    });
+    return (
+      <div>
+        {visible.map(renderRow)}
+        {!visible.length && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'4px 0'}}>No to-dos to review.</div>}
+        {showEdit && (!showF
+          ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:13, padding:'6px 12px'}}>+ Task</Btn>
+          : (
+            <InlineForm>
+              <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
+              <Fld label="Due date" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
+              <div style={{display:'flex', gap:7}}>
+                <Btn onClick={add} style={{fontSize:13}}>Save</Btn>
+                <Btn v="sec" onClick={() => setShowF(false)} style={{fontSize:13}}>Cancel</Btn>
+              </div>
+            </InlineForm>
+          )
+        )}
+      </div>
+    );
+  }
+  // MODE = 'new' — carryover (pending) + new for next week (created in this meeting).
   const nextMon = nextMondayStr(weekNum);
-  const visibleTodos = data.todos.filter(t => {
-    if (mode === 'new') {
-      // Show all pending + those created in this meeting (fromL10Week === weekNum).
-      return !t.done || t.fromL10Week === weekNum;
-    }
-    // review mode (default L10 flow):
+  const carryover = data.todos.filter(t => {
+    if (t.done) return false;
+    if (t.fromL10Week === weekNum) return false;
     const createdWeek = t.startDate ? dateToWn(t.startDate) : 1;
-    if (createdWeek > weekNum) return false;
-    if (t.fromL10Week === weekNum) return false; // exclude "new from this meeting" from review
-    if (t.done && t.completedDate) {
-      const completionWeek = dateToWn(t.completedDate);
-      if (completionWeek < weekNum) return false;
-    }
+    if (createdWeek > weekNum + 1) return false;
     return true;
   });
+  const forNext = data.todos.filter(t => t.fromL10Week === weekNum);
   return (
     <div>
-      {visibleTodos.map(t => {
-        const late = !t.done && t.due && t.due < today;
-        return (
-          <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
-                                  padding:'6px 0', borderBottom:'1px solid var(--surface-alt)', opacity: t.done ? 0.45 : 1}}>
-            <input type="checkbox" checked={t.done}
-              onChange={e => upd(d => {
-                const idx = d.todos.findIndex(x => x.id === t.id);
-                if (idx >= 0) {
-                  d.todos[idx].done = e.target.checked;
-                  d.todos[idx].completedDate = e.target.checked ? todayStr() : null;
-                }
-              })}
-              style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
-            <input value={t.task}
-              onChange={ev => upd(d => {
-                const idx = d.todos.findIndex(x => x.id === t.id);
-                if (idx >= 0) d.todos[idx].task = ev.target.value;
-              })}
-              style={{flex:1, border:'none', outline:'none', fontSize:13, fontWeight:500,
-                      textDecoration: 'none', color:'var(--text)',
-                      background:'transparent', fontFamily:'inherit', padding:0}}/>
-            {mode === 'new' && t.fromL10Week === weekNum && (
-              <span style={{fontSize:10, fontWeight:700, color:'var(--brand)',
-                            background:'var(--brand-soft)', padding:'2px 6px', borderRadius:'var(--r-xs)',
-                            flexShrink:0}}>NEW</span>
-            )}
-            {t.due && <span style={{fontSize:11, color: late ? 'var(--err-line)' : 'var(--muted-soft)'}}>{t.due}</span>}
-            {showEdit && (
-              <IssueBtn idsIssues={idsIssues} sourceId={t.id} sourceName={'Todo: ' + t.task}
-                weekNum={weekNum} upd={upd} qKey={qKey}/>
-            )}
-            {showEdit && (
-              <XBtn size={16} onClick={() => upd(d => {
-                  const idx = d.todos.findIndex(x => x.id === t.id);
-                  if (idx >= 0) d.todos.splice(idx, 1);
-                })}/>
-            )}
-          </div>
-        );
-      })}
-      {!visibleTodos.length && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'4px 0'}}>No to-dos yet.</div>}
-      {showEdit && (!showF
-        ? <Btn onClick={() => setShowF(true)} style={{marginTop:10, fontSize:13, padding:'6px 12px'}}>+ Task</Btn>
-        : (
-          <InlineForm>
-            <Fld label="Task" value={form.task} onChange={v => setForm(f => ({...f, task:v}))} placeholder="What needs to be done?"/>
-            <Fld label="Due date" value={form.due} onChange={v => setForm(f => ({...f, due:v}))} type="date"/>
-            <div style={{display:'flex', gap:7}}>
-              <Btn onClick={add} style={{fontSize:13}}>Save</Btn>
-              <Btn v="sec" onClick={() => setShowF(false)} style={{fontSize:13}}>Cancel</Btn>
-            </div>
-          </InlineForm>
-        )
+      <div style={{fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
+                   letterSpacing:0.5, marginBottom:4}}>Carryover</div>
+      {carryover.length === 0 && (
+        <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0 8px'}}>No carryover pending.</div>
       )}
+      {carryover.map(renderRow)}
+      <div style={{fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
+                   letterSpacing:0.5, marginTop:16, marginBottom:4}}>Next week ({nextMon})</div>
+      {forNext.length === 0 && (
+        <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>No new to-dos yet. Create from IDS above.</div>
+      )}
+      {forNext.map(renderRow)}
     </div>
   );
 }
@@ -3892,12 +3948,20 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
 
 function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
   const showEdit = !!editMode;
-  const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum && !i.convertedToTodo);
-  const [form, setForm] = useState(null);
+  const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum);
   const setField = (id, field, val) => upd(d => {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
     if (idx >= 0) d.quarters[qKey].idsIssues[idx][field] = val;
+  });
+  const toggleSolved = id => upd(d => {
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) {
+      const iss = d.quarters[qKey].idsIssues[idx];
+      if (!iss.solved) { iss.solved = true; iss.solvedWeek = weekNum; }
+      else { iss.solved = false; iss.solvedWeek = null; }
+    }
   });
   const deleteIssue = id => upd(d => {
     ensureQ(d, qKey);
@@ -3912,10 +3976,6 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
       due: '', done: false, completedDate: null,
       fromL10Week: weekNum
     });
-    // Mark issue as converted so it disappears from IDS list
-    ensureQ(d, qKey);
-    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === issue.id);
-    if (idx >= 0) d.quarters[qKey].idsIssues[idx].convertedToTodo = true;
   });
   const addIssue = () => {
     upd(d => {
@@ -3928,24 +3988,44 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
   };
   return (
     <div>
-      {active.length === 0 &&
+      {active.length === 0 && (
         <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
-          No issues. Use "+ Issue" buttons above or add manually below.
-        </div>}
+          No issues yet.
+        </div>
+      )}
       {active.map(issue => (
         <div key={issue.id}
-          style={{padding:'9px 12px', marginBottom:6, background:'var(--warn-bg)',
-                  borderRadius:'var(--r-sm)', borderLeft:'3px solid var(--brand)'}}>
-          <div style={{display:'flex', alignItems:'flex-start', gap:10, flexWrap:'wrap'}}>
+          style={{padding:'10px 12px', marginBottom:6,
+                  background: 'var(--surface-alt)',
+                  borderRadius:'var(--r-sm)',
+                  borderLeft:'3px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--brand)'),
+                  opacity: issue.solved ? 0.65 : 1}}>
+          <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+            <button onClick={() => toggleSolved(issue.id)}
+              title={issue.solved ? 'Mark unsolved' : 'Mark solved'}
+              style={{width:20, height:20, borderRadius:'50%', flexShrink:0,
+                      border:'2px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--border-strong)'),
+                      background: issue.solved ? 'var(--ok-line)' : 'transparent',
+                      cursor:'pointer', padding:0, display:'flex',
+                      alignItems:'center', justifyContent:'center'}}>
+              {issue.solved && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                     strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+            </button>
             <div style={{flex:'1 1 200px', minWidth:0}}>
               {showEdit ? (
                 <input value={issue.sourceName || ''}
                   onChange={e => setField(issue.id, 'sourceName', e.target.value)}
                   placeholder="Issue title..."
                   style={{width:'100%', border:'none', outline:'none', fontSize:13, fontWeight:600,
-                          color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
+                          color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0,
+                          textDecoration: issue.solved ? 'line-through' : 'none'}}/>
               ) : (
-                <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
+                <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
+                             textDecoration: issue.solved ? 'line-through' : 'none'}}>
                   {issue.sourceName || '(untitled)'}
                 </div>
               )}
@@ -3961,10 +4041,11 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
                   <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>{issue.explanation}</div>
                 )
               )}
-              {issue.weekAdded < weekNum &&
+              {issue.weekAdded < weekNum && !issue.solved && (
                 <span style={{fontSize:10, color:'var(--err-line)', marginTop:4, display:'block'}}>
                   Carried from week {issue.weekAdded}
-                </span>}
+                </span>
+              )}
             </div>
             {showEdit && (
               <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', flex:'1 1 240px'}}>
@@ -3984,7 +4065,6 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
       ))}
       {showEdit && (
         <Btn onClick={addIssue} style={{marginTop:8, fontSize:13, padding:'6px 12px'}}>+ Issue</Btn>
-      )}
       )}
     </div>
   );
@@ -4052,24 +4132,19 @@ function QReview({data, upd, qKey, qData}) {
       due: '', done: false, completedDate: null,
       fromQReviewQKey: qKey
     });
+  });
+  const toggleSolvedQR = id => upd(d => {
     ensureQ(d, qKey);
-    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === issue.id);
-    if (idx >= 0) d.quarters[qKey].idsIssues[idx].convertedToTodo = true;
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
+    if (idx >= 0) {
+      const iss = d.quarters[qKey].idsIssues[idx];
+      if (!iss.solved) { iss.solved = true; iss.solvedWeek = lastWk; }
+      else { iss.solved = false; iss.solvedWeek = null; }
+    }
   });
 
   return (
     <div>
-      {/* Headlines del quarter — misma UX que L10 → Headlines de la semana */}
-      <div className="card-hover" style={S.card}>
-        <H3 style={{marginBottom:8}}>Quarter Headlines</H3>
-        <textarea value={rev.headlines || ''} onChange={e => setR('headlines', e.target.value)}
-          placeholder="What stands out this quarter?"
-          rows={1}
-          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-          style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                  padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
-                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5}}/>
-      </div>
       {AGENDA.map(seg => (
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
           <div style={{padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
@@ -4105,29 +4180,44 @@ function QReview({data, upd, qKey, qData}) {
               )}
               {seg.k === 'issues' && (
                 <div>
-                  {(() => {
-                    const activeIssues = idsIssues.filter(i => !i.convertedToTodo);
-                    if (activeIssues.length === 0) {
-                      return (
-                        <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
-                          No issues yet. Use "+ Issue" buttons in Scorecard/Rocks above, or add one below.
-                        </div>
-                      );
-                    }
-                    return activeIssues.map(issue => (
+                  {idsIssues.length === 0 && (
+                    <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
+                      No issues yet. Use "+ Issue" buttons in Scorecard/Rocks above, or add one below.
+                    </div>
+                  )}
+                  {idsIssues.map(issue => (
                       <div key={issue.id}
-                        style={{padding:'9px 12px', marginBottom:6, background:'var(--warn-bg)',
-                                borderRadius:'var(--r-sm)', borderLeft:'3px solid var(--brand)'}}>
-                        <div style={{display:'flex', alignItems:'flex-start', gap:10, flexWrap:'wrap'}}>
+                        style={{padding:'10px 12px', marginBottom:6,
+                                background:'var(--surface-alt)',
+                                borderRadius:'var(--r-sm)',
+                                borderLeft:'3px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--brand)'),
+                                opacity: issue.solved ? 0.65 : 1}}>
+                        <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+                          <button onClick={() => toggleSolvedQR(issue.id)}
+                            title={issue.solved ? 'Mark unsolved' : 'Mark solved'}
+                            style={{width:20, height:20, borderRadius:'50%', flexShrink:0,
+                                    border:'2px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--border-strong)'),
+                                    background: issue.solved ? 'var(--ok-line)' : 'transparent',
+                                    cursor:'pointer', padding:0, display:'flex',
+                                    alignItems:'center', justifyContent:'center'}}>
+                            {issue.solved && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                                   strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                            )}
+                          </button>
                           <div style={{flex:'1 1 200px', minWidth:0}}>
                             {editable('issues') ? (
                               <input value={issue.sourceName || ''}
                                 onChange={e => setIssueField(issue.id, 'sourceName', e.target.value)}
                                 placeholder="Issue title..."
                                 style={{width:'100%', border:'none', outline:'none', fontSize:13, fontWeight:600,
-                                        color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
+                                        color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0,
+                                        textDecoration: issue.solved ? 'line-through' : 'none'}}/>
                             ) : (
-                              <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
+                              <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
+                                           textDecoration: issue.solved ? 'line-through' : 'none'}}>
                                 {issue.sourceName || '(untitled)'}
                               </div>
                             )}
@@ -4201,21 +4291,41 @@ function QReview({data, upd, qKey, qData}) {
                   onChange={e => setR(seg.k, e.target.value)}
                   placeholder={seg.k === 'vision' ? 'Aligned with Vision?' : 'Proposed Rocks for next quarter...'}/>
               )}
-              {seg.k === 'conclude' && (
-                <div>
-                  <Fld label="Closing notes" value={rev.notes || ''} onChange={v => setR('notes', v)} placeholder="Decisions..." multi/>
-                  <label style={S.lbl}>Quarter rating (1-10)</label>
-                  <div style={{display:'flex', gap:4, marginTop:6}}>
-                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                      <button key={n} onClick={() => setR('rating', rev.rating === n ? null : n)}
-                        style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)', cursor:'pointer',
-                                fontWeight:700, fontSize:13, padding:0,
-                                background: rev.rating === n ? 'var(--brand)' : 'white',
-                                color: rev.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+              {seg.k === 'conclude' && (() => {
+                const qFields = [
+                  {k:'headlines', label:'Headlines', ph:'What stands out this quarter?'},
+                  {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this quarter?'},
+                  {k:'priorities', label:'Priorities', ph:'Review planner / assess priorities. Happy with how you spent time? If not, steps?'},
+                  {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this quarter?'},
+                  {k:'improvements', label:'Improvements', ph:'3 things to improve next quarter. What concrete actions can you take?'}
+                ];
+                return (
+                  <div>
+                    {qFields.map(f => (
+                      <div key={f.k} style={{marginBottom:16}}>
+                        <label style={S.lbl}>{f.label}</label>
+                        <textarea value={rev[f.k] || ''} onChange={e => setR(f.k, e.target.value)}
+                          placeholder={f.ph} rows={1}
+                          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                          style={{width:'100%', border:'none', outline:'none', fontSize:13,
+                                  padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
+                                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                                  borderBottom:'1px solid var(--surface-alt)'}}/>
+                      </div>
                     ))}
+                    <label style={S.lbl}>Quarter rating (1-10)</label>
+                    <div style={{display:'flex', gap:4, marginTop:6}}>
+                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                        <button key={n} onClick={() => setR('rating', rev.rating === n ? null : n)}
+                          style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)', cursor:'pointer',
+                                  fontWeight:700, fontSize:13, padding:0,
+                                  background: rev.rating === n ? 'var(--brand)' : 'white',
+                                  color: rev.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>
