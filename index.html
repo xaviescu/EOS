@@ -4234,15 +4234,17 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
         <div style={{display:'flex', alignItems:'center', gap:9,
                      padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
                      opacity: t.done ? 0.45 : 1, flexWrap:'wrap'}}>
-          <input type="checkbox" checked={t.done}
-            onChange={e => upd(d => {
-              const idx = d.todos.findIndex(x => x.id === t.id);
-              if (idx >= 0) {
-                d.todos[idx].done = e.target.checked;
-                d.todos[idx].completedDate = e.target.checked ? todayStr() : null;
-              }
-            })}
-            style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+          {mode !== 'new' && (
+            <input type="checkbox" checked={t.done}
+              onChange={e => upd(d => {
+                const idx = d.todos.findIndex(x => x.id === t.id);
+                if (idx >= 0) {
+                  d.todos[idx].done = e.target.checked;
+                  d.todos[idx].completedDate = e.target.checked ? todayStr() : null;
+                }
+              })}
+              style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+          )}
           {showEdit ? (
             <input value={t.task}
               onChange={ev => updField(t.id, 'task', ev.target.value)}
