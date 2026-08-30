@@ -458,7 +458,101 @@ const getDayOfWeek = ds => {
   return ['S','M','T','W','T','F','S'][d.getUTCDay()];
 };
 
-const INIT_V = {values:[], ltView:'', threeYearView:'', oneYearView:''};
+const LIFE_AREAS = [
+  {k:'selfm',  label:'SelfM'},
+  {k:'health', label:'Health'},
+  {k:'family', label:'Family'},
+  {k:'career', label:'Career'},
+  {k:'joy',    label:'Joy'}
+];
+const DEFAULT_AREAS = {
+  selfm: {
+    phrase: 'SOY FELIZ (peace of mind, purposeful, encouraging & continuous learning)',
+    roles: ['Peace of Mind', 'Growth'],
+    values: [
+      'Purposeful / goal oriented (Structure = Freedom)',
+      'Proactive / initiative-taking (q2)',
+      "Accountable / responsible (don't play the victim's role)",
+      'Embrace the Present / we had today / be spontaneous',
+      'Grateful (peace of mind, we own our feelings)',
+      'Encouraging (idolize / no cynicism / joy builder / understand & build from differences)',
+      'Do not blame, understand (comprehend)',
+      'Be a good man (integrity, kindness, respect, generosity, appreciation)',
+      'Temperance (stoic)',
+      "Fixer / Helpful. Look for opportunities to help and perform stoically. Give me a challenge and I'll give you a solution",
+      'Synergistic / Be close to successful people / Multipliers',
+      "Self-awareness. Reflection (sharpen the saw). Always written. If you're thinking without writing, you only think you're thinking",
+      'Serenity prayer: Serenity to accept things I cannot change, courage to change things I can and wisdom to know the difference',
+      'Parkinson Law: tasks can expand to fill the time you allow them. Take action and set ST deadlines for each step to avoid procrastination',
+      'Power thinking: la gente usa positive thinking para fingir que todo es de color de rosa. Con power thinking entendemos que todo es neutro, nada tiene significado excepto el que le damos',
+      'Be/Do/Have (rich) instead of Have/Do/Be (poor)',
+      'Effort / discipline',
+      'Wisdom',
+      'Continuous Development / Self-improvement',
+      'Mentored'
+    ],
+    vision: [
+      'I strive to be self-aware, focused, with clear goals and a positive outlook on life',
+      'I am committed to continuous learning, disciplined effort, and personal development to reach my full potential',
+      'I value the wisdom and guidance of my mentors, actively seeking their advice and learning from their experiences. I maintain a proactive approach to these relationships, showing appreciation and applying their insights to my personal and professional growth'
+    ]
+  },
+  health: {
+    phrase: 'SOY DEPORTISTA (activo y saludable)',
+    roles: ['Athlete'],
+    values: ['Athletic', 'Healthy / nutrition', 'Rested / Rejuvenated'],
+    vision: [
+      'I prioritize my physical and mental well-being by staying fit, eating nutritious foods, getting quality sleep and maintaining high energy levels'
+    ]
+  },
+  family: {
+    phrase: 'SOY EL MARIDO AL QUE SU MUJER QUIERE, EL PADRE EN EL QUE CONFIAR Y EL FAMILIAR QUE SIEMPRE ESTÁ CUANDO SE LE NECESITA',
+    roles: ['Husband', 'Father', 'Son', 'Family'],
+    values: [
+      'Loving relationships',
+      'Quality time',
+      'Support / Respect / Never criticize',
+      'Deep Connections',
+      'Trustful'
+    ],
+    vision: [
+      'I nurture loving and supportive relationships with my spouse, children, family, friends and mentors, fostering deep connections and trust',
+      'Husband: I strive to be a loving and supportive partner, fostering a deep and meaningful connection with my spouse. I prioritize open communication, mutual respect, and shared experiences to strengthen our bond',
+      'Parent: I aim to be a present and engaged parent, creating a nurturing environment where my children feel loved, supported, and encouraged to grow. I focus on building strong connections through quality time, guidance and understanding',
+      'Son: I seek to honor and support my parents, showing gratitude for their guidance and care. I maintain a respectful and loving relationship, offering my help and companionship whenever needed',
+      'Family: I cherish my family relationships, working to create a sense of unity and mutual respect. I idolize the values and traditions that bind us together, ensuring that we remain connected and supportive of one another'
+    ]
+  },
+  career: {
+    phrase: 'SOY LIBRE FINANCIERAMENTE, EMPRESARIO Y TENGO EL COMPROMISO DE ENSEÑAR LO APRENDIDO TANTO A NIVEL EDUCATIVO COMO AYUDANDO A OTRAS EMPRESAS',
+    roles: ['AZ Partner', 'Real Estate Promoter', 'Professor', 'Board Member', 'Successful Investor'],
+    values: [
+      'Purpose',
+      'Expert / Excellence / extra mile',
+      'Up-to-date / Forward thinking',
+      'Diversified / strategic / transformative',
+      'Synergistic / Be close to successful people / Multipliers',
+      'Invest wisely (goals, risks, diversified, research)',
+      'Legacy-building',
+      "Don't work for money (money must work for you)"
+    ],
+    vision: [
+      'I aim for excellence and achievement in my professional roles, contributing meaningfully as a partner, professor and board member',
+      'I seek financial freedom and security through careful planning, wise investments and organized management of my resources'
+    ]
+  },
+  joy: {
+    phrase: 'SOY AVENTURERO / HAGO FELIZ A LOS DEMÁS',
+    roles: ['Joy Builder', 'Friend'],
+    values: ['Happy', 'Adventurous / New experiences', 'Social Connection'],
+    vision: [
+      'Fun | I embrace joy and happiness by exploring new experiences, connecting socially, and ensuring that fun and relaxation are integral parts of my life, balancing work and play to avoid burnout and maintain a happy, fulfilling life',
+      'Friends | I aim to be a trustworthy and dependable friend, fostering deep and lasting connections. I prioritize honesty, loyalty, and mutual support, always being there for my friends in times of need'
+    ]
+  }
+};
+const emptyArea = () => ({phrase:'', roles:[], values:[], vision:[]});
+const INIT_V = {values:[], ltView:'', threeYearView:'', oneYearView:'', areas:{}};
 const INIT = {
   vision: JSON.parse(JSON.stringify(INIT_V)),
   processes: [],
@@ -467,7 +561,8 @@ const INIT = {
   weeklyCalendar: {},
   stdWeeklyEvents: [],
   monthNotes: {},
-  weeklyProjects: {}
+  weeklyProjects: {},
+  yearRocks: {}
 };
 
 const ensureQ = (d, qk) => {
@@ -507,12 +602,35 @@ const eventEndTime = (ev) => {
 };
 const fmtTime = (h, m) => h + ':' + String(m || 0).padStart(2, '0');
 
-const normalizeData = p => ({
-  ...INIT, ...p,
-  monthNotes: p.monthNotes || {},
-  stdWeeklyEvents: p.stdWeeklyEvents || [],
-  weeklyProjects: p.weeklyProjects || {}
-});
+const normalizeData = p => {
+  const base = {
+    ...INIT, ...p,
+    monthNotes: p.monthNotes || {},
+    stdWeeklyEvents: p.stdWeeklyEvents || [],
+    weeklyProjects: p.weeklyProjects || {},
+    yearRocks: p.yearRocks || {}
+  };
+  // Vision.areas: seed defaults for any missing area on first load. Once the
+  // user has edited an area we keep their content — defaults only fill blanks.
+  const vSrc = p.vision || {};
+  const areasSrc = vSrc.areas || {};
+  const areas = {};
+  LIFE_AREAS.forEach(a => {
+    const cur = areasSrc[a.k];
+    if (cur && (cur.phrase || (cur.roles||[]).length || (cur.values||[]).length || (cur.vision||[]).length)) {
+      areas[a.k] = {
+        phrase: cur.phrase || '',
+        roles: cur.roles || [],
+        values: cur.values || [],
+        vision: cur.vision || []
+      };
+    } else {
+      areas[a.k] = JSON.parse(JSON.stringify(DEFAULT_AREAS[a.k] || emptyArea()));
+    }
+  });
+  base.vision = {...INIT_V, ...vSrc, areas};
+  return base;
+};
 
 // =====================================================================
 // Crypto helpers (PIN -> AES-GCM)
@@ -2197,7 +2315,6 @@ function VisionTab({data, upd}) {
   const isMobile = useIsMobile();
   const v = data.vision || INIT_V;
   const sv = (key, val) => upd(d => { d.vision[key] = val; });
-  const [nv, setNv] = useState('');
   const [vTab, setVTab] = useState('values');
   const VTABS = [['values','Values'], ['lt','Long-Term'], ['3y','3-Year'], ['1y','1-Year']];
   return (
@@ -2209,30 +2326,7 @@ function VisionTab({data, upd}) {
             className={'tab-underline' + (vTab === id ? ' active' : '')}>{lbl}</button>
         ))}
       </div>
-      {vTab === 'values' && (
-        <div style={S.card}>
-          <H3>Values</H3>
-          <div style={{marginBottom:10}}>
-            {(v.values || []).map((val, i) => (
-              <span key={i} style={{display:'inline-flex', alignItems:'center', gap:5,
-                                    background:'var(--warn-bg)', color:'var(--warn-fg)', borderRadius:20,
-                                    padding:'4px 12px', marginRight:5, marginBottom:5,
-                                    fontSize:13, fontWeight:600}}>
-                {val}
-                <button onClick={() => upd(d => { d.vision.values.splice(i, 1); })}
-                  style={{border:'none', background:'none', cursor:'pointer',
-                          color:'var(--warn-fg)', fontSize:13, padding:0}}>x</button>
-              </span>
-            ))}
-          </div>
-          <div style={{display:'flex', gap:8}}>
-            <input style={{...S.inp, flex:1}} value={nv} onChange={e => setNv(e.target.value)}
-              placeholder="Add value..."
-              onKeyDown={e => { if (e.key === 'Enter' && nv.trim()) { upd(d => { d.vision.values.push(nv.trim()); }); setNv(''); }}}/>
-            <Btn onClick={() => { if (nv.trim()) { upd(d => { d.vision.values.push(nv.trim()); }); setNv(''); }}}>+</Btn>
-          </div>
-        </div>
-      )}
+      {vTab === 'values' && <VisionAreas data={data} upd={upd}/>}
       {vTab === 'lt' && (
         <div style={S.card}>
           <H3>Long-Term</H3>
@@ -2254,6 +2348,107 @@ function VisionTab({data, upd}) {
             onChange={e => sv('oneYearView', e.target.value)} placeholder="What must be accomplished this year?"/>
         </div>
       )}
+    </div>
+  );
+}
+
+function VisionAreas({data, upd}) {
+  const [area, setArea] = useState('selfm');
+  const [editMode, setEditMode] = useState(false);
+  const areas = (data.vision && data.vision.areas) || {};
+  const a = areas[area] || emptyArea();
+  const setAField = (field, val) => upd(d => {
+    if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
+    if (!d.vision.areas) d.vision.areas = {};
+    if (!d.vision.areas[area]) d.vision.areas[area] = emptyArea();
+    d.vision.areas[area][field] = val;
+  });
+  const addItem = (field) => setAField(field, [...(a[field] || []), '']);
+  const updItem = (field, i, val) => setAField(field, (a[field] || []).map((x, j) => j === i ? val : x));
+  const delItem = (field, i) => setAField(field, (a[field] || []).filter((_, j) => j !== i));
+  const moveItem = (field, i, dir) => {
+    const arr = [...(a[field] || [])];
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    setAField(field, arr);
+  };
+  const AreaList = ({field, label, placeholder}) => (
+    <div style={{marginBottom:16}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
+        <label style={{...S.lbl, marginBottom:0}}>{label}</label>
+        {editMode && (
+          <Btn v="sec" onClick={() => addItem(field)} style={{fontSize:11, padding:'3px 10px'}}>+ Add</Btn>
+        )}
+      </div>
+      {(a[field] || []).length === 0 && !editMode && (
+        <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>—</div>
+      )}
+      {(a[field] || []).map((item, i) => (
+        <div key={i} style={{display:'flex', alignItems:'flex-start', gap:8, marginBottom:6}}>
+          <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:2, flexShrink:0}}>•</span>
+          {editMode ? (
+            <React.Fragment>
+              <textarea value={item}
+                onChange={e => updItem(field, i, e.target.value)}
+                placeholder={placeholder} rows={1}
+                ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                style={{flex:1, border:'none', outline:'none', fontSize:13,
+                        padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                        color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                        borderBottom:'1px solid var(--surface-alt)'}}/>
+              <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+                <MoveBtns
+                  disabledUp={i === 0} disabledDown={i === (a[field] || []).length - 1}
+                  onUp={() => moveItem(field, i, -1)}
+                  onDown={() => moveItem(field, i, 1)}/>
+                <XBtn size={14} onClick={() => delItem(field, i)}/>
+              </div>
+            </React.Fragment>
+          ) : (
+            <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{item}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <div>
+      <div className="tabbar" style={{marginBottom:12}}>
+        {LIFE_AREAS.map(la => (
+          <button key={la.k} onClick={() => setArea(la.k)}
+            className={'tab-underline' + (area === la.k ? ' active' : '')}>
+            {la.label}
+          </button>
+        ))}
+      </div>
+      <div style={{display:'flex', gap:8, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+          {editMode ? 'Done' : 'Edit'}
+        </Btn>
+      </div>
+      <div style={S.card}>
+        <label style={S.lbl}>Frase principal</label>
+        {editMode ? (
+          <textarea value={a.phrase || ''}
+            onChange={e => setAField('phrase', e.target.value)}
+            placeholder="Frase principal de esta área..."
+            rows={2}
+            ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+            style={{width:'100%', border:'none', outline:'none', fontSize:15, fontWeight:700,
+                    padding:'6px 0', background:'transparent', resize:'none', overflow:'hidden',
+                    color:'var(--brand)', fontFamily:'inherit', lineHeight:1.4,
+                    borderBottom:'1px solid var(--surface-alt)', marginBottom:16}}/>
+        ) : (
+          <div style={{fontSize:15, fontWeight:700, color:'var(--brand)', marginBottom:16,
+                       padding:'6px 0', borderBottom:'1px solid var(--surface-alt)', lineHeight:1.4}}>
+            {a.phrase || '—'}
+          </div>
+        )}
+        <AreaList field="roles"  label="Roles"  placeholder="Rol..."/>
+        <AreaList field="values" label="Values" placeholder="Value..."/>
+        <AreaList field="vision" label="Vision" placeholder="Vision statement..."/>
+      </div>
     </div>
   );
 }
@@ -2315,6 +2510,7 @@ function MonthTab({data, upd, goToDay}) {
 
 function RocksTab({data, upd}) {
   const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState('q'); // 'year' | 'q'
   const [selQ, setSelQ] = useState(getCurQ());
   const [editMode, setEditMode] = useState(false);
   const [editStep, setEditStep] = useState(null);
@@ -2367,7 +2563,27 @@ function RocksTab({data, upd}) {
   return (
     <div>
       <PageTitle icon="rocks_all">Rocks</PageTitle>
-      <QBtns selQ={selQ} onSelect={qk => { setSelQ(qk); setAddRock(false); }}/>
+      <div className="tabbar">
+        <button onClick={() => setViewMode('year')}
+          className={'tab-underline' + (viewMode === 'year' ? ' active' : '')}>
+          {YEAR}
+        </button>
+        {QS.map(q => {
+          const qk = YEAR + '-' + q;
+          const isAct = viewMode === 'q' && qk === selQ;
+          const isCur = qk === getCurQ();
+          return (
+            <button key={q}
+              onClick={() => { setViewMode('q'); setSelQ(qk); setAddRock(false); }}
+              className={'tab-underline' + (isAct ? ' active' : '')}
+              style={!isAct && isCur ? {color:'var(--brand)'} : {}}>
+              {q} {YEAR}
+            </button>
+          );
+        })}
+      </div>
+      {viewMode === 'year' && <YearRocks data={data} upd={upd}/>}
+      {viewMode === 'q' && <React.Fragment>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setAddRock(true)} style={{fontSize:13}}>+ Rock</Btn>
         <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
@@ -2601,6 +2817,99 @@ function RocksTab({data, upd}) {
             );
           })}
       </div>
+      </React.Fragment>}
+    </div>
+  );
+}
+
+function YearRocks({data, upd}) {
+  const AREAS = [
+    {k:'selfm',  label:'SelfM'},
+    {k:'health', label:'Health'},
+    {k:'family', label:'Family'},
+    {k:'career', label:'Career'},
+    {k:'joy',    label:'Joy'}
+  ];
+  const [area, setArea] = useState('selfm');
+  const [editMode, setEditMode] = useState(false);
+  const yearKey = String(YEAR);
+  const yr = (data.yearRocks && data.yearRocks[yearKey]) || {};
+  const rocks = yr[area] || [];
+  const addRock = () => upd(d => {
+    if (!d.yearRocks) d.yearRocks = {};
+    if (!d.yearRocks[yearKey]) d.yearRocks[yearKey] = {};
+    if (!d.yearRocks[yearKey][area]) d.yearRocks[yearKey][area] = [];
+    d.yearRocks[yearKey][area].push({id: uid(), title:'', explanation:''});
+  });
+  const updField = (id, field, val) => upd(d => {
+    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][area]) return;
+    const idx = d.yearRocks[yearKey][area].findIndex(r => r.id === id);
+    if (idx >= 0) d.yearRocks[yearKey][area][idx][field] = val;
+  });
+  const delRock = id => upd(d => {
+    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][area]) return;
+    d.yearRocks[yearKey][area] = d.yearRocks[yearKey][area].filter(r => r.id !== id);
+  });
+  const moveRock = (id, dir) => upd(d => {
+    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][area]) return;
+    const arr = d.yearRocks[yearKey][area];
+    const i = arr.findIndex(r => r.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  });
+  return (
+    <div>
+      <div className="tabbar" style={{marginBottom:12}}>
+        {AREAS.map(a => (
+          <button key={a.k} onClick={() => setArea(a.k)}
+            className={'tab-underline' + (area === a.k ? ' active' : '')}>
+            {a.label}
+          </button>
+        ))}
+      </div>
+      <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
+        <Btn onClick={addRock} style={{fontSize:13}}>+ Rock</Btn>
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+          {editMode ? 'Done' : 'Edit'}
+        </Btn>
+      </div>
+      {rocks.length === 0 && (
+        <EmptyState icon="target" message={'No rocks yet in ' + (AREAS.find(a => a.k === area) || {}).label + '. Add the first one above.'}/>
+      )}
+      {rocks.map((r, i) => (
+        <div key={r.id} style={{...S.card, marginBottom:10}}>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6, flexWrap:'wrap'}}>
+            {editMode ? (
+              <input value={r.title || ''}
+                onChange={e => updField(r.id, 'title', e.target.value)}
+                placeholder="Rock title"
+                style={{flex:1, minWidth:150, border:'none', outline:'none',
+                        fontSize:15, fontWeight:700, color:'var(--text)',
+                        background:'transparent', fontFamily:'inherit', padding:0}}/>
+            ) : (
+              <div style={{flex:1, minWidth:150, fontSize:15, fontWeight:700, color:'var(--text)'}}>
+                {r.title || '(untitled)'}
+              </div>
+            )}
+            {editMode && (
+              <MoveBtns
+                disabledUp={i === 0} disabledDown={i === rocks.length - 1}
+                onUp={() => moveRock(r.id, -1)}
+                onDown={() => moveRock(r.id, 1)}/>
+            )}
+            {editMode && <XBtn size={16} onClick={() => delRock(r.id)}/>}
+          </div>
+          <textarea value={r.explanation || ''}
+            onChange={e => updField(r.id, 'explanation', e.target.value)}
+            placeholder="Explanation..."
+            rows={2}
+            ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+            style={{width:'100%', border:'none', outline:'none', fontSize:13,
+                    color:'var(--muted)', background:'transparent', fontFamily:'inherit',
+                    padding:'4px 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
+        </div>
+      ))}
     </div>
   );
 }
