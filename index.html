@@ -3870,7 +3870,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'scorecard' && <L10Scorecard scorecard={qData.scorecard || []} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('scorecard')}/>}
               {seg.k === 'rocks' && <L10Rocks rocks={qData.rocks || []} wr={qData.weeklyRocks || {}} qw={weeks} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} upd={upd} editMode={editable('rocks')}/>}
               {seg.k === 'projects' && <L10Projects data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('projects')}/>}
-              {seg.k === 'ids' && <L10Issues upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum} editMode={editable('ids')}/>}
+              {seg.k === 'ids' && <L10Issues data={data} upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum} editMode={editable('ids')}/>}
               {seg.k === 'conclude' && (() => {
                 const qFields = [
                   {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this week?'},
@@ -4236,7 +4236,7 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
   );
 }
 
-function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
+function L10Issues({data, upd, qKey, idsIssues, weekNum, editMode}) {
   const showEdit = !!editMode;
   const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum);
   const setField = (id, field, val) => upd(d => {
@@ -4268,7 +4268,7 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
       fromIssueId: issue.id
     });
   });
-  const hasActiveTodoForIssue = (iid) => (data.todos || []).some(t => t.fromIssueId === iid && !t.done);
+  const hasActiveTodoForIssue = (iid) => ((data && data.todos) || []).some(t => t.fromIssueId === iid && !t.done);
   const addIssue = () => {
     upd(d => {
       ensureQ(d, qKey);
