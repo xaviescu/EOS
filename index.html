@@ -1216,7 +1216,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
   );
 }
 
-function EventModal({form, setForm, onSave, onClose, dayLabels}) {
+function EventModal({form, setForm, onSave, onClose, onDelete, dayLabels}) {
   return (
     <Modal onClose={onClose}>
       <H3 style={{marginBottom:16}}>
@@ -1268,9 +1268,12 @@ function EventModal({form, setForm, onSave, onClose, dayLabels}) {
           })}
         </div>
       </div>
-      <div style={{display:'flex', gap:8}}>
+      <div style={{display:'flex', gap:8, alignItems:'center'}}>
         <Btn onClick={onSave}>Save</Btn>
         <Btn v="sec" onClick={onClose}>Cancel</Btn>
+        {form.id && onDelete && (
+          <Btn v="red" onClick={() => { onDelete(form.id); onClose(); }} style={{marginLeft:'auto'}}>Delete</Btn>
+        )}
       </div>
     </Modal>
   );
@@ -1334,7 +1337,11 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
           if (idx >= 0) d.weeklyCalendar[wk][idx].color = cycleEventColor(d.weeklyCalendar[wk][idx]);
         })}
         dayLabels={dayLabels} compact={compact}/>
-      {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)} dayLabels={dayLabels}/>}
+      {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)} dayLabels={dayLabels}
+        onDelete={id => upd(d => {
+          const idx = (d.weeklyCalendar[wk] || []).findIndex(x => x.id === id);
+          if (idx >= 0) d.weeklyCalendar[wk].splice(idx, 1);
+        })}/>}
     </div>
   );
 }
@@ -1405,7 +1412,11 @@ function StdWeekCalendar({data, upd}) {
           const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
           if (idx >= 0) d.stdWeeklyEvents[idx].color = cycleEventColor(d.stdWeeklyEvents[idx]);
         })}/>
-      {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)}/>}
+      {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)}
+        onDelete={id => upd(d => {
+          const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
+          if (idx >= 0) d.stdWeeklyEvents.splice(idx, 1);
+        })}/>}
     </div>
   );
 }
@@ -3345,6 +3356,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
 
       {meetingForm && <EventModal form={meetingForm} setForm={setMeetingForm}
         onSave={saveMeeting} onClose={() => setMeetingForm(null)}
+        onDelete={deleteMeeting}
         dayLabels={DAYS.map((d, di) => ({sub: dayShort(wn, di)}))}/>}
     </div>
   );
