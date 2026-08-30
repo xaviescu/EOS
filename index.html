@@ -2316,8 +2316,8 @@ function VisionAreas({data, upd}) {
     const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
     setAField(field, arr);
   };
-  const AreaList = ({field, label, placeholder}) => (
-    <div style={{marginBottom:16}}>
+  const renderList = (field, label, placeholder) => (
+    <div key={field} style={{marginBottom:16}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
         <label style={{...S.lbl, marginBottom:0}}>{label}</label>
         {editMode && (
@@ -2388,9 +2388,9 @@ function VisionAreas({data, upd}) {
             {a.phrase || '—'}
           </div>
         )}
-        <AreaList field="roles"  label="Roles"  placeholder="Rol..."/>
-        <AreaList field="values" label="Values" placeholder="Value..."/>
-        <AreaList field="vision" label="Vision" placeholder="Vision statement..."/>
+        {renderList('roles',  'Roles',  'Rol...')}
+        {renderList('values', 'Values', 'Value...')}
+        {renderList('vision', 'Vision', 'Vision statement...')}
       </div>
     </div>
   );
@@ -4342,19 +4342,19 @@ function L10Issues({data, upd, qKey, idsIssues, weekNum, editMode}) {
                 <input value={issue.action || ''}
                   onChange={e => setField(issue.id, 'action', e.target.value)}
                   placeholder="Action..."
-                  style={{...S.inp, flex:'1 1 120px', fontSize:12, padding:'5px 10px'}}/>
+                  style={{flex:'1 1 120px', border:'none', outline:'none', fontSize:12,
+                          fontFamily:'inherit', color:'var(--muted)',
+                          background:'transparent', padding:0}}/>
                 {(() => {
                   const hasTd = hasActiveTodoForIssue(issue.id);
                   return (
                     <button onClick={() => createTodoFromIssue(issue)}
-                      style={{padding:'5px 10px', borderRadius:'var(--r-sm)',
-                              border:'1px solid var(--brand)',
-                              background: hasTd ? 'var(--brand-soft)' : 'var(--brand)',
-                              color: hasTd ? 'var(--brand)' : 'white',
-                              cursor:'pointer',
-                              fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>
-                      {hasTd ? 'To-do' : '+ To-do'}
-                    </button>
+                      style={{padding:'2px 8px', borderRadius:'var(--r-md)',
+                              border:'1px solid ' + (hasTd ? 'var(--brand)' : 'var(--border-strong)'),
+                              cursor:'pointer', fontSize:10, fontWeight:700,
+                              background: hasTd ? 'var(--brand-soft)' : 'var(--surface)',
+                              color: hasTd ? 'var(--brand)' : 'var(--text-2)',
+                              whiteSpace:'nowrap'}}>{hasTd ? 'To-do' : '+ To-do'}</button>
                   );
                 })()}
                 <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>
@@ -4539,19 +4539,19 @@ function QReview({data, upd, qKey, qData}) {
                               <input value={issue.action || ''}
                                 onChange={e => setIssueField(issue.id, 'action', e.target.value)}
                                 placeholder="Action..."
-                                style={{...S.inp, flex:'1 1 120px', fontSize:12, padding:'5px 10px'}}/>
+                                style={{flex:'1 1 120px', border:'none', outline:'none', fontSize:12,
+                                        fontFamily:'inherit', color:'var(--muted)',
+                                        background:'transparent', padding:0}}/>
                               {(() => {
                                 const hasTd = hasActiveTodoForIssue(issue.id);
                                 return (
                                   <button onClick={() => createTodoFromIssueQR(issue)}
-                                    style={{padding:'5px 10px', borderRadius:'var(--r-sm)',
-                                            border:'1px solid var(--brand)',
-                                            background: hasTd ? 'var(--brand-soft)' : 'var(--brand)',
-                                            color: hasTd ? 'var(--brand)' : 'white',
-                                            cursor:'pointer',
-                                            fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>
-                                    {hasTd ? 'To-do' : '+ To-do'}
-                                  </button>
+                                    style={{padding:'2px 8px', borderRadius:'var(--r-md)',
+                                            border:'1px solid ' + (hasTd ? 'var(--brand)' : 'var(--border-strong)'),
+                                            cursor:'pointer', fontSize:10, fontWeight:700,
+                                            background: hasTd ? 'var(--brand-soft)' : 'var(--surface)',
+                                            color: hasTd ? 'var(--brand)' : 'var(--text-2)',
+                                            whiteSpace:'nowrap'}}>{hasTd ? 'To-do' : '+ To-do'}</button>
                                 );
                               })()}
                               <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>
