@@ -1018,7 +1018,9 @@ function StatusPill({status, onChange}) {
 }
 
 function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
-  const active = (idsIssues || []).some(i => i.sourceId === sourceId && !i.solved);
+  // Stay highlighted while an issue exists for this source, solved or not —
+  // preserves the "we opened an issue here" trace even after it's closed.
+  const active = (idsIssues || []).some(i => i.sourceId === sourceId);
   const toggle = () => upd(d => {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.sourceId === sourceId && !i.solved);
@@ -2424,11 +2426,11 @@ function VisionAreas({data, upd}) {
         ))}
       </div>
       <div style={{display:'flex', gap:8, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
-          {editMode ? 'Done' : 'Edit'}
-        </Btn>
         <Btn v={manageMode ? 'pri' : 'sec'} onClick={() => setManageMode(m => !m)} style={{fontSize:13}}>
           {manageMode ? 'Close' : 'Manage areas'}
+        </Btn>
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+          {editMode ? 'Done' : 'Edit'}
         </Btn>
       </div>
       {manageMode && (
@@ -4004,36 +4006,32 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
                                 color: wData.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
                     ))}
                   </div>
-                  {(((data.vision && data.vision.areasList) || LIFE_AREAS)).map(a => {
-                    const ar = (wData.areaRatings && wData.areaRatings[a.k]) || {};
-                    return (
-                      <div key={a.k} style={{marginTop:18, paddingTop:14,
-                                             borderTop:'1px solid var(--surface-alt)'}}>
-                        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
-                          <label style={{...S.lbl, marginBottom:0, fontWeight:700, color:'var(--text)'}}>{a.label}</label>
-                          <div style={{fontSize:12, color:'var(--muted)', fontWeight:700}}>{ar.score ? ar.score + '/10' : '—'}</div>
+                  <div style={{marginTop:14, borderTop:'1px solid var(--surface-alt)'}}>
+                    {(((data.vision && data.vision.areasList) || LIFE_AREAS)).map(a => {
+                      const ar = (wData.areaRatings && wData.areaRatings[a.k]) || {};
+                      return (
+                        <div key={a.k} style={{display:'flex', alignItems:'center', gap:10,
+                                               padding:'6px 0', borderBottom:'1px solid var(--surface-alt)'}}>
+                          <div style={{flex:'0 0 90px', fontSize:13, fontWeight:700, color:'var(--text)'}}>{a.label}</div>
+                          <select value={ar.score || ''}
+                            onChange={e => setAR(a.k, 'score', e.target.value ? parseInt(e.target.value) : null)}
+                            style={{flex:'0 0 60px', padding:'4px 6px', fontSize:12, fontWeight:700,
+                                    borderRadius:'var(--r-sm)', border:'1px solid var(--border)',
+                                    background:'white', color:'var(--text)', cursor:'pointer',
+                                    fontFamily:'inherit'}}>
+                            <option value="">—</option>
+                            {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                          <input value={ar.note || ''}
+                            onChange={e => setAR(a.k, 'note', e.target.value)}
+                            placeholder="Explanation..."
+                            style={{flex:'1 1 auto', minWidth:0, border:'none', outline:'none', fontSize:13,
+                                    padding:'4px 0', background:'transparent',
+                                    color:'var(--text)', fontFamily:'inherit'}}/>
                         </div>
-                        <div style={{display:'flex', gap:3, marginBottom:8}}>
-                          {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                            <button key={n} onClick={() => setAR(a.k, 'score', ar.score === n ? null : n)}
-                              style={{flex:'1 1 0', minWidth:0, height:28, borderRadius:5,
-                                      border:'1px solid var(--border)',
-                                      cursor:'pointer', fontWeight:700, fontSize:12, padding:0,
-                                      background: ar.score === n ? 'var(--brand)' : 'white',
-                                      color: ar.score === n ? 'white' : 'var(--text-2)'}}>{n}</button>
-                          ))}
-                        </div>
-                        <textarea value={ar.note || ''}
-                          onChange={e => setAR(a.k, 'note', e.target.value)}
-                          placeholder="Explanation..." rows={1}
-                          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                          style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                                  padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
-                                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
-                                  borderBottom:'1px solid var(--surface-alt)'}}/>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -4775,36 +4773,32 @@ function QReview({data, upd, qKey, qData}) {
                                 color: rev.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
                     ))}
                   </div>
-                  {(((data.vision && data.vision.areasList) || LIFE_AREAS)).map(a => {
-                    const ar = (rev.areaRatings && rev.areaRatings[a.k]) || {};
-                    return (
-                      <div key={a.k} style={{marginTop:18, paddingTop:14,
-                                             borderTop:'1px solid var(--surface-alt)'}}>
-                        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
-                          <label style={{...S.lbl, marginBottom:0, fontWeight:700, color:'var(--text)'}}>{a.label}</label>
-                          <div style={{fontSize:12, color:'var(--muted)', fontWeight:700}}>{ar.score ? ar.score + '/10' : '—'}</div>
+                  <div style={{marginTop:14, borderTop:'1px solid var(--surface-alt)'}}>
+                    {(((data.vision && data.vision.areasList) || LIFE_AREAS)).map(a => {
+                      const ar = (rev.areaRatings && rev.areaRatings[a.k]) || {};
+                      return (
+                        <div key={a.k} style={{display:'flex', alignItems:'center', gap:10,
+                                               padding:'6px 0', borderBottom:'1px solid var(--surface-alt)'}}>
+                          <div style={{flex:'0 0 90px', fontSize:13, fontWeight:700, color:'var(--text)'}}>{a.label}</div>
+                          <select value={ar.score || ''}
+                            onChange={e => setQAR(a.k, 'score', e.target.value ? parseInt(e.target.value) : null)}
+                            style={{flex:'0 0 60px', padding:'4px 6px', fontSize:12, fontWeight:700,
+                                    borderRadius:'var(--r-sm)', border:'1px solid var(--border)',
+                                    background:'white', color:'var(--text)', cursor:'pointer',
+                                    fontFamily:'inherit'}}>
+                            <option value="">—</option>
+                            {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                          <input value={ar.note || ''}
+                            onChange={e => setQAR(a.k, 'note', e.target.value)}
+                            placeholder="Explanation..."
+                            style={{flex:'1 1 auto', minWidth:0, border:'none', outline:'none', fontSize:13,
+                                    padding:'4px 0', background:'transparent',
+                                    color:'var(--text)', fontFamily:'inherit'}}/>
                         </div>
-                        <div style={{display:'flex', gap:3, marginBottom:8}}>
-                          {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                            <button key={n} onClick={() => setQAR(a.k, 'score', ar.score === n ? null : n)}
-                              style={{flex:'1 1 0', minWidth:0, height:28, borderRadius:5,
-                                      border:'1px solid var(--border)',
-                                      cursor:'pointer', fontWeight:700, fontSize:12, padding:0,
-                                      background: ar.score === n ? 'var(--brand)' : 'white',
-                                      color: ar.score === n ? 'white' : 'var(--text-2)'}}>{n}</button>
-                          ))}
-                        </div>
-                        <textarea value={ar.note || ''}
-                          onChange={e => setQAR(a.k, 'note', e.target.value)}
-                          placeholder="Explanation..." rows={1}
-                          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                          style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                                  padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
-                                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
-                                  borderBottom:'1px solid var(--surface-alt)'}}/>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
