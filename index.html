@@ -985,7 +985,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
   focusDay = focusDay != null ? focusDay : 0;
   const HOUR_W = compact ? 30 : 44;
   const SLOT_H = compact ? 18 : 22;
-  const HEADER_H = compact ? 30 : 42;
+  const HEADER_H = compact ? 38 : 50;
   const slotIdx = (h, m) => (h - 6) * 2 + (m >= 30 ? 1 : 0);
 
   // Vista LIST — lista lineal agrupada por día. Return early.
@@ -1034,16 +1034,17 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
   // Vista FOCUS — día focus ancho + 6 mini columnas.
   const dayCols = calView === 'day' ? [focusDay] : [0,1,2,3,4,5,6];
   const isFocus = calView === 'focus';
+  // Focus mantiene orden semanal natural (Mon..Sun) pero el día seleccionado
+  // ocupa 1fr y el resto 22px cada uno.
+  const focusColsCSS = isFocus
+    ? [0,1,2,3,4,5,6].map(d => d === focusDay ? '1fr' : '22px').join(' ')
+    : null;
   const gridTemplateCols = (
     calView === 'day'   ? HOUR_W + 'px 1fr' :
-    calView === 'focus' ? HOUR_W + 'px repeat(6, 22px) 1fr' :
+    calView === 'focus' ? HOUR_W + 'px ' + focusColsCSS :
                           HOUR_W + 'px repeat(7, minmax(0, 1fr))'
   );
-  // Focus reordena visualmente: mini cols antes de focus + focus al final.
-  const focusColOrder = isFocus ? (() => {
-    const others = [0,1,2,3,4,5,6].filter(d => d !== focusDay);
-    return others.concat([focusDay]);  // 6 mini + focus wide
-  })() : dayCols;
+  const focusColOrder = dayCols;
 
   // Column assignment per day (interval graph coloring) — permite overlaps.
   const dayLayouts = {};
@@ -1116,7 +1117,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
           <div key={'l-'+si}
             style={{gridRow: si+2, gridColumn: 1,
                     background:'transparent', textAlign:'right',
-                    padding: compact ? '0 4px' : '1px 6px',
+                    padding: compact ? (si === 0 ? '6px 4px 0' : '0 4px') : (si === 0 ? '8px 6px 0' : '1px 6px'),
                     fontSize: compact ? 8 : 9,
                     color:'var(--muted-soft)', fontWeight:500, whiteSpace:'nowrap',
                     lineHeight:1, display:'flex', alignItems:'flex-start', justifyContent:'flex-end'}}>
