@@ -465,8 +465,8 @@ const LIFE_AREAS = [
   {k:'career', label:'Career'},
   {k:'joy',    label:'Joy'}
 ];
-const emptyArea = () => ({phrase:'', roles:[], values:[], vision:[]});
-const INIT_V = {values:[], ltView:'', threeYearView:'', oneYearView:'', areas:{}};
+const emptyArea = () => ({phrase:'', roles:[], values:[], vision:[], ltView:'', threeYearView:'', oneYearView:''});
+const INIT_V = {values:[], ltView:'', threeYearView:'', oneYearView:'', areas:{}, areasList:[]};
 const INIT = {
   vision: JSON.parse(JSON.stringify(INIT_V)),
   processes: [],
@@ -524,21 +524,27 @@ const normalizeData = p => {
     weeklyProjects: p.weeklyProjects || {},
     yearRocks: p.yearRocks || {}
   };
-  // Vision.areas: seed defaults for any missing area on first load. Once the
-  // user has edited an area we keep their content — defaults only fill blanks.
+  // Vision.areasList: user-editable ordered list of life areas. Falls back to
+  // built-in LIFE_AREAS on first load. Vision.areas[k] holds per-area content.
   const vSrc = p.vision || {};
+  const areasList = (vSrc.areasList && vSrc.areasList.length)
+    ? vSrc.areasList.map(a => ({k: a.k, label: a.label}))
+    : LIFE_AREAS.map(a => ({k: a.k, label: a.label}));
   const areasSrc = vSrc.areas || {};
   const areas = {};
-  LIFE_AREAS.forEach(a => {
+  areasList.forEach(a => {
     const cur = areasSrc[a.k] || {};
     areas[a.k] = {
       phrase: cur.phrase || '',
       roles: cur.roles || [],
       values: cur.values || [],
-      vision: cur.vision || []
+      vision: cur.vision || [],
+      ltView: cur.ltView || '',
+      threeYearView: cur.threeYearView || '',
+      oneYearView: cur.oneYearView || ''
     };
   });
-  base.vision = {...INIT_V, ...vSrc, areas};
+  base.vision = {...INIT_V, ...vSrc, areas, areasList};
   return base;
 };
 
@@ -2258,8 +2264,8 @@ function VisionTab({data, upd}) {
   const isMobile = useIsMobile();
   const v = data.vision || INIT_V;
   const sv = (key, val) => upd(d => { d.vision[key] = val; });
-  const [vTab, setVTab] = useState('values');
-  const VTABS = [['values','Values'], ['lt','Long-Term'], ['3y','3-Year'], ['1y','1-Year']];
+  const [vTab, setVTab] = useState('areas');
+  const VTABS = [['areas','Areas'], ['lt','Long-Term'], ['3y','3-Year'], ['1y','1-Year']];
   return (
     <div>
       <PageTitle icon="vision">Vision {YEAR}</PageTitle>
@@ -2269,35 +2275,60 @@ function VisionTab({data, upd}) {
             className={'tab-underline' + (vTab === id ? ' active' : '')}>{lbl}</button>
         ))}
       </div>
-      {vTab === 'values' && <VisionAreas data={data} upd={upd}/>}
-      {vTab === 'lt' && (
-        <div style={S.card}>
-          <H3>Long-Term</H3>
-          <textarea style={{...S.ta, minHeight:320}} value={v.ltView || ''}
-            onChange={e => sv('ltView', e.target.value)} placeholder="Where do you want to be long term?"/>
-        </div>
-      )}
-      {vTab === '3y' && (
-        <div style={S.card}>
-          <H3>3-Year</H3>
-          <textarea style={{...S.ta, minHeight:320}} value={v.threeYearView || ''}
-            onChange={e => sv('threeYearView', e.target.value)} placeholder="What does success look like in 3 years?"/>
-        </div>
-      )}
-      {vTab === '1y' && (
-        <div style={S.card}>
-          <H3>1-Year</H3>
-          <textarea style={{...S.ta, minHeight:320}} value={v.oneYearView || ''}
-            onChange={e => sv('oneYearView', e.target.value)} placeholder="What must be accomplished this year?"/>
-        </div>
-      )}
+      {vTab === 'areas' && <VisionAreas data={data} upd={upd}/>}
+      {vTab === 'lt' && <VisionHorizon data={data} upd={upd} field="ltView" title="Long-Term" placeholder="Where do you want to be long term in this area?"/>}
+      {vTab === '3y' && <VisionHorizon data={data} upd={upd} field="threeYearView" title="3-Year" placeholder="What does success look like in 3 years in this area?"/>}
+      {vTab === '1y' && <VisionHorizon data={data} upd={upd} field="oneYearView" title="1-Year" placeholder="What must be accomplished this year in this area?"/>}
+    </div>
+  );
+}
+
+function VisionHorizon({data, upd, field, title, placeholder}) {
+  const areasList = ((data.vision && data.vision.areasList) || []);
+  const areas = (data.vision && data.vision.areas) || {};
+  const [area, setArea] = useState(areasList[0] ? areasList[0].k : '');
+  // If the current selection was removed, snap to the first available
+  useEffect(() => {
+    if (!areasList.some(a => a.k === area) && areasList[0]) setArea(areasList[0].k);
+  }, [areasList.map(a => a.k).join('|')]);
+  if (!areasList.length) {
+    return <div style={S.card}><H3>{title}</H3><div style={{color:'var(--muted-soft)', fontSize:13}}>No areas defined yet. Go to Areas to add some.</div></div>;
+  }
+  const a = areas[area] || emptyArea();
+  const set = val => upd(d => {
+    if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
+    if (!d.vision.areas) d.vision.areas = {};
+    if (!d.vision.areas[area]) d.vision.areas[area] = emptyArea();
+    d.vision.areas[area][field] = val;
+  });
+  return (
+    <div>
+      <div className="tabbar" style={{marginBottom:12}}>
+        {areasList.map(la => (
+          <button key={la.k} onClick={() => setArea(la.k)}
+            className={'tab-underline' + (area === la.k ? ' active' : '')}>
+            {la.label}
+          </button>
+        ))}
+      </div>
+      <div style={S.card}>
+        <H3>{title}</H3>
+        <textarea style={{...S.ta, minHeight:320}} value={a[field] || ''}
+          onChange={e => set(e.target.value)} placeholder={placeholder}/>
+      </div>
     </div>
   );
 }
 
 function VisionAreas({data, upd}) {
-  const [area, setArea] = useState('selfm');
+  const areasList = ((data.vision && data.vision.areasList) || []);
+  const [area, setArea] = useState(areasList[0] ? areasList[0].k : '');
   const [editMode, setEditMode] = useState(false);
+  const [manageMode, setManageMode] = useState(false);
+  // Snap selection if it disappears
+  useEffect(() => {
+    if (!areasList.some(x => x.k === area) && areasList[0]) setArea(areasList[0].k);
+  }, [areasList.map(x => x.k).join('|')]);
   const areas = (data.vision && data.vision.areas) || {};
   const a = areas[area] || emptyArea();
   const setAField = (field, val) => upd(d => {
@@ -2355,10 +2386,37 @@ function VisionAreas({data, upd}) {
       ))}
     </div>
   );
+  // Manage-areas helpers (add/remove/rename/reorder)
+  const addArea = () => upd(d => {
+    if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
+    if (!d.vision.areasList) d.vision.areasList = [];
+    if (!d.vision.areas) d.vision.areas = {};
+    const nk = 'a_' + uid();
+    d.vision.areasList.push({k: nk, label: 'New area'});
+    d.vision.areas[nk] = emptyArea();
+  });
+  const renameArea = (k, label) => upd(d => {
+    if (!d.vision || !d.vision.areasList) return;
+    const idx = d.vision.areasList.findIndex(x => x.k === k);
+    if (idx >= 0) d.vision.areasList[idx].label = label;
+  });
+  const deleteArea = k => upd(d => {
+    if (!d.vision || !d.vision.areasList) return;
+    d.vision.areasList = d.vision.areasList.filter(x => x.k !== k);
+    if (d.vision.areas) delete d.vision.areas[k];
+  });
+  const moveArea = (k, dir) => upd(d => {
+    if (!d.vision || !d.vision.areasList) return;
+    const arr = d.vision.areasList;
+    const i = arr.findIndex(x => x.k === k);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  });
   return (
     <div>
       <div className="tabbar" style={{marginBottom:12}}>
-        {LIFE_AREAS.map(la => (
+        {areasList.map(la => (
           <button key={la.k} onClick={() => setArea(la.k)}
             className={'tab-underline' + (area === la.k ? ' active' : '')}>
             {la.label}
@@ -2369,8 +2427,36 @@ function VisionAreas({data, upd}) {
         <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
           {editMode ? 'Done' : 'Edit'}
         </Btn>
+        <Btn v={manageMode ? 'pri' : 'sec'} onClick={() => setManageMode(m => !m)} style={{fontSize:13}}>
+          {manageMode ? 'Close' : 'Manage areas'}
+        </Btn>
       </div>
-      <div style={S.card}>
+      {manageMode && (
+        <div style={{...S.card, marginBottom:12}}>
+          <H3 style={{marginBottom:8}}>Manage areas</H3>
+          <div style={{fontSize:12, color:'var(--muted-soft)', marginBottom:10}}>
+            These areas are shared with Long-Term, 3-Year, 1-Year and the {YEAR} Rocks view.
+          </div>
+          {areasList.map((la, i) => (
+            <div key={la.k} style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+              <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
+                style={{...S.inp, flex:1}}/>
+              <MoveBtns
+                disabledUp={i === 0} disabledDown={i === areasList.length - 1}
+                onUp={() => moveArea(la.k, -1)}
+                onDown={() => moveArea(la.k, 1)}/>
+              <XBtn size={16} onClick={() => {
+                if (confirm('Delete area "' + la.label + '"? Its content (phrase, roles, values, vision, long-term, etc.) will be lost.')) {
+                  deleteArea(la.k);
+                }
+              }}/>
+            </div>
+          ))}
+          <Btn onClick={addArea} style={{marginTop:6, fontSize:13, padding:'6px 12px'}}>+ Area</Btn>
+        </div>
+      )}
+      {!area && <div style={{color:'var(--muted-soft)', fontSize:13}}>No areas yet. Use "Manage areas" to add some.</div>}
+      {area && <div style={S.card}>
         <label style={S.lbl}>Frase principal</label>
         {editMode ? (
           <textarea value={a.phrase || ''}
@@ -2391,7 +2477,7 @@ function VisionAreas({data, upd}) {
         {renderList('roles',  'Roles',  'Rol...')}
         {renderList('values', 'Values', 'Value...')}
         {renderList('vision', 'Vision', 'Vision statement...')}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -2766,15 +2852,12 @@ function RocksTab({data, upd}) {
 }
 
 function YearRocks({data, upd}) {
-  const AREAS = [
-    {k:'selfm',  label:'SelfM'},
-    {k:'health', label:'Health'},
-    {k:'family', label:'Family'},
-    {k:'career', label:'Career'},
-    {k:'joy',    label:'Joy'}
-  ];
-  const [area, setArea] = useState('selfm');
+  const AREAS = ((data.vision && data.vision.areasList) || []);
+  const [area, setArea] = useState(AREAS[0] ? AREAS[0].k : '');
   const [editMode, setEditMode] = useState(false);
+  useEffect(() => {
+    if (!AREAS.some(a => a.k === area) && AREAS[0]) setArea(AREAS[0].k);
+  }, [AREAS.map(a => a.k).join('|')]);
   const yearKey = String(YEAR);
   const yr = (data.yearRocks && data.yearRocks[yearKey]) || {};
   const rocks = yr[area] || [];
@@ -2812,13 +2895,16 @@ function YearRocks({data, upd}) {
         ))}
       </div>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn onClick={addRock} style={{fontSize:13}}>+ Rock</Btn>
+        <Btn onClick={addRock} style={{fontSize:13}} disabled={!area}>+ Rock</Btn>
         <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
           {editMode ? 'Done' : 'Edit'}
         </Btn>
       </div>
-      {rocks.length === 0 && (
-        <EmptyState icon="target" message={'No rocks yet in ' + (AREAS.find(a => a.k === area) || {}).label + '. Add the first one above.'}/>
+      {!area && (
+        <EmptyState icon="target" message="No areas defined. Go to Vision → Areas to add some."/>
+      )}
+      {area && rocks.length === 0 && (
+        <EmptyState icon="target" message={'No rocks yet in ' + ((AREAS.find(a => a.k === area) || {}).label || '') + '. Add the first one above.'}/>
       )}
       {rocks.map((r, i) => (
         <div key={r.id} style={{...S.card, marginBottom:10}}>
@@ -3251,24 +3337,32 @@ function TodosTab({data, upd}) {
     upd(d => { d.todos.push({id: uid(), ...form, done:false, completedDate:null}); });
     setForm({task:'', startDate: todayStr()}); setShowF(false);
   };
-  // Sort by startDate ascending (oldest first); undated go last
-  const sortByStart = (a, b) => {
-    const A = a.startDate || '9999-12-31';
-    const B = b.startDate || '9999-12-31';
-    return A < B ? -1 : A > B ? 1 : 0;
-  };
-  const pending = data.todos.filter(t => !t.done).sort(sortByStart);
+  // Keep data.todos order — user controls sorting manually via ↑/↓.
+  const pending = data.todos.filter(t => !t.done);
   // Completed: only those completed during the CURRENT week
   const done = data.todos.filter(t => {
     if (!t.done || !t.completedDate) return false;
     return dateToWn(t.completedDate) === curWn;
-  }).sort(sortByStart);
-  const TRow = ({t, isLast}) => {
+  });
+  // Move an item up/down in the visible list by swapping with its
+  // adjacent neighbor in data.todos.
+  const moveVisible = (list, idx, dir) => {
+    const j = idx + dir;
+    if (j < 0 || j >= list.length) return;
+    const aId = list[idx].id, bId = list[j].id;
+    upd(d => {
+      const ia = d.todos.findIndex(x => x.id === aId);
+      const ib = d.todos.findIndex(x => x.id === bId);
+      if (ia < 0 || ib < 0) return;
+      const tmp = d.todos[ia]; d.todos[ia] = d.todos[ib]; d.todos[ib] = tmp;
+    });
+  };
+  const TRow = ({t, isLast, list, idx}) => {
     const ri = data.todos.indexOf(t);
     const isEd = editingId === t.id;
     const updField = (field, val) => upd(d => {
-      const idx = d.todos.findIndex(x => x.id === t.id);
-      if (idx >= 0) d.todos[idx][field] = val;
+      const i = d.todos.findIndex(x => x.id === t.id);
+      if (i >= 0) d.todos[i][field] = val;
     });
     return (
       <div style={{padding:'8px 0', display:'flex', alignItems:'center', gap:9,
@@ -3305,15 +3399,9 @@ function TodosTab({data, upd}) {
         )}
         {editMode && (
           <MoveBtns
-            disabledUp={ri <= 0} disabledDown={ri >= data.todos.length - 1}
-            onUp={() => upd(d => {
-              if (ri <= 0) return;
-              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
-            })}
-            onDown={() => upd(d => {
-              if (ri >= d.todos.length - 1) return;
-              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
-            })}/>
+            disabledUp={idx <= 0} disabledDown={idx >= list.length - 1}
+            onUp={() => moveVisible(list, idx, -1)}
+            onDown={() => moveVisible(list, idx, +1)}/>
         )}
         {editMode && (
           <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
@@ -3350,7 +3438,7 @@ function TodosTab({data, upd}) {
       <div style={{...S.card, marginBottom:12}}>
         <div style={{fontSize:14, fontWeight:700, color:'var(--text-2)', marginBottom:2}}>In Progress ({pending.length})</div>
         {pending.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No pending tasks. Well done.</div>}
-        {pending.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === pending.length - 1}/>)}
+        {pending.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === pending.length - 1} list={pending} idx={idx}/>)}
       </div>
       {done.length > 0 && (
         <div style={S.card}>
@@ -3360,7 +3448,7 @@ function TodosTab({data, upd}) {
                     cursor:'pointer', marginBottom: showDone ? 2 : 0, padding:0}}>
             Completed ({done.length}) {showDone ? '^' : 'v'}
           </button>
-          {showDone && done.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === done.length - 1}/>)}
+          {showDone && done.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === done.length - 1} list={done} idx={idx}/>)}
         </div>
       )}
     </div>
@@ -3827,6 +3915,13 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
     if (!d.quarters[qKey].weeks[weekNum]) d.quarters[qKey].weeks[weekNum] = {};
     d.quarters[qKey].weeks[weekNum][key] = val;
   });
+  const setAR = (areaK, field, val) => upd(d => {
+    ensureQ(d, qKey);
+    if (!d.quarters[qKey].weeks[weekNum]) d.quarters[qKey].weeks[weekNum] = {};
+    if (!d.quarters[qKey].weeks[weekNum].areaRatings) d.quarters[qKey].weeks[weekNum].areaRatings = {};
+    if (!d.quarters[qKey].weeks[weekNum].areaRatings[areaK]) d.quarters[qKey].weeks[weekNum].areaRatings[areaK] = {};
+    d.quarters[qKey].weeks[weekNum].areaRatings[areaK][field] = val;
+  });
   const idsIssues = qData.idsIssues || [];
   const editable = k => !!blockEdit[k];
   const AGENDA = [
@@ -3836,7 +3931,8 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
     {k:'projects', label:'Projects'},
     {k:'ids', label:'IDS'},
     {k:'todosnew', label:'To-Dos'},
-    {k:'conclude', label:'Conclude'}
+    {k:'conclude', label:'Conclude'},
+    {k:'rating', label:'Week Rating'}
   ];
   return (
     <div>
@@ -3855,7 +3951,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
           <div style={{padding:'13px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
             <H3 style={{marginBottom:0}}>{seg.label}</H3>
-            {seg.k !== 'conclude' && (
+            {seg.k !== 'conclude' && seg.k !== 'rating' && (
               <Btn v={blockEdit[seg.k] ? 'pri' : 'sec'}
                 onClick={() => setBlockEdit(o => ({...o, [seg.k]: !o[seg.k]}))}
                 style={{fontSize:11, padding:'4px 10px'}}>
@@ -3893,19 +3989,53 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
                                   borderBottom:'1px solid var(--surface-alt)'}}/>
                       </div>
                     ))}
-                    <label style={S.lbl}>Week rating (1-10)</label>
-                    <div style={{display:'flex', gap:4, marginTop:6}}>
-                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                        <button key={n} onClick={() => setWD('rating', wData.rating === n ? null : n)}
-                          style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)',
-                                  cursor:'pointer', fontWeight:700, fontSize:13, padding:0,
-                                  background: wData.rating === n ? 'var(--brand)' : 'white',
-                                  color: wData.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
-                      ))}
-                    </div>
                   </div>
                 );
               })()}
+              {seg.k === 'rating' && (
+                <div>
+                  <label style={S.lbl}>Overall week rating (1-10)</label>
+                  <div style={{display:'flex', gap:4, marginTop:6, marginBottom:8}}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                      <button key={n} onClick={() => setWD('rating', wData.rating === n ? null : n)}
+                        style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)',
+                                cursor:'pointer', fontWeight:700, fontSize:13, padding:0,
+                                background: wData.rating === n ? 'var(--brand)' : 'white',
+                                color: wData.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                    ))}
+                  </div>
+                  {(((data.vision && data.vision.areasList) || LIFE_AREAS)).map(a => {
+                    const ar = (wData.areaRatings && wData.areaRatings[a.k]) || {};
+                    return (
+                      <div key={a.k} style={{marginTop:18, paddingTop:14,
+                                             borderTop:'1px solid var(--surface-alt)'}}>
+                        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
+                          <label style={{...S.lbl, marginBottom:0, fontWeight:700, color:'var(--text)'}}>{a.label}</label>
+                          <div style={{fontSize:12, color:'var(--muted)', fontWeight:700}}>{ar.score ? ar.score + '/10' : '—'}</div>
+                        </div>
+                        <div style={{display:'flex', gap:3, marginBottom:8}}>
+                          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                            <button key={n} onClick={() => setAR(a.k, 'score', ar.score === n ? null : n)}
+                              style={{flex:'1 1 0', minWidth:0, height:28, borderRadius:5,
+                                      border:'1px solid var(--border)',
+                                      cursor:'pointer', fontWeight:700, fontSize:12, padding:0,
+                                      background: ar.score === n ? 'var(--brand)' : 'white',
+                                      color: ar.score === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                          ))}
+                        </div>
+                        <textarea value={ar.note || ''}
+                          onChange={e => setAR(a.k, 'note', e.target.value)}
+                          placeholder="Explanation..." rows={1}
+                          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                          style={{width:'100%', border:'none', outline:'none', fontSize:13,
+                                  padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
+                                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                                  borderBottom:'1px solid var(--surface-alt)'}}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -4307,7 +4437,7 @@ function L10Issues({data, upd, qKey, idsIssues, weekNum, editMode}) {
                 </svg>
               )}
             </button>
-            <div style={{flex:'1 1 200px', minWidth:0}}>
+            <div style={{flex:'0 0 calc(45% - 43px)', minWidth:0}}>
               {showEdit ? (
                 <input value={issue.sourceName || ''}
                   onChange={e => setField(issue.id, 'sourceName', e.target.value)}
@@ -4338,11 +4468,12 @@ function L10Issues({data, upd, qKey, idsIssues, weekNum, editMode}) {
               )}
             </div>
             {showEdit && (
-              <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', flex:'1 1 240px'}}>
+              <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap',
+                           flex:'1 1 0', minWidth:0}}>
                 <input value={issue.action || ''}
                   onChange={e => setField(issue.id, 'action', e.target.value)}
                   placeholder="Action..."
-                  style={{flex:'1 1 120px', border:'none', outline:'none', fontSize:12,
+                  style={{flex:'1 1 120px', minWidth:0, border:'none', outline:'none', fontSize:12,
                           fontFamily:'inherit', color:'var(--muted)',
                           background:'transparent', padding:0}}/>
                 {(() => {
@@ -4388,6 +4519,12 @@ function QReview({data, upd, qKey, qData}) {
   const editable = k => !!blockEdit[k];
   const rev = qData.qReview || {};
   const setR = (key, val) => upd(d => { ensureQ(d, qKey); d.quarters[qKey].qReview[key] = val; });
+  const setQAR = (areaK, field, val) => upd(d => {
+    ensureQ(d, qKey);
+    if (!d.quarters[qKey].qReview.areaRatings) d.quarters[qKey].qReview.areaRatings = {};
+    if (!d.quarters[qKey].qReview.areaRatings[areaK]) d.quarters[qKey].qReview.areaRatings[areaK] = {};
+    d.quarters[qKey].qReview.areaRatings[areaK][field] = val;
+  });
   const rocks = qData.rocks || [];
   const sc = qData.scorecard || [];
   const idsIssues = qData.idsIssues || [];
@@ -4401,7 +4538,8 @@ function QReview({data, upd, qKey, qData}) {
     {k:'todosnew', label:'To-Dos'},
     {k:'vision', label:'Vision Alignment'},
     {k:'nextrocks', label:'Next Quarter Rocks'},
-    {k:'conclude', label:'Conclude'}
+    {k:'conclude', label:'Conclude'},
+    {k:'rating', label:'Quarter Rating'}
   ];
 
   // Issue list management for Q Review (operates on whole quarter)
@@ -4509,7 +4647,7 @@ function QReview({data, upd, qKey, qData}) {
                               </svg>
                             )}
                           </button>
-                          <div style={{flex:'1 1 200px', minWidth:0}}>
+                          <div style={{flex:'0 0 calc(45% - 43px)', minWidth:0}}>
                             {editable('issues') ? (
                               <input value={issue.sourceName || ''}
                                 onChange={e => setIssueField(issue.id, 'sourceName', e.target.value)}
@@ -4535,11 +4673,12 @@ function QReview({data, upd, qKey, qData}) {
                             )}
                           </div>
                           {editable('issues') && (
-                            <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', flex:'1 1 240px'}}>
+                            <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap',
+                                         flex:'1 1 0', minWidth:0}}>
                               <input value={issue.action || ''}
                                 onChange={e => setIssueField(issue.id, 'action', e.target.value)}
                                 placeholder="Action..."
-                                style={{flex:'1 1 120px', border:'none', outline:'none', fontSize:12,
+                                style={{flex:'1 1 120px', minWidth:0, border:'none', outline:'none', fontSize:12,
                                         fontFamily:'inherit', color:'var(--muted)',
                                         background:'transparent', padding:0}}/>
                               {(() => {
@@ -4621,19 +4760,53 @@ function QReview({data, upd, qKey, qData}) {
                                   borderBottom:'1px solid var(--surface-alt)'}}/>
                       </div>
                     ))}
-                    <label style={S.lbl}>Quarter rating (1-10)</label>
-                    <div style={{display:'flex', gap:4, marginTop:6}}>
-                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                        <button key={n} onClick={() => setR('rating', rev.rating === n ? null : n)}
-                          style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)', cursor:'pointer',
-                                  fontWeight:700, fontSize:13, padding:0,
-                                  background: rev.rating === n ? 'var(--brand)' : 'white',
-                                  color: rev.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
-                      ))}
-                    </div>
                   </div>
                 );
               })()}
+              {seg.k === 'rating' && (
+                <div>
+                  <label style={S.lbl}>Overall quarter rating (1-10)</label>
+                  <div style={{display:'flex', gap:4, marginTop:6, marginBottom:8}}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                      <button key={n} onClick={() => setR('rating', rev.rating === n ? null : n)}
+                        style={{flex:'1 1 0', minWidth:0, height:36, borderRadius:7, border:'1px solid var(--border)', cursor:'pointer',
+                                fontWeight:700, fontSize:13, padding:0,
+                                background: rev.rating === n ? 'var(--brand)' : 'white',
+                                color: rev.rating === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                    ))}
+                  </div>
+                  {(((data.vision && data.vision.areasList) || LIFE_AREAS)).map(a => {
+                    const ar = (rev.areaRatings && rev.areaRatings[a.k]) || {};
+                    return (
+                      <div key={a.k} style={{marginTop:18, paddingTop:14,
+                                             borderTop:'1px solid var(--surface-alt)'}}>
+                        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
+                          <label style={{...S.lbl, marginBottom:0, fontWeight:700, color:'var(--text)'}}>{a.label}</label>
+                          <div style={{fontSize:12, color:'var(--muted)', fontWeight:700}}>{ar.score ? ar.score + '/10' : '—'}</div>
+                        </div>
+                        <div style={{display:'flex', gap:3, marginBottom:8}}>
+                          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                            <button key={n} onClick={() => setQAR(a.k, 'score', ar.score === n ? null : n)}
+                              style={{flex:'1 1 0', minWidth:0, height:28, borderRadius:5,
+                                      border:'1px solid var(--border)',
+                                      cursor:'pointer', fontWeight:700, fontSize:12, padding:0,
+                                      background: ar.score === n ? 'var(--brand)' : 'white',
+                                      color: ar.score === n ? 'white' : 'var(--text-2)'}}>{n}</button>
+                          ))}
+                        </div>
+                        <textarea value={ar.note || ''}
+                          onChange={e => setQAR(a.k, 'note', e.target.value)}
+                          placeholder="Explanation..." rows={1}
+                          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                          style={{width:'100%', border:'none', outline:'none', fontSize:13,
+                                  padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
+                                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                                  borderBottom:'1px solid var(--surface-alt)'}}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
