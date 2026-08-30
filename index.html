@@ -979,12 +979,71 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
 // =====================================================================
 // Calendar
 // =====================================================================
-function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabels, compact}) {
+function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabels, compact, calView, focusDay, setFocusDay}) {
   compact = compact || false;
+  calView = calView || 'week';
+  focusDay = focusDay != null ? focusDay : 0;
   const HOUR_W = compact ? 30 : 44;
   const SLOT_H = compact ? 18 : 22;
   const HEADER_H = compact ? 30 : 42;
   const slotIdx = (h, m) => (h - 6) * 2 + (m >= 30 ? 1 : 0);
+
+  // Vista LIST — lista lineal agrupada por día. Return early.
+  if (calView === 'list') {
+    const byDay = DAYS.map((_, di) => events.filter(e => e.day === di).sort((a,b) => (a.h*60+(a.m||0)) - (b.h*60+(b.m||0))));
+    return (
+      <div style={{background:'var(--surface)', borderRadius:10, padding:'10px 12px',
+                   boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+        {DAYS.map((day, di) => {
+          const evts = byDay[di];
+          if (evts.length === 0) return null;
+          const sub = dayLabels && dayLabels[di] && dayLabels[di].sub;
+          return (
+            <div key={di} style={{marginBottom:14}}>
+              <div style={{fontSize:12, fontWeight:700, color:'var(--brand)', textTransform:'uppercase',
+                           letterSpacing:0.6, marginBottom:6}}>
+                {day.slice(0, 3)}{sub ? ' · ' + sub : ''}
+              </div>
+              {evts.map(ev => {
+                const st = eventStyle(ev);
+                const end = eventEndTime(ev);
+                return (
+                  <div key={ev.id} onClick={() => onEdit && onEdit(ev)}
+                    style={{display:'flex', gap:10, padding:'8px 10px', marginBottom:4,
+                            background: st.bg, borderLeft:'3px solid ' + st.border,
+                            borderRadius:4, cursor: onEdit ? 'pointer' : 'default'}}>
+                    <div style={{fontSize:12, fontWeight:700, color: st.text, minWidth:75}}>
+                      {fmtTime(ev.h, ev.m || 0)}-{fmtTime(end.h, end.m)}
+                    </div>
+                    <div style={{flex:1, fontSize:13, fontWeight:600, color: st.text}}>{ev.title || '(sin título)'}</div>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
+                      style={{border:'none', background:'none', cursor:'pointer',
+                              color: st.text, opacity:0.5, fontSize:14, padding:0}}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        {events.length === 0 && <div style={{fontSize:12, color:'var(--muted-soft)', padding:'8px 0'}}>No events this week.</div>}
+      </div>
+    );
+  }
+
+  // Vista DAY — solo el día focus.
+  // Vista FOCUS — día focus ancho + 6 mini columnas.
+  const dayCols = calView === 'day' ? [focusDay] : [0,1,2,3,4,5,6];
+  const isFocus = calView === 'focus';
+  const gridTemplateCols = (
+    calView === 'day'   ? HOUR_W + 'px 1fr' :
+    calView === 'focus' ? HOUR_W + 'px repeat(6, 22px) 1fr' :
+                          HOUR_W + 'px repeat(7, minmax(0, 1fr))'
+  );
+  // Focus reordena visualmente: mini cols antes de focus + focus al final.
+  const focusColOrder = isFocus ? (() => {
+    const others = [0,1,2,3,4,5,6].filter(d => d !== focusDay);
+    return others.concat([focusDay]);  // 6 mini + focus wide
+  })() : dayCols;
 
   // Column assignment per day (interval graph coloring) — permite overlaps.
   const dayLayouts = {};
@@ -1008,35 +1067,50 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
     dayLayouts[di] = {cols: Math.max(1, colEnds.length), colMap};
   }
 
+  // Mapa día real → posición en el grid (columna visual, 1-based partiendo de 2 tras HOUR_W).
+  const dayToCol = {};
+  focusColOrder.forEach((d, idx) => { dayToCol[d] = idx + 2; });
+  const isDayMini = di => isFocus && di !== focusDay;
+
+  const enableScroll = calView === 'week' || !compact;
+  const minW = calView === 'week' ? (compact ? 700 : 680) : 0;
   return (
-    <div style={{overflowX: compact ? 'hidden' : 'auto'}}>
+    <div style={{overflowX: enableScroll ? 'auto' : 'hidden'}}>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: HOUR_W + 'px repeat(7, minmax(0, 1fr))',
+        gridTemplateColumns: gridTemplateCols,
         gridTemplateRows: HEADER_H + 'px repeat(' + SLOTS.length + ', ' + SLOT_H + 'px)',
         background:'var(--surface)', borderRadius:10, overflow:'hidden',
         boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
-        width:'100%', minWidth: compact ? 0 : 680, position:'relative'
+        width:'100%', minWidth: minW, position:'relative'
       }}>
         {/* Header — hora (vacío, la columna se entiende sola) */}
         <div style={{gridRow:1, gridColumn:1, background:'var(--brand-soft)',
                      borderBottom:'2px solid var(--brand)'}}/>
         {/* Header — días */}
-        {DAYS.map((day, di) => (
-          <div key={'h-'+di}
-            onClick={() => dayLabels && dayLabels[di] && dayLabels[di].onClick && dayLabels[di].onClick()}
-            style={{gridRow:1, gridColumn: di+2, background:'var(--brand-soft)',
-                    borderBottom:'2px solid var(--brand)',
-                    padding: compact ? '6px 1px' : '6px 4px', color:'var(--brand)',
-                    fontSize:11, fontWeight:700, textAlign:'center',
-                    textTransform:'uppercase', letterSpacing:0.6,
-                    display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-                    cursor: dayLabels && dayLabels[di] && dayLabels[di].onClick ? 'pointer' : 'default'}}>
-            <div>{compact ? day[0] : day.slice(0, 3)}</div>
-            {dayLabels && dayLabels[di] && dayLabels[di].sub &&
-              <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2, opacity:0.85}}>{dayLabels[di].sub}</div>}
-          </div>
-        ))}
+        {focusColOrder.map(di => {
+          const day = DAYS[di];
+          const mini = isDayMini(di);
+          return (
+            <div key={'h-'+di}
+              onClick={() => {
+                if (isFocus && mini) { setFocusDay && setFocusDay(di); return; }
+                if (dayLabels && dayLabels[di] && dayLabels[di].onClick) dayLabels[di].onClick();
+              }}
+              style={{gridRow:1, gridColumn: dayToCol[di], background:'var(--brand-soft)',
+                      borderBottom:'2px solid var(--brand)',
+                      padding: mini ? '6px 0' : (compact ? '6px 1px' : '6px 4px'), color:'var(--brand)',
+                      fontSize:11, fontWeight:700, textAlign:'center',
+                      textTransform:'uppercase', letterSpacing: mini ? 0 : 0.6,
+                      display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
+                      cursor: (isFocus && mini) || (dayLabels && dayLabels[di] && dayLabels[di].onClick) ? 'pointer' : 'default',
+                      overflow:'hidden'}}>
+              <div style={{fontSize: mini ? 9 : undefined}}>{compact || mini ? day[0] : day.slice(0, 3)}</div>
+              {!mini && dayLabels && dayLabels[di] && dayLabels[di].sub &&
+                <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2, opacity:0.85}}>{dayLabels[di].sub}</div>}
+            </div>
+          );
+        })}
         {/* Hour labels — solo horas en punto, cada 30min sin etiqueta para menos ruido */}
         {SLOTS.map((slot, si) => (
           <div key={'l-'+si}
@@ -1051,16 +1125,19 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         ))}
         {/* Celdas vacías clicables por día × slot */}
         {SLOTS.map((slot, si) =>
-          DAYS.map((_, di) => (
+          focusColOrder.map(di => (
             <div key={'c-'+si+'-'+di}
-              onClick={() => onCellClick(di, slot.h, slot.m)}
-              style={{gridRow: si+2, gridColumn: di+2, cursor:'pointer',
+              onClick={() => {
+                if (isFocus && isDayMini(di)) { setFocusDay && setFocusDay(di); return; }
+                onCellClick(di, slot.h, slot.m);
+              }}
+              style={{gridRow: si+2, gridColumn: dayToCol[di], cursor:'pointer',
                       borderTop: si > 0 ? '1px solid var(--surface-alt)' : 'none',
-                      borderLeft: di === 0 ? '1px solid var(--surface-alt)' : 'none'}}/>
+                      borderLeft: '1px solid var(--surface-alt)'}}/>
           ))
         )}
         {/* Eventos superpuestos con column-assignment */}
-        {events.map(ev => {
+        {events.filter(ev => dayToCol[ev.day] != null).map(ev => {
           const si = slotIdx(ev.h, ev.m || 0);
           if (si < 0 || si >= SLOTS.length) return null;
           const durSlots = Math.max(1, Math.round((ev.duration || 1) * 2));
@@ -1071,35 +1148,41 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
           const st = eventStyle(ev);
           const end = eventEndTime(ev);
           const emptyTitle = !ev.title || !ev.title.trim();
+          const miniEv = isDayMini(ev.day);
           return (
             <div key={ev.id}
               style={{gridRow: (si+2) + ' / span ' + durSlots,
-                      gridColumn: (ev.day+2),
-                      display:'flex', pointerEvents:'none', zIndex: 2, padding: '1px 1px 0 0'}}>
-              <div onClick={() => onEdit ? onEdit(ev) : (onCycleColor && onCycleColor(ev.id))}
-                title={onEdit ? 'Click para editar' : ''}
-                style={{marginLeft: (col * 100 / cols) + '%',
-                        width: 'calc(' + (100 / cols) + '% - 1px)',
+                      gridColumn: dayToCol[ev.day],
+                      display:'flex', pointerEvents:'none', zIndex: 2, padding: miniEv ? '1px 1px' : '1px 1px 0 0'}}>
+              <div onClick={() => {
+                  if (miniEv && setFocusDay) { setFocusDay(ev.day); return; }
+                  onEdit ? onEdit(ev) : (onCycleColor && onCycleColor(ev.id));
+                }}
+                title={miniEv ? DAYS[ev.day] : (onEdit ? 'Click para editar' : '')}
+                style={{marginLeft: miniEv ? 0 : (col * 100 / cols) + '%',
+                        width: miniEv ? '100%' : 'calc(' + (100 / cols) + '% - 1px)',
                         background: st.bg,
                         borderLeft: '3px solid ' + st.border,
                         position:'relative', overflow:'hidden',
-                        cursor: (onEdit || onCycleColor) ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         pointerEvents:'auto', borderRadius:'2px'}}>
-                <div style={{padding: cols > 1 ? '2px 4px 2px 4px' : '2px 32px 2px 5px', boxSizing:'border-box'}}>
-                  <div style={{fontWeight:700, color: st.text,
-                               fontSize: cols > 1 ? 9 : 10, overflow:'hidden', textOverflow:'ellipsis',
-                               whiteSpace:'nowrap',
-                               fontStyle: emptyTitle ? 'italic' : 'normal',
-                               opacity: emptyTitle ? 0.5 : 1}}>
-                    {emptyTitle ? '(sin título)' : ev.title}
-                  </div>
-                  {durSlots > 1 && cols === 1 && (
-                    <div style={{color: st.text, opacity:0.75, fontSize:9}}>
-                      {fmtTime(ev.h, ev.m)}-{fmtTime(end.h, end.m)}
+                {!miniEv && (
+                  <div style={{padding: cols > 1 ? '2px 4px 2px 4px' : '2px 32px 2px 5px', boxSizing:'border-box'}}>
+                    <div style={{fontWeight:700, color: st.text,
+                                 fontSize: cols > 1 ? 9 : 10, overflow:'hidden', textOverflow:'ellipsis',
+                                 whiteSpace:'nowrap',
+                                 fontStyle: emptyTitle ? 'italic' : 'normal',
+                                 opacity: emptyTitle ? 0.5 : 1}}>
+                      {emptyTitle ? '(sin título)' : ev.title}
                     </div>
-                  )}
-                </div>
-                {cols === 1 && (
+                    {durSlots > 1 && cols === 1 && (
+                      <div style={{color: st.text, opacity:0.75, fontSize:9}}>
+                        {fmtTime(ev.h, ev.m)}-{fmtTime(end.h, end.m)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!miniEv && cols === 1 && (
                   <div style={{position:'absolute', top:2, right:3, display:'flex', gap:2, alignItems:'center'}}>
                     {onCycleColor && (
                       <button onClick={(e) => { e.stopPropagation(); onCycleColor(ev.id); }}
@@ -1114,7 +1197,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                               opacity:0.5, fontSize:12, padding:'0 2px', lineHeight:1}}>×</button>
                   </div>
                 )}
-                {cols > 1 && (
+                {!miniEv && cols > 1 && (
                   <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
                     title="Eliminar"
                     style={{position:'absolute', top:1, right:1, border:'none', background:'none',
@@ -1171,9 +1254,13 @@ function EventModal({form, setForm, onSave, onClose, dayLabels}) {
   );
 }
 
-function CalendarWidget({selWn, data, upd, goToDay, compact}) {
+function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
   compact = compact || false;
+  const isMobile = useIsMobile();
   const [form, setForm] = useState(null);
+  const [calView, setCalView] = useState(isMobile ? 'day' : 'week');
+  const [focusDay, setFocusDay] = useState(focusDayIdx != null ? focusDayIdx : 0);
+  React.useEffect(() => { if (focusDayIdx != null) setFocusDay(focusDayIdx); }, [focusDayIdx]);
   const wk = wKey(selWn);
   const events = data.weeklyCalendar && data.weeklyCalendar[wk] ? data.weeklyCalendar[wk] : [];
   const dayLabels = DAYS.map((d, di) => ({
@@ -1196,12 +1283,24 @@ function CalendarWidget({selWn, data, upd, goToDay, compact}) {
   };
   return (
     <div>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:8, flexWrap:'wrap'}}>
         <div style={{fontSize:13, color:'var(--muted)'}}>Week {selWn} - {wDates(selWn)}</div>
-        <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
+        <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
       </div>
-      <CalTable events={events}
+      {/* Toggle 4 vistas — solo activo en móvil, desktop se queda con Week */}
+      {isMobile && (
+        <div style={{display:'flex', gap:4, marginBottom:8, background:'var(--surface-alt)', padding:3, borderRadius:6}}>
+          {[['week','Week'],['day','Day'],['list','List'],['focus','Focus']].map(([v, lbl]) => (
+            <button key={v} onClick={() => setCalView(v)}
+              style={{flex:1, padding:'6px 4px', border:'none', borderRadius:4, cursor:'pointer',
+                      background: calView === v ? 'var(--brand)' : 'transparent',
+                      color: calView === v ? 'white' : 'var(--text-2)',
+                      fontSize:11, fontWeight:600, fontFamily:'inherit'}}>{lbl}</button>
+          ))}
+        </div>
+      )}
+      <CalTable events={events} calView={isMobile ? calView : 'week'} focusDay={focusDay} setFocusDay={setFocusDay}
         onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
         onEdit={ev => setForm({...ev})}
         onDelete={id => upd(d => {
@@ -1319,7 +1418,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
           <colgroup>
             <col style={{width: labelW}}/>
             {qw.map((_, i) => <col key={i}/>)}
-            {rightGutterWidth && <col style={{width: gutterW}}/>}
+            {rightGutterWidth > 0 && <col style={{width: gutterW}}/>}
           </colgroup>
           <thead>
             <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
@@ -1336,7 +1435,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                   </th>
                 );
               })}
-              {rightGutterWidth && <th/>}
+              {rightGutterWidth > 0 && <th/>}
             </tr>
           </thead>
           <tbody>
@@ -1360,7 +1459,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                                            background: isCur ? 'rgba(94,106,210,0.08)' : 'transparent'}}/>
                     );
                   })}
-                  {rightGutterWidth && (
+                  {rightGutterWidth > 0 && (
                     <td style={{padding:'4px 8px', textAlign:'right'}}>
                       {renderRockGutter ? renderRockGutter(rock) : null}
                     </td>
@@ -1393,7 +1492,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                         </td>
                       );
                     })}
-                    {rightGutterWidth && <td/>}
+                    {rightGutterWidth > 0 && <td/>}
                   </tr>
                 );
               });
@@ -3002,7 +3101,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           );
         })}
       </div>
-      {showCal && <div style={{marginBottom:16}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true}/></div>}
+      {showCal && <div style={{marginBottom:16}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true} focusDayIdx={dayOfWeek}/></div>}
 
       {/* Note como primera card */}
       <div className="card-hover" style={S.card}>
@@ -3338,7 +3437,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
 }
 
 function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd, editMode}) {
-  const showEdit = editMode !== false;
+  const showEdit = !!editMode;
   if (!rocks.length) return <EmptyState icon="target" message="No Rocks this quarter. Create them in the Rocks tab."/>;
   return (
     <GanttChart rocks={rocks} wr={wr} qw={qw} upd={upd} qKey={qKey} highlightWn={weekNum}
@@ -3429,7 +3528,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
 }
 
 function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode}) {
-  const showEdit = editMode !== false;
+  const showEdit = !!editMode;
   const today = todayStr();
   const [showF, setShowF] = useState(false);
   const [form, setForm] = useState({task:'', due:''});
@@ -3512,7 +3611,7 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode}) {
 }
 
 function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
-  const showEdit = editMode !== false;
+  const showEdit = !!editMode;
   const wk = wKey(weekNum);
   const projects = (data.weeklyProjects && data.weeklyProjects[wk]) || [];
   if (!projects.length) return <EmptyState icon="layers" message="No projects this week. Add them in the Projects tab."/>;
@@ -3568,7 +3667,7 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
 }
 
 function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
-  const showEdit = editMode !== false;
+  const showEdit = !!editMode;
   const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum && (!i.solved || i.solvedWeek === weekNum));
   const [form, setForm] = useState(null);
   const toggleSolved = id => upd(d => {
