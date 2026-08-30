@@ -927,7 +927,7 @@ function WkBtns({selQ, selWn, onSelect}) {
                 ? {padding:'8px 2px', minWidth:0, flex:'1 1 0', fontSize:12}
                 : {padding:'8px 10px', minWidth:0, flex:'0 0 auto'},
               !isSel && isCur ? {color:'var(--brand)'} : {})}>
-            {isMobile ? (wn - qw[0] + 1) : ('W' + (wn - qw[0] + 1))}
+            {wn - qw[0] + 1}
           </button>
         );
       })}
@@ -2493,7 +2493,7 @@ function ScorecardTab({data, upd}) {
       {/* Toolbar de acciones — siempre arriba y consistente entre vistas */}
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setShowF(true)} style={{fontSize:13}}>+ Metric</Btn>
-        {isMobile && view === 'daily' && (
+        {view === 'daily' && (
           <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
             {editMode ? 'Done' : 'Edit'}
           </Btn>
@@ -2530,7 +2530,7 @@ function ScorecardTab({data, upd}) {
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <div style={S.card}>
         <div style={{marginBottom:10}}>
-          <H3 style={{marginBottom:0}}>W{selWn - qw[0] + 1} - {wDates(selWn)}</H3>
+          <H3 style={{marginBottom:0}}>Week {selWn - qw[0] + 1} - {wDates(selWn)}</H3>
         </div>
         {scorecard.length === 0
           ? <EmptyState icon="chart" message={'No metrics for ' + selQ.split('-')[1] + '. Add the first one below.'}/>
@@ -2541,7 +2541,7 @@ function ScorecardTab({data, upd}) {
                   <col style={{width: isMobile ? 72 : '20%'}}/>
                   <col style={{width: isMobile ? 48 : 66}}/>
                   {DAYS.map((_, i) => <col key={i}/>)}
-                  {(!isMobile || editMode) && <col style={{width: isMobile ? 66 : 82}}/>}
+                  {editMode && <col style={{width: isMobile ? 66 : 82}}/>}
                 </colgroup>
                 <thead>
                   <tr className="th-brand" style={{background:'var(--brand-soft)', borderBottom:'2px solid var(--brand)'}}>
@@ -2553,7 +2553,7 @@ function ScorecardTab({data, upd}) {
                         {day[0]}
                       </th>
                     ))}
-                    {(!isMobile || editMode) && <th/>}
+                    {editMode && <th/>}
                   </tr>
                 </thead>
                 <tbody>
@@ -2597,7 +2597,7 @@ function ScorecardTab({data, upd}) {
                           </td>
                         );
                       })}
-                      {(!isMobile || editMode) && (
+                      {editMode && (
                         <td style={{padding:'4px 4px', textAlign:'center'}}>
                           <div style={{display:'flex', gap:2, alignItems:'center', justifyContent:'center'}}>
                             <MoveBtns
@@ -2733,11 +2733,9 @@ function ProjectsTab({data, upd}) {
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap'}}>
         <Btn onClick={addProject} style={{fontSize:13}}>+ Project</Btn>
-        {isMobile && (
-          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
-            {editMode ? 'Done' : 'Edit'}
-          </Btn>
-        )}
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+          {editMode ? 'Done' : 'Edit'}
+        </Btn>
         <Btn v="sec" onClick={copyToNext} style={{fontSize:13}}>Copy to Next Week</Btn>
       </div>
       {projects.length === 0 &&
@@ -2754,7 +2752,7 @@ function ProjectsTab({data, upd}) {
                 <th style={{fontSize:10, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase',
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left'}}>Status</th>
                 <th style={{width: isMobile ? 48 : 60}}/>
-                {(!isMobile || editMode) && <th style={{width:60}}/>}
+                {editMode && <th style={{width:60}}/>}
               </tr>
             </thead>
             <tbody>
@@ -2782,7 +2780,7 @@ function ProjectsTab({data, upd}) {
                               fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
                               whiteSpace:'nowrap'}}>+ To-do</button>
                   </td>
-                  {(!isMobile || editMode) && (
+                  {editMode && (
                     <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
                       <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'flex-end'}}>
                         <MoveBtns
@@ -2865,14 +2863,14 @@ function TodosTab({data, upd}) {
           )}
         </div>
         <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-          {(!isMobile || editMode) && (
+          {editMode && (
             <button onClick={() => setEditingId(isEd ? null : t.id)}
               style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
                       color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
               {isEd ? 'Close' : 'Edit'}
             </button>
           )}
-          {(!isMobile || editMode) && (
+          {editMode && (
             <MoveBtns
               disabledUp={ri <= 0} disabledDown={ri >= data.todos.length - 1}
               onUp={() => upd(d => {
@@ -2884,7 +2882,7 @@ function TodosTab({data, upd}) {
                 const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
               })}/>
           )}
-          {(!isMobile || editMode) && (
+          {editMode && (
             <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
           )}
         </div>
@@ -2896,11 +2894,9 @@ function TodosTab({data, upd}) {
       <PageTitle icon="todos">To-Dos</PageTitle>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setShowF(true)} style={{fontSize:13}}>+ To-do</Btn>
-        {isMobile && (
-          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
-            {editMode ? 'Done' : 'Edit'}
-          </Btn>
-        )}
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+          {editMode ? 'Done' : 'Edit'}
+        </Btn>
       </div>
       {showF && (
         <InlineForm marginTop={0}>
@@ -3189,10 +3185,8 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:6, flexWrap:'wrap'}}>
           <H3 style={{marginBottom:0}}>To-Dos</H3>
           <div style={{display:'flex', gap:6, alignItems:'center'}}>
-            {isMobile && (
-              <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
-                style={{fontSize:11, padding:'5px 12px'}}>{editMode ? 'Done' : 'Edit'}</Btn>
-            )}
+            <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
+              style={{fontSize:11, padding:'5px 12px'}}>{editMode ? 'Done' : 'Edit'}</Btn>
             <Btn onClick={() => setTodoForm({task:'', due:''})}
               style={{fontSize:11, padding:'5px 12px'}}>+ To-do</Btn>
           </div>
@@ -3230,19 +3224,19 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                             color:'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-                    {(!isMobile || editMode) && (
+                    {editMode && (
                       <button onClick={() => setEditingTodoId(isEd ? null : t.id)}
                         style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
                                 color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
                         {isEd ? 'Close' : 'Edit'}
                       </button>
                     )}
-                    {(!isMobile || editMode) && (
+                    {editMode && (
                       <MoveBtns
                         disabledUp={dti === 0} disabledDown={dti === dayTodos.length - 1}
                         onUp={() => swapWithNeighbor(-1)} onDown={() => swapWithNeighbor(+1)}/>
                     )}
-                    {(!isMobile || editMode) && (
+                    {editMode && (
                       <XBtn size={16} onClick={() => upd(d => {
                           const ri = d.todos.findIndex(x => x.id === t.id);
                           if (ri >= 0) d.todos.splice(ri, 1);
@@ -3395,7 +3389,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
     d.quarters[qKey].weeks[weekNum][key] = val;
   });
   const idsIssues = qData.idsIssues || [];
-  const editable = k => !isMobile || blockEdit[k];
+  const editable = k => !!blockEdit[k];
   const AGENDA = [
     {k:'todos', label:'To-Dos'},
     {k:'scorecard', label:'Scorecard'},
@@ -3432,7 +3426,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
           <div style={{padding:'13px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
             <H3 style={{marginBottom:0}}>{seg.label}</H3>
-            {isMobile && seg.k !== 'conclude' && (
+            {seg.k !== 'conclude' && (
               <Btn v={blockEdit[seg.k] ? 'pri' : 'sec'}
                 onClick={() => setBlockEdit(o => ({...o, [seg.k]: !o[seg.k]}))}
                 style={{fontSize:11, padding:'4px 10px'}}>
@@ -3810,7 +3804,7 @@ function QReviewMainTab({data, upd}) {
 function QReview({data, upd, qKey, qData}) {
   const isMobile = useIsMobile();
   const [blockEdit, setBlockEdit] = useState({});
-  const editable = k => !isMobile || blockEdit[k];
+  const editable = k => !!blockEdit[k];
   const rev = qData.qReview || {};
   const setR = (key, val) => upd(d => { ensureQ(d, qKey); d.quarters[qKey].qReview[key] = val; });
   const rocks = qData.rocks || [];
@@ -3879,7 +3873,7 @@ function QReview({data, upd, qKey, qData}) {
         <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
           <div style={{padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
             <H3 style={{marginBottom:0}}>{seg.label}</H3>
-            {isMobile && (seg.k === 'scorecard' || seg.k === 'rocks' || seg.k === 'issues') && (
+            {(seg.k === 'scorecard' || seg.k === 'rocks' || seg.k === 'issues') && (
               <Btn v={blockEdit[seg.k] ? 'pri' : 'sec'}
                 onClick={() => setBlockEdit(o => ({...o, [seg.k]: !o[seg.k]}))}
                 style={{fontSize:11, padding:'4px 10px'}}>
