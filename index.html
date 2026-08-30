@@ -3806,7 +3806,11 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                       const ri = d.todos.findIndex(x => x.id === t.id);
                       if (ri >= 0) {
                         d.todos[ri].done = !donOnDay;
-                        d.todos[ri].completedDate = !donOnDay ? todayStr() : null;
+                        // Anchor completion to the DAY BEING VIEWED, so the
+                        // todo stays visible on that day and disappears the
+                        // day after — even if we're completing from a past/
+                        // future view.
+                        d.todos[ri].completedDate = !donOnDay ? selDay : null;
                       }
                     })}
                     style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
@@ -4914,6 +4918,11 @@ function PrintView({data, onBack}) {
                 flexShrink:0, fontWeight:600}}>↑ Índice</a>
     </div>
   );
+  const TocLink = () => (
+    <a href="#sec-cover"
+      style={{fontSize:10, color:'var(--muted-soft)', textDecoration:'none',
+              fontWeight:600, marginLeft:8, flexShrink:0}}>↑ Índice</a>
+  );
   const SH = {
     page: {background:'var(--surface)', padding:20, color:'var(--text)', fontSize:13, lineHeight:1.5, maxWidth:900, margin:'0 auto'},
     h1: {fontSize:26, fontWeight:700, color:'var(--sidebar-bg)', marginBottom:6, marginTop:0, borderBottom:'3px solid var(--brand)', paddingBottom:8},
@@ -5048,7 +5057,10 @@ function PrintView({data, onBack}) {
             const [y, m] = mk.split('-');
             return (
               <div key={mk} className="print-section" style={{marginBottom:14}}>
-                <h3 style={SH.h3}>{MONTHS_F[parseInt(m) - 1]} {y}</h3>
+                <h3 style={{...SH.h3, display:'flex', alignItems:'baseline', justifyContent:'space-between'}}>
+                  <span>{MONTHS_F[parseInt(m) - 1]} {y}</span>
+                  <TocLink/>
+                </h3>
                 {monthsByKey[mk].sort((a, b) => a.ds.localeCompare(b.ds)).map(({ds, note}) => {
                   const dow = getDayOfWeek(ds);
                   const we = dow === 'S';
@@ -5208,9 +5220,13 @@ function PrintView({data, onBack}) {
                     return (
                       <div key={wn} className="print-section"
                         style={{marginBottom:14, paddingBottom:10, borderBottom:'1px solid var(--border)'}}>
-                        <h4 style={{...SH.h4, marginBottom:8, color:'var(--brand)', fontSize:13}}>
-                          Week {parseInt(wn) - qw[0] + 1} — {wDates(parseInt(wn))}
-                          {w.rating && <span style={{marginLeft:10, color:'var(--brand)', fontWeight:700}}>· {w.rating}/10</span>}
+                        <h4 style={{...SH.h4, marginBottom:8, color:'var(--brand)', fontSize:13,
+                                    display:'flex', alignItems:'baseline', justifyContent:'space-between'}}>
+                          <span>
+                            Week {parseInt(wn) - qw[0] + 1} — {wDates(parseInt(wn))}
+                            {w.rating && <span style={{marginLeft:10, color:'var(--brand)', fontWeight:700}}>· {w.rating}/10</span>}
+                          </span>
+                          <TocLink/>
                         </h4>
                         {wkQFields.map(f => w[f.k] && (
                           <div key={f.k} style={{marginBottom:6}}>
