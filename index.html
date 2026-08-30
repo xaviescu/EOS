@@ -1249,6 +1249,25 @@ function EventModal({form, setForm, onSave, onClose, dayLabels}) {
         </div>
         <Fld label="Notes" value={form.notes} onChange={v => setForm(f => ({...f, notes:v}))} placeholder="Optional"/>
       </div>
+      <div style={{marginBottom:14}}>
+        <label style={S.lbl}>Color</label>
+        <div style={{display:'flex', gap:8}}>
+          {EVENT_COLOR_CYCLE.map(c => {
+            const st = EVENT_COLOR_STYLES[c];
+            const curCol = effectiveEventColor(form);
+            const isSel = curCol === c;
+            return (
+              <button key={c} type="button" onClick={() => setForm(f => ({...f, color: c}))}
+                title={c}
+                style={{width:32, height:32, borderRadius:'50%',
+                        border: isSel ? '2px solid var(--brand)' : '1px solid var(--border-strong)',
+                        background: st.border, cursor:'pointer', padding:0,
+                        transform: isSel ? 'scale(1.08)' : 'scale(1)',
+                        transition:'transform .12s'}}/>
+            );
+          })}
+        </div>
+      </div>
       <div style={{display:'flex', gap:8}}>
         <Btn onClick={onSave}>Save</Btn>
         <Btn v="sec" onClick={onClose}>Cancel</Btn>
