@@ -430,6 +430,12 @@ const dayStr = (wn, di) => {
 const dayShort = (wn, di) =>
   dayDate(wn, di).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const wDates = wn => dayShort(wn,0) + ' - ' + dayShort(wn,6);
+// Next Monday (YYYY-MM-DD) after the reference week's Sunday. If no wn given,
+// uses current calendar week. Used for todos generated in L10/QReview.
+const nextMondayStr = wn => {
+  const ref = wn != null ? wn : getCurWn();
+  return dayStr(ref + 1, 0);
+};
 const getCurQ = () => {
   const n = new Date();
   return n.getFullYear() + '-Q' + Math.floor(n.getMonth()/3 + 1);
@@ -3567,11 +3573,12 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
   const idsIssues = qData.idsIssues || [];
   const editable = k => !!blockEdit[k];
   const AGENDA = [
-    {k:'todos', label:'To-Dos'},
+    {k:'todosreview', label:'To-Dos'},
     {k:'scorecard', label:'Scorecard'},
     {k:'rocks', label:'Rocks'},
     {k:'projects', label:'Projects'},
     {k:'ids', label:'IDS'},
+    {k:'todosnew', label:'To-Dos'},
     {k:'conclude', label:'Conclude'}
   ];
   return (
@@ -3612,7 +3619,8 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
           </div>
           {true && (
             <div style={{padding:'0 18px 16px'}}>
-              {seg.k === 'todos' && <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('todos')}/>}
+              {seg.k === 'todosreview' && <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('todosreview')} mode="review"/>}
+              {seg.k === 'todosnew' && <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('todosnew')} mode="new"/>}
               {seg.k === 'scorecard' && <L10Scorecard scorecard={qData.scorecard || []} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('scorecard')}/>}
               {seg.k === 'rocks' && <L10Rocks rocks={qData.rocks || []} wr={qData.weeklyRocks || {}} qw={weeks} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} upd={upd} editMode={editable('rocks')}/>}
               {seg.k === 'projects' && <L10Projects data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('projects')}/>}
@@ -3731,8 +3739,9 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
   );
 }
 
-function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode}) {
+function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
   const showEdit = !!editMode;
+  mode = mode || 'review';
   const today = todayStr();
   const [showF, setShowF] = useState(false);
   const [form, setForm] = useState({task:'', due:''});
@@ -3746,12 +3755,18 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode}) {
     setForm({task:'', due:''}); setShowF(false);
   };
   // Visibility rules:
-  // - Show only todos created in week <= weekNum (not in weeks before they exist)
-  // - Show completed todos in the same week they were completed (crossed out)
-  // - Hide completed todos starting from the FOLLOWING week onwards
+  // - review mode: pre-existing pending/completed todos of this L10 week (default).
+  // - new mode: all pending todos (includes those created in this meeting from IDS).
+  const nextMon = nextMondayStr(weekNum);
   const visibleTodos = data.todos.filter(t => {
+    if (mode === 'new') {
+      // Show all pending + those created in this meeting (fromL10Week === weekNum).
+      return !t.done || t.fromL10Week === weekNum;
+    }
+    // review mode (default L10 flow):
     const createdWeek = t.startDate ? dateToWn(t.startDate) : 1;
     if (createdWeek > weekNum) return false;
+    if (t.fromL10Week === weekNum) return false; // exclude "new from this meeting" from review
     if (t.done && t.completedDate) {
       const completionWeek = dateToWn(t.completedDate);
       if (completionWeek < weekNum) return false;
@@ -3782,6 +3797,11 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode}) {
               style={{flex:1, border:'none', outline:'none', fontSize:13, fontWeight:500,
                       textDecoration: 'none', color:'var(--text)',
                       background:'transparent', fontFamily:'inherit', padding:0}}/>
+            {mode === 'new' && t.fromL10Week === weekNum && (
+              <span style={{fontSize:10, fontWeight:700, color:'var(--brand)',
+                            background:'var(--brand-soft)', padding:'2px 6px', borderRadius:'var(--r-xs)',
+                            flexShrink:0}}>NEW</span>
+            )}
             {t.due && <span style={{fontSize:11, color: late ? 'var(--err-line)' : 'var(--muted-soft)'}}>{t.due}</span>}
             {showEdit && (
               <IssueBtn idsIssues={idsIssues} sourceId={t.id} sourceName={'Todo: ' + t.task}
@@ -3872,21 +3892,12 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
 
 function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
   const showEdit = !!editMode;
-  const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum && (!i.solved || i.solvedWeek === weekNum));
+  const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum && !i.convertedToTodo);
   const [form, setForm] = useState(null);
-  const toggleSolved = id => upd(d => {
+  const setField = (id, field, val) => upd(d => {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
-    if (idx >= 0) {
-      const iss = d.quarters[qKey].idsIssues[idx];
-      if (!iss.solved) { iss.solved = true; iss.solvedWeek = weekNum; }
-      else { iss.solved = false; iss.solvedWeek = null; }
-    }
-  });
-  const setAction = (id, val) => upd(d => {
-    ensureQ(d, qKey);
-    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
-    if (idx >= 0) d.quarters[qKey].idsIssues[idx].action = val;
+    if (idx >= 0) d.quarters[qKey].idsIssues[idx][field] = val;
   });
   const deleteIssue = id => upd(d => {
     ensureQ(d, qKey);
@@ -3895,71 +3906,85 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
   });
   const createTodoFromIssue = (issue) => upd(d => {
     const taskName = issue.sourceName + (issue.action ? ' — ' + issue.action : '');
-    d.todos.push({id: uid(), task: taskName, startDate: todayStr(), due: '', done: false, completedDate: null});
+    d.todos.push({
+      id: uid(), task: taskName,
+      startDate: nextMondayStr(weekNum),
+      due: '', done: false, completedDate: null,
+      fromL10Week: weekNum
+    });
+    // Mark issue as converted so it disappears from IDS list
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === issue.id);
+    if (idx >= 0) d.quarters[qKey].idsIssues[idx].convertedToTodo = true;
   });
   const addIssue = () => {
-    if (!form || !form.name) return;
     upd(d => {
       ensureQ(d, qKey);
       d.quarters[qKey].idsIssues.push({
-        id: uid(), sourceId:null, sourceName: form.name,
-        action: form.action || '', solved:false, solvedWeek:null, weekAdded: weekNum
+        id: uid(), sourceId:null, sourceName: '',
+        explanation:'', action:'', weekAdded: weekNum
       });
     });
-    setForm(null);
   };
   return (
     <div>
-      {active.length === 0 && !form &&
+      {active.length === 0 &&
         <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
-          No issues. Use "+ Issue" buttons above or add manually.
+          No issues. Use "+ Issue" buttons above or add manually below.
         </div>}
       {active.map(issue => (
         <div key={issue.id}
-          style={{padding:'9px 12px', marginBottom:6,
-                  background: issue.solved ? 'var(--ok-bg)' : 'var(--warn-bg)',
-                  borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--brand)')}}>
-          <div style={{display:'flex', alignItems:'flex-start', gap:10}}>
-            <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
-              style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
-            <div style={{flex:1}}>
-              <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
-                           textDecoration: 'none', marginBottom:5}}>
-                {issue.sourceName}
-              </div>
-              <input value={issue.action || ''} onChange={e => setAction(issue.id, e.target.value)}
-                placeholder="Action to take..."
-                style={{...S.inp, fontSize:12, padding:'5px 10px'}}/>
-              {issue.weekAdded < weekNum && !issue.solved &&
-                <span style={{fontSize:10, color:'var(--err-line)', marginTop:3, display:'block'}}>
+          style={{padding:'9px 12px', marginBottom:6, background:'var(--warn-bg)',
+                  borderRadius:'var(--r-sm)', borderLeft:'3px solid var(--brand)'}}>
+          <div style={{display:'flex', alignItems:'flex-start', gap:10, flexWrap:'wrap'}}>
+            <div style={{flex:'1 1 200px', minWidth:0}}>
+              {showEdit ? (
+                <input value={issue.sourceName || ''}
+                  onChange={e => setField(issue.id, 'sourceName', e.target.value)}
+                  placeholder="Issue title..."
+                  style={{width:'100%', border:'none', outline:'none', fontSize:13, fontWeight:600,
+                          color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
+              ) : (
+                <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
+                  {issue.sourceName || '(untitled)'}
+                </div>
+              )}
+              {(showEdit || issue.explanation) && (
+                showEdit ? (
+                  <input value={issue.explanation || ''}
+                    onChange={e => setField(issue.id, 'explanation', e.target.value)}
+                    placeholder="Explanation..."
+                    style={{width:'100%', border:'none', outline:'none', fontSize:12,
+                            color:'var(--muted)', background:'transparent', fontFamily:'inherit',
+                            padding:'2px 0 0', marginTop:2}}/>
+                ) : (
+                  <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>{issue.explanation}</div>
+                )
+              )}
+              {issue.weekAdded < weekNum &&
+                <span style={{fontSize:10, color:'var(--err-line)', marginTop:4, display:'block'}}>
                   Carried from week {issue.weekAdded}
                 </span>}
-              {issue.solved && <span style={{fontSize:10, color:'var(--ok-line)', marginTop:3, display:'block'}}>Solved this week</span>}
             </div>
             {showEdit && (
-              <div style={{display:'flex', flexDirection:'column', gap:4, alignItems:'flex-end', flexShrink:0}}>
+              <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', flex:'1 1 240px'}}>
+                <input value={issue.action || ''}
+                  onChange={e => setField(issue.id, 'action', e.target.value)}
+                  placeholder="Action..."
+                  style={{...S.inp, flex:'1 1 120px', fontSize:12, padding:'5px 10px'}}/>
                 <button onClick={() => createTodoFromIssue(issue)}
-                  style={{padding:'2px 8px', borderRadius:'var(--r-md)', border:'1px solid var(--border-strong)', cursor:'pointer',
-                          fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
-                          whiteSpace:'nowrap'}}>+ To-do</button>
+                  style={{padding:'5px 10px', borderRadius:'var(--r-sm)', border:'1px solid var(--brand)',
+                          background:'var(--brand)', color:'white', cursor:'pointer',
+                          fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>+ To-do</button>
                 <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>
               </div>
             )}
           </div>
         </div>
       ))}
-      {showEdit && (form
-        ? (
-          <InlineForm marginTop={8}>
-            <Fld label="Issue" value={form.name} onChange={v => setForm(f => ({...f, name:v}))} placeholder="Describe the issue..."/>
-            <Fld label="Action" value={form.action} onChange={v => setForm(f => ({...f, action:v}))} placeholder="What action will be taken?"/>
-            <div style={{display:'flex', gap:7}}>
-              <Btn onClick={addIssue} style={{fontSize:13}}>Save</Btn>
-              <Btn v="sec" onClick={() => setForm(null)} style={{fontSize:13}}>Cancel</Btn>
-            </div>
-          </InlineForm>
-        )
-        : <Btn onClick={() => setForm({name:'', action:''})} style={{marginTop:8, fontSize:13, padding:'6px 12px'}}>+ Issue manual</Btn>
+      {showEdit && (
+        <Btn onClick={addIssue} style={{marginTop:8, fontSize:13, padding:'6px 12px'}}>+ Issue</Btn>
+      )}
       )}
     </div>
   );
@@ -3993,26 +4018,17 @@ function QReview({data, upd, qKey, qData}) {
     {k:'scorecard', label:'Scorecard'},
     {k:'rocks', label:'Rocks'},
     {k:'issues', label:'IDS'},
+    {k:'todosnew', label:'To-Dos'},
     {k:'vision', label:'Vision Alignment'},
     {k:'nextrocks', label:'Next Quarter Rocks'},
     {k:'conclude', label:'Conclude'}
   ];
 
   // Issue list management for Q Review (operates on whole quarter)
-  const [issueForm, setIssueForm] = useState(null);
-  const toggleSolved = id => upd(d => {
+  const setIssueField = (id, field, val) => upd(d => {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
-    if (idx >= 0) {
-      const iss = d.quarters[qKey].idsIssues[idx];
-      if (!iss.solved) { iss.solved = true; iss.solvedWeek = lastWk; }
-      else { iss.solved = false; iss.solvedWeek = null; }
-    }
-  });
-  const setAction = (id, val) => upd(d => {
-    ensureQ(d, qKey);
-    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
-    if (idx >= 0) d.quarters[qKey].idsIssues[idx].action = val;
+    if (idx >= 0) d.quarters[qKey].idsIssues[idx][field] = val;
   });
   const deleteIssue = id => upd(d => {
     ensureQ(d, qKey);
@@ -4020,16 +4036,26 @@ function QReview({data, upd, qKey, qData}) {
     if (idx >= 0) d.quarters[qKey].idsIssues.splice(idx, 1);
   });
   const addManualIssue = () => {
-    if (!issueForm || !issueForm.name) return;
     upd(d => {
       ensureQ(d, qKey);
       d.quarters[qKey].idsIssues.push({
-        id: uid(), sourceId:null, sourceName: issueForm.name,
-        action: issueForm.action || '', solved:false, solvedWeek:null, weekAdded: lastWk
+        id: uid(), sourceId:null, sourceName:'',
+        explanation:'', action:'', weekAdded: lastWk
       });
     });
-    setIssueForm(null);
   };
+  const createTodoFromIssueQR = (issue) => upd(d => {
+    const taskName = issue.sourceName + (issue.action ? ' — ' + issue.action : '');
+    d.todos.push({
+      id: uid(), task: taskName,
+      startDate: nextMondayStr(),
+      due: '', done: false, completedDate: null,
+      fromQReviewQKey: qKey
+    });
+    ensureQ(d, qKey);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === issue.id);
+    if (idx >= 0) d.quarters[qKey].idsIssues[idx].convertedToTodo = true;
+  });
 
   return (
     <div>
@@ -4079,48 +4105,95 @@ function QReview({data, upd, qKey, qData}) {
               )}
               {seg.k === 'issues' && (
                 <div>
-                  {idsIssues.length === 0 && !issueForm &&
-                    <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
-                      No issues yet. Use "+ Issue" buttons in Scorecard/Rocks above, or add one manually below.
-                    </div>}
-                  {idsIssues.map(issue => (
-                    <div key={issue.id}
-                      style={{padding:'9px 12px', marginBottom:6,
-                              background: issue.solved ? 'var(--ok-bg)' : 'var(--warn-bg)',
-                              borderRadius:8, borderLeft:'3px solid ' + (issue.solved ? 'var(--ok-line)' : 'var(--brand)')}}>
-                      <div style={{display:'flex', alignItems:'flex-start', gap:10}}>
-                        <input type="checkbox" checked={!!issue.solved} onChange={() => toggleSolved(issue.id)}
-                          style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
-                                       textDecoration: 'none', marginBottom:5}}>
-                            {issue.sourceName}
-                          </div>
-                          <input value={issue.action || ''}
-                            onChange={e => setAction(issue.id, e.target.value)}
-                            placeholder="Action to take..."
-                            style={{...S.inp, fontSize:12, padding:'5px 10px'}}/>
-                          <div style={{fontSize:10, color:'var(--muted-soft)', marginTop:3}}>
-                            Wk {issue.weekAdded}{issue.solved && issue.solvedWeek ? ' → solved Wk ' + issue.solvedWeek : ''}
-                          </div>
+                  {(() => {
+                    const activeIssues = idsIssues.filter(i => !i.convertedToTodo);
+                    if (activeIssues.length === 0) {
+                      return (
+                        <div style={{color:'var(--muted-soft)', fontSize:13, marginBottom:10}}>
+                          No issues yet. Use "+ Issue" buttons in Scorecard/Rocks above, or add one below.
                         </div>
-                        {editable('issues') && <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>}
+                      );
+                    }
+                    return activeIssues.map(issue => (
+                      <div key={issue.id}
+                        style={{padding:'9px 12px', marginBottom:6, background:'var(--warn-bg)',
+                                borderRadius:'var(--r-sm)', borderLeft:'3px solid var(--brand)'}}>
+                        <div style={{display:'flex', alignItems:'flex-start', gap:10, flexWrap:'wrap'}}>
+                          <div style={{flex:'1 1 200px', minWidth:0}}>
+                            {editable('issues') ? (
+                              <input value={issue.sourceName || ''}
+                                onChange={e => setIssueField(issue.id, 'sourceName', e.target.value)}
+                                placeholder="Issue title..."
+                                style={{width:'100%', border:'none', outline:'none', fontSize:13, fontWeight:600,
+                                        color:'var(--text)', background:'transparent', fontFamily:'inherit', padding:0}}/>
+                            ) : (
+                              <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
+                                {issue.sourceName || '(untitled)'}
+                              </div>
+                            )}
+                            {(editable('issues') || issue.explanation) && (
+                              editable('issues') ? (
+                                <input value={issue.explanation || ''}
+                                  onChange={e => setIssueField(issue.id, 'explanation', e.target.value)}
+                                  placeholder="Explanation..."
+                                  style={{width:'100%', border:'none', outline:'none', fontSize:12,
+                                          color:'var(--muted)', background:'transparent', fontFamily:'inherit',
+                                          padding:'2px 0 0', marginTop:2}}/>
+                              ) : (
+                                <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>{issue.explanation}</div>
+                              )
+                            )}
+                          </div>
+                          {editable('issues') && (
+                            <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', flex:'1 1 240px'}}>
+                              <input value={issue.action || ''}
+                                onChange={e => setIssueField(issue.id, 'action', e.target.value)}
+                                placeholder="Action..."
+                                style={{...S.inp, flex:'1 1 120px', fontSize:12, padding:'5px 10px'}}/>
+                              <button onClick={() => createTodoFromIssueQR(issue)}
+                                style={{padding:'5px 10px', borderRadius:'var(--r-sm)', border:'1px solid var(--brand)',
+                                        background:'var(--brand)', color:'white', cursor:'pointer',
+                                        fontSize:11, fontWeight:700, whiteSpace:'nowrap'}}>+ To-do</button>
+                              <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {editable('issues') && (issueForm
-                    ? (
-                      <InlineForm marginTop={8}>
-                        <Fld label="Issue" value={issueForm.name} onChange={v => setIssueForm(f => ({...f, name:v}))} placeholder="Describe the issue..."/>
-                        <Fld label="Action" value={issueForm.action} onChange={v => setIssueForm(f => ({...f, action:v}))} placeholder="What action will be taken?"/>
-                        <div style={{display:'flex', gap:7}}>
-                          <Btn onClick={addManualIssue} style={{fontSize:13}}>Save</Btn>
-                          <Btn v="sec" onClick={() => setIssueForm(null)} style={{fontSize:13}}>Cancel</Btn>
-                        </div>
-                      </InlineForm>
-                    )
-                    : <Btn onClick={() => setIssueForm({name:'', action:''})} style={{marginTop:8, fontSize:13, padding:'6px 12px'}}>+ Issue manual</Btn>
+                    ));
+                  })()}
+                  {editable('issues') && (
+                    <Btn onClick={addManualIssue} style={{marginTop:8, fontSize:13, padding:'6px 12px'}}>+ Issue</Btn>
                   )}
+                </div>
+              )}
+              {seg.k === 'todosnew' && (
+                <div>
+                  {(() => {
+                    const newTodos = (data.todos || []).filter(t => t.fromQReviewQKey === qKey);
+                    if (newTodos.length === 0) {
+                      return <div style={{color:'var(--muted-soft)', fontSize:13, padding:'4px 0'}}>No to-dos generated in this Q Review yet.</div>;
+                    }
+                    return newTodos.map(t => (
+                      <div key={t.id} style={{display:'flex', alignItems:'center', gap:9,
+                                              padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
+                                              opacity: t.done ? 0.5 : 1}}>
+                        <input type="checkbox" checked={t.done}
+                          onChange={e => upd(d => {
+                            const idx = d.todos.findIndex(x => x.id === t.id);
+                            if (idx >= 0) {
+                              d.todos[idx].done = e.target.checked;
+                              d.todos[idx].completedDate = e.target.checked ? todayStr() : null;
+                            }
+                          })}
+                          style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+                        <div style={{flex:1, fontSize:13, fontWeight:500, color:'var(--text)',
+                                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                                     textDecoration: t.done ? 'line-through' : 'none'}}
+                             title={t.task}>{t.task}</div>
+                        {t.startDate && <span style={{fontSize:11, color:'var(--muted-soft)', flexShrink:0}}>Start: {t.startDate}</span>}
+                      </div>
+                    ));
+                  })()}
                 </div>
               )}
               {(seg.k === 'vision' || seg.k === 'nextrocks') && (
