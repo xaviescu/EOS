@@ -2168,6 +2168,7 @@ function MonthTab({data, upd, goToDay}) {
 function RocksTab({data, upd}) {
   const isMobile = useIsMobile();
   const [selQ, setSelQ] = useState(getCurQ());
+  const [editMode, setEditMode] = useState(false);
   const [editStep, setEditStep] = useState(null);
   const [addRock, setAddRock] = useState(false);
   const [rockForm, setRockForm] = useState({title:''});
@@ -2221,6 +2222,9 @@ function RocksTab({data, upd}) {
       <QBtns selQ={selQ} onSelect={qk => { setSelQ(qk); setAddRock(false); }}/>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
         <Btn onClick={() => setAddRock(true)} style={{fontSize:13}}>+ Rock</Btn>
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+          {editMode ? 'Done' : 'Edit'}
+        </Btn>
       </div>
       {addRock && (
         <InlineForm marginTop={0}>
@@ -2249,15 +2253,21 @@ function RocksTab({data, upd}) {
               <div key={rock.id} style={{...S.card, padding:0, overflow:'hidden', marginBottom:14}}>
                 <div style={{padding:'12px 16px', background:'var(--surface-alt)', display:'flex',
                              alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                  <input value={rock.title}
-                    onChange={e => upd(d => {
-                      ensureQ(d, selQ);
-                      const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
-                      if (idx >= 0) d.quarters[selQ].rocks[idx].title = e.target.value;
-                    })}
-                    style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:13,
-                            border:'none', outline:'none', fontFamily:'inherit',
-                            background:'transparent', padding:0}} placeholder="Rock title..."/>
+                  {editMode ? (
+                    <input value={rock.title}
+                      onChange={e => upd(d => {
+                        ensureQ(d, selQ);
+                        const idx = d.quarters[selQ].rocks.findIndex(x => x.id === rock.id);
+                        if (idx >= 0) d.quarters[selQ].rocks[idx].title = e.target.value;
+                      })}
+                      style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:13,
+                              border:'none', outline:'none', fontFamily:'inherit',
+                              background:'transparent', padding:0}} placeholder="Rock title..."/>
+                  ) : (
+                    <div style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:13,
+                                 overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                         title={rock.title}>{rock.title || '(sin título)'}</div>
+                  )}
                   <StatusPill status={rock.status || 'on-track'}
                     onChange={val => upd(d => {
                       ensureQ(d, selQ);
@@ -2267,7 +2277,7 @@ function RocksTab({data, upd}) {
                   <span style={{fontSize:11, color:'var(--muted-soft)'}}>
                     {steps.filter(s => stepDone(s)).length}/{steps.length} steps
                   </span>
-                  {!cr
+                  {editMode && (!cr
                     ? <Btn v="sec"
                         onClick={() => setCopyRock(s => ({...s, [rock.id]: QS.find(q => YEAR + '-' + q !== selQ) || 'Q1'}))}
                         style={{fontSize:11, padding:'5px 10px'}}>Copy</Btn>
@@ -2285,24 +2295,26 @@ function RocksTab({data, upd}) {
                         <Btn v="sec" onClick={() => setCopyRock(s => { const n = {...s}; delete n[rock.id]; return n; })}
                           style={{fontSize:11, padding:'5px 10px'}}>X</Btn>
                       </div>
-                  }
-                  <div style={{display:'flex', gap:3, alignItems:'center'}}>
-                    <MoveBtns
-                      disabledUp={ri === 0} disabledDown={ri === rocks.length - 1}
-                      onUp={() => upd(d => {
-                        if (ri === 0) return;
-                        ensureQ(d, selQ);
-                        const arr = d.quarters[selQ].rocks;
-                        const tmp = arr[ri]; arr[ri] = arr[ri-1]; arr[ri-1] = tmp;
-                      })}
-                      onDown={() => upd(d => {
-                        ensureQ(d, selQ);
-                        const arr = d.quarters[selQ].rocks;
-                        if (ri === arr.length - 1) return;
-                        const tmp = arr[ri]; arr[ri] = arr[ri+1]; arr[ri+1] = tmp;
-                      })}/>
-                    <XBtn size={18} onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.splice(ri, 1); })}/>
-                  </div>
+                  )}
+                  {editMode && (
+                    <div style={{display:'flex', gap:3, alignItems:'center'}}>
+                      <MoveBtns
+                        disabledUp={ri === 0} disabledDown={ri === rocks.length - 1}
+                        onUp={() => upd(d => {
+                          if (ri === 0) return;
+                          ensureQ(d, selQ);
+                          const arr = d.quarters[selQ].rocks;
+                          const tmp = arr[ri]; arr[ri] = arr[ri-1]; arr[ri-1] = tmp;
+                        })}
+                        onDown={() => upd(d => {
+                          ensureQ(d, selQ);
+                          const arr = d.quarters[selQ].rocks;
+                          if (ri === arr.length - 1) return;
+                          const tmp = arr[ri]; arr[ri] = arr[ri+1]; arr[ri+1] = tmp;
+                        })}/>
+                      <XBtn size={18} onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].rocks.splice(ri, 1); })}/>
+                    </div>
+                  )}
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
                   {steps.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:11, marginBottom:10, fontStyle:'italic'}}>No steps yet.</div>}
@@ -2316,16 +2328,22 @@ function RocksTab({data, upd}) {
                                                  background: 'var(--surface-alt)',
                                                  borderRadius:6}}>
                         <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-                          <input value={step.text}
-                            onChange={e => upd(d => {
-                              ensureQ(d, selQ);
-                              const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
-                              if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
-                            })}
-                            style={{flex:'0 1 200px', minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
-                                    textDecoration: 'none',
-                                    border:'none', outline:'none', fontFamily:'inherit',
-                                    background:'transparent', padding:0}}/>
+                          {editMode ? (
+                            <input value={step.text}
+                              onChange={e => upd(d => {
+                                ensureQ(d, selQ);
+                                const si2 = (d.quarters[selQ].weeklyRocks[rock.id] || []).findIndex(x => x.id === step.id);
+                                if (si2 >= 0) d.quarters[selQ].weeklyRocks[rock.id][si2].text = e.target.value;
+                              })}
+                              style={{flex:'0 1 200px', minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
+                                      textDecoration: 'none',
+                                      border:'none', outline:'none', fontFamily:'inherit',
+                                      background:'transparent', padding:0}}/>
+                          ) : (
+                            <div style={{flex:'0 1 200px', minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)',
+                                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                                 title={step.text}>{step.text}</div>
+                          )}
                           <div style={{display:'flex', gap:3, flexWrap:'nowrap'}}>
                             {qw.map(wn => {
                               const inR = wn >= sw2 && wn <= ew2;
@@ -2347,28 +2365,34 @@ function RocksTab({data, upd}) {
                             })}
                           </div>
                           <span style={{fontSize:11, color:'var(--brand)', fontWeight:700, marginLeft:'auto'}}>
-                            W{sw2 - qw[0] + 1}{sw2 !== ew2 ? '-' + String(ew2 - qw[0] + 1) : ''}
+                            {sw2 - qw[0] + 1}{sw2 !== ew2 ? '-' + String(ew2 - qw[0] + 1) : ''}
                           </span>
-                          <button onClick={() => setEditStep(isEd ? null : rock.id + '-' + step.id)}
-                            style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                                    color:'var(--muted)', fontSize:11, padding:'3px 10px', borderRadius:6}}>
-                            {isEd ? 'Close' : 'Edit'}
-                          </button>
-                          <MoveBtns
-                            disabledUp={si === 0} disabledDown={si === steps.length - 1}
-                            onUp={() => upd(d => {
-                              if (si === 0) return;
-                              ensureQ(d, selQ);
-                              const arr = d.quarters[selQ].weeklyRocks[rock.id];
-                              const tmp = arr[si]; arr[si] = arr[si-1]; arr[si-1] = tmp;
-                            })}
-                            onDown={() => upd(d => {
-                              ensureQ(d, selQ);
-                              const arr = d.quarters[selQ].weeklyRocks[rock.id];
-                              if (si === arr.length - 1) return;
-                              const tmp = arr[si]; arr[si] = arr[si+1]; arr[si+1] = tmp;
-                            })}/>
-                          <XBtn size={15} onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].weeklyRocks[rock.id].splice(si, 1); })}/>
+                          {editMode && (
+                            <button onClick={() => setEditStep(isEd ? null : rock.id + '-' + step.id)}
+                              style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
+                                      color:'var(--muted)', fontSize:11, padding:'3px 10px', borderRadius:6}}>
+                              {isEd ? 'Close' : 'Edit'}
+                            </button>
+                          )}
+                          {editMode && (
+                            <MoveBtns
+                              disabledUp={si === 0} disabledDown={si === steps.length - 1}
+                              onUp={() => upd(d => {
+                                if (si === 0) return;
+                                ensureQ(d, selQ);
+                                const arr = d.quarters[selQ].weeklyRocks[rock.id];
+                                const tmp = arr[si]; arr[si] = arr[si-1]; arr[si-1] = tmp;
+                              })}
+                              onDown={() => upd(d => {
+                                ensureQ(d, selQ);
+                                const arr = d.quarters[selQ].weeklyRocks[rock.id];
+                                if (si === arr.length - 1) return;
+                                const tmp = arr[si]; arr[si] = arr[si+1]; arr[si+1] = tmp;
+                              })}/>
+                          )}
+                          {editMode && (
+                            <XBtn size={15} onClick={() => upd(d => { ensureQ(d, selQ); d.quarters[selQ].weeklyRocks[rock.id].splice(si, 1); })}/>
+                          )}
                         </div>
                         {isEd && (
                           <div style={{display:'flex', alignItems:'center', gap:8, marginTop:8,
@@ -2391,6 +2415,7 @@ function RocksTab({data, upd}) {
                       </div>
                     );
                   })}
+                  {editMode && (
                   <div style={{display:'flex', gap:7, flexWrap:'wrap', alignItems:'center',
                                paddingTop:10, borderTop:'1px solid var(--border)'}}>
                     <input value={sf.text}
@@ -2422,6 +2447,7 @@ function RocksTab({data, upd}) {
                       setStepForms(f => ({...f, [rock.id]: {text:'', sw: qw[0], ew: qw[0]}}));
                     }}>+ Step</Btn>
                   </div>
+                  )}
                 </div>
               </div>
             );
@@ -2751,7 +2777,7 @@ function ProjectsTab({data, upd}) {
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left', width: isMobile ? '55%' : '45%'}}>Project</th>
                 <th style={{fontSize:10, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase',
                             letterSpacing:0.5, padding:'0 0 8px', textAlign:'left'}}>Status</th>
-                <th style={{width: isMobile ? 48 : 60}}/>
+                {editMode && <th style={{width: isMobile ? 48 : 60}}/>}
                 {editMode && <th style={{width:60}}/>}
               </tr>
             </thead>
@@ -2774,12 +2800,14 @@ function ProjectsTab({data, upd}) {
                               fontFamily:'inherit', color:'var(--muted)',
                               background:'transparent', padding:0}}/>
                   </td>
-                  <td style={{textAlign:'center', verticalAlign:'middle', padding:'4px 6px'}}>
-                    <button onClick={() => createTodoFromProject(proj)}
-                      style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
-                              fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
-                              whiteSpace:'nowrap'}}>+ To-do</button>
-                  </td>
+                  {editMode && (
+                    <td style={{textAlign:'center', verticalAlign:'middle', padding:'4px 6px'}}>
+                      <button onClick={() => createTodoFromProject(proj)}
+                        style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
+                                fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
+                                whiteSpace:'nowrap'}}>+ To-do</button>
+                    </td>
+                  )}
                   {editMode && (
                     <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
                       <div style={{display:'flex', gap:3, alignItems:'center', justifyContent:'flex-end'}}>
@@ -2829,7 +2857,7 @@ function TodosTab({data, upd}) {
     if (!t.done || !t.completedDate) return false;
     return dateToWn(t.completedDate) === curWn;
   });
-  const TRow = ({t}) => {
+  const TRow = ({t, isLast}) => {
     const ri = data.todos.indexOf(t);
     const isEd = editingId === t.id;
     const updField = (field, val) => upd(d => {
@@ -2837,55 +2865,61 @@ function TodosTab({data, upd}) {
       if (idx >= 0) d.todos[idx][field] = val;
     });
     return (
-      <div style={{...S.card, padding:'11px 16px', display:'flex',
-                   alignItems:'flex-start', gap:10, marginBottom:7, opacity: t.done ? 0.6 : 1}}>
+      <div style={{padding:'8px 0', display:'flex', alignItems:'center', gap:9,
+                   borderBottom: isLast ? 'none' : '1px solid var(--surface-alt)',
+                   opacity: t.done ? 0.55 : 1, flexWrap:'wrap'}}>
         <input type="checkbox" checked={t.done}
           onChange={e => upd(d => { d.todos[ri].done = e.target.checked; d.todos[ri].completedDate = e.target.checked ? todayStr() : null; })}
-          style={{width:17, height:17, cursor:'pointer', flexShrink:0, marginTop:2}}/>
-        <div style={{flex:1}}>
+          style={{width:16, height:16, cursor:'pointer', flexShrink:0}}/>
+        {editMode ? (
           <input value={t.task}
             onChange={e => upd(d => { d.todos[ri].task = e.target.value; })}
-            style={{width:'100%', border:'none', outline:'none', fontWeight:500,
-                    color:'var(--text)', textDecoration: 'none',
-                    fontSize:13, marginBottom:4, background:'transparent',
+            style={{flex:1, minWidth:120, border:'none', outline:'none', fontWeight:500,
+                    color:'var(--text)', fontSize:13, background:'transparent',
                     fontFamily:'inherit', padding:0}}/>
-          <div style={{fontSize:11, color:'var(--muted-soft)', display:'flex', gap:12, flexWrap:'wrap'}}>
-            {t.startDate && <span>Start: {t.startDate}</span>}
-            {t.done && t.completedDate &&
-              <span style={{color:'var(--ok-line)', fontWeight:600}}>Done: {t.completedDate}</span>}
+        ) : (
+          <div style={{flex:1, minWidth:120, fontWeight:500, color:'var(--text)', fontSize:13,
+                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                       textDecoration: t.done ? 'line-through' : 'none'}}
+               title={t.task}>{t.task}</div>
+        )}
+        {t.done && t.completedDate && !editMode && (
+          <span style={{fontSize:11, color:'var(--ok-line)', fontWeight:600, flexShrink:0}}>{t.completedDate}</span>
+        )}
+        {editMode && (
+          <span style={{fontSize:11, color:'var(--muted-soft)', flexShrink:0}}>
+            Start: {t.startDate || '—'}
+          </span>
+        )}
+        {editMode && (
+          <button onClick={() => setEditingId(isEd ? null : t.id)}
+            style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
+                    color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4, flexShrink:0}}>
+            {isEd ? 'Close' : 'Edit'}
+          </button>
+        )}
+        {editMode && (
+          <MoveBtns
+            disabledUp={ri <= 0} disabledDown={ri >= data.todos.length - 1}
+            onUp={() => upd(d => {
+              if (ri <= 0) return;
+              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
+            })}
+            onDown={() => upd(d => {
+              if (ri >= d.todos.length - 1) return;
+              const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
+            })}/>
+        )}
+        {editMode && (
+          <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
+        )}
+        {isEd && (
+          <div style={{flexBasis:'100%', marginTop:6, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
+            <label style={S.lbl}>Start date</label>
+            <DatePicker value={t.startDate || ''}
+              onChange={v => { updField('startDate', v); setEditingId(null); }}/>
           </div>
-          {isEd && (
-            <div style={{marginTop:8, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
-              <label style={S.lbl}>Start date</label>
-              <DatePicker value={t.startDate || ''}
-                onChange={v => { updField('startDate', v); setEditingId(null); }}/>
-            </div>
-          )}
-        </div>
-        <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-          {editMode && (
-            <button onClick={() => setEditingId(isEd ? null : t.id)}
-              style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                      color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
-              {isEd ? 'Close' : 'Edit'}
-            </button>
-          )}
-          {editMode && (
-            <MoveBtns
-              disabledUp={ri <= 0} disabledDown={ri >= data.todos.length - 1}
-              onUp={() => upd(d => {
-                if (ri <= 0) return;
-                const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri-1]; d.todos[ri-1] = tmp;
-              })}
-              onDown={() => upd(d => {
-                if (ri >= d.todos.length - 1) return;
-                const tmp = d.todos[ri]; d.todos[ri] = d.todos[ri+1]; d.todos[ri+1] = tmp;
-              })}/>
-          )}
-          {editMode && (
-            <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
-          )}
-        </div>
+        )}
       </div>
     );
   };
@@ -2908,22 +2942,22 @@ function TodosTab({data, upd}) {
           </div>
         </InlineForm>
       )}
-      <div style={{marginBottom:12}}>
-        <div style={{fontSize:13, fontWeight:700, color:'var(--text-2)', marginBottom:6}}>In Progress ({pending.length})</div>
-        {pending.length === 0 && <EmptyState icon="check" message="No pending tasks. Well done."/>}
-        {pending.map(t => <TRow key={t.id} t={t}/>)}
+      <div style={S.card}>
+        <div style={{fontSize:14, fontWeight:700, color:'var(--text-2)', marginBottom:2}}>In Progress ({pending.length})</div>
+        {pending.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No pending tasks. Well done.</div>}
+        {pending.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === pending.length - 1 && !(done.length > 0)}/>)}
+        {done.length > 0 && (
+          <React.Fragment>
+            <button onClick={() => setShowDone(s => !s)}
+              style={{display:'flex', alignItems:'center', gap:8, fontSize:14,
+                      fontWeight:700, color:'var(--ok-line)', background:'none', border:'none',
+                      cursor:'pointer', marginTop:12, marginBottom:2, padding:0}}>
+              Completed ({done.length}) {showDone ? '^' : 'v'}
+            </button>
+            {showDone && done.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === done.length - 1}/>)}
+          </React.Fragment>
+        )}
       </div>
-      {done.length > 0 && (
-        <div style={{marginBottom:12}}>
-          <button onClick={() => setShowDone(s => !s)}
-            style={{display:'flex', alignItems:'center', gap:8, fontSize:13,
-                    fontWeight:700, color:'var(--ok-line)', background:'none', border:'none',
-                    cursor:'pointer', marginBottom:6, padding:0}}>
-            Completed ({done.length}) {showDone ? '^' : 'v'}
-          </button>
-          {showDone && done.map(t => <TRow key={t.id} t={t}/>)}
-        </div>
-      )}
     </div>
   );
 }
