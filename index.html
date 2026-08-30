@@ -115,9 +115,14 @@
   @media (max-width: 768px){
     input:not([type="checkbox"]):not([type="radio"]), textarea, select{font-size:16px !important;}
   }
-  /* iOS PWA overscroll bounce fix — evita el rebote al scrollear más allá del contenido. */
+  /* iOS PWA fix — usar toda la pantalla física (100lvh = large viewport, incluye zona
+     de home indicator) en vez de 100dvh que se queda corto y deja franja gris al fondo.
+     También evita el bounce elástico. Safari browser intacto. */
   @media (display-mode: standalone){
-    html, body{overscroll-behavior:none;}
+    html, body{overscroll-behavior:none; height:100lvh;}
+    .app-shell{min-height:100lvh !important;}
+    main.main-content{max-height:100lvh !important; min-height:100lvh !important;}
+    nav.sidebar{height:100lvh !important;}
   }
   /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
   table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
