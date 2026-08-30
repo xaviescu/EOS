@@ -64,6 +64,7 @@
     --info-bg: #f0f9ff; --info-fg: #0c4a6e; --info-line: #0ea5e9;
 
     /* Radios */
+    --r-xs: 4px;
     --r-sm: 6px;
     --r-md: 10px;
     --r-lg: 16px;
@@ -72,11 +73,11 @@
     --s-1: 4px;  --s-2: 8px;  --s-3: 12px;
     --s-4: 16px; --s-5: 24px; --s-6: 32px;
 
-    /* Tipografía */
+    /* Typography */
     --f-mini: 10px; --f-xs: 11px; --f-sm: 13px; --f-md: 13px;
     --f-lg: 13px; --f-xl: 20px; --f-2xl: 32px;
 
-    /* Elevación */
+    /* Elevation */
     --elev-1: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
     --elev-2: 0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.04);
     --elev-3: 0 20px 40px rgba(15,23,42,.15), 0 8px 16px rgba(15,23,42,.08);
@@ -109,15 +110,15 @@
     font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
     font-feature-settings:'cv02','cv11','ss01';
     overflow-x:hidden;-webkit-text-size-adjust:100%;}
-  /* Números tabulares en tablas — todas las cifras alinean en columnas. */
+  /* Tabular numbers in tables — all figures align in columns. */
   table, .num{font-variant-numeric:tabular-nums;}
-  /* iOS Safari zoom fix — inputs a 16px SOLO en móvil para evitar autozoom. */
+  /* iOS Safari zoom fix — inputs at 16px ONLY on mobile to avoid autozoom. */
   @media (max-width: 768px){
     input:not([type="checkbox"]):not([type="radio"]), textarea, select{font-size:16px !important;}
   }
-  /* iOS PWA fix — usar toda la pantalla física (100lvh = large viewport, incluye zona
-     de home indicator) en vez de 100dvh que se queda corto y deja franja gris al fondo.
-     También evita el bounce elástico. Safari browser intacto. */
+  /* iOS PWA fix — use full physical screen (100lvh = large viewport, includes home
+     indicator zone) instead of 100dvh which falls short and leaves a gray strip.
+     Also prevents elastic bounce. Safari browser intact. */
   @media (display-mode: standalone){
     html, body{overscroll-behavior:none; height:100lvh;}
     .app-shell{min-height:100lvh !important;}
@@ -192,7 +193,7 @@
     transition:border-color .12s ease, box-shadow .12s ease;
   }
 
-  /* Cards con hover opcional (elevación al pasar) */
+  /* Cards with optional hover (elevation on pointer) */
   .card-hover{transition:box-shadow .15s ease, transform .15s ease;}
   .card-hover:hover{box-shadow:var(--elev-2); transform:translateY(-1px);}
 
@@ -205,12 +206,6 @@
   .dp-day:focus-visible{outline:none; box-shadow:inset 0 0 0 2px var(--brand-ring);}
   .dp-action{transition:background .12s, color .12s;}
   .dp-action:hover{background:var(--border-strong); color:var(--text);}
-
-  /* Accordion header (L10 y Q Review) */
-  .accordion-hdr{transition:background .12s ease;}
-  .accordion-hdr:hover{background:var(--surface-alt);}
-  .accordion-chev{transition:transform .18s ease; color:var(--muted-soft);}
-  .accordion-chev.open{transform:rotate(180deg); color:var(--brand);}
 
   /* Underline tabs — reemplaza los tabs "big pill" por una fila con
      línea de 2px bajo el activo. Uso:
@@ -250,7 +245,7 @@
     main.main-content{padding:0 !important;max-height:none !important;
       overflow:visible !important;overflow-x:visible !important;overflow-y:visible !important;
       scrollbar-gutter:auto !important;height:auto !important;}
-    /* Ocultar cualquier scrollbar en modo impresión */
+    /* Hide any scrollbar in print mode */
     html,body{overflow:visible !important;overflow-y:visible !important;
       scrollbar-gutter:auto !important;height:auto !important;}
     html::-webkit-scrollbar,body::-webkit-scrollbar,main::-webkit-scrollbar{display:none !important;width:0 !important;}
@@ -270,7 +265,7 @@
     .print-view{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
   }
 
-  /* Animación slide-in para InlineForm */
+  /* Slide-in animation for InlineForm */
   @keyframes slideIn{
     from{opacity:0; transform:translateY(-4px);}
     to{opacity:1; transform:translateY(0);}
@@ -278,7 +273,7 @@
   .inline-form-anim{animation: slideIn .18s ease-out;}
 </style>
 <script>
-  // Anti-flash: aplica el tema guardado antes de que React monte.
+  // Anti-flash: apply saved theme before React mounts.
   (function(){
     try {
       var t = localStorage.getItem('eos-xe-theme');
@@ -401,14 +396,14 @@ const SI = {
 };
 
 // Day status: usado por Scorecard (main), Scorecard summary y L10Scorecard.
-// Tupla [bg, fg, label]. Fallback para status desconocido.
+// Tuple [bg, fg, label]. Fallback for unknown status.
 const DAY_STATUS = {
   ok:  ['transparent', 'var(--text-2)',    '✓'],
   nok: ['transparent', 'var(--muted-soft)', '×']
 };
 const getDayStatus = st => DAY_STATUS[st] || ['transparent', 'var(--muted-soft)', '·'];
-// Renderizado SVG minimalista del tick de scorecard.
-// ok con más peso (text-2) para destacar los cumplidos, nok y empty ligeros (muted-soft).
+// Minimalist SVG rendering of scorecard tick.
+// ok with more weight (text-2) to highlight completions, nok and empty light (muted-soft).
 function DayTick({st, size}) {
   const sz = size || 15;
   const col = st === 'ok' ? 'var(--text-2)' : 'var(--muted-soft)';
@@ -713,7 +708,7 @@ function Fld({label, value, onChange, placeholder, multi, type, inputMode, patte
   );
 }
 
-// Empty state estándar: icono suave + mensaje + CTA opcional.
+// Standard empty state: soft icon + message + optional CTA.
 function EmptyState({icon, message, cta, compact}) {
   const iconMap = {
     inbox: <path d="M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>,
@@ -738,7 +733,7 @@ function EmptyState({icon, message, cta, compact}) {
   );
 }
 
-// Panel gris inline para sub-formularios (añadir item). Sustituye 4 divs ad-hoc.
+// Inline gray panel for sub-forms (add item). Replaces 4 ad-hoc divs.
 function InlineForm({children, marginTop}) {
   return (
     <div className="inline-form-anim"
@@ -750,7 +745,7 @@ function InlineForm({children, marginTop}) {
   );
 }
 
-// Par de botones ↑ ↓ para reordenar items. Sustituye 6 pares ad-hoc.
+// Pair of ↑ ↓ buttons to reorder items. Replaces 6 ad-hoc pairs.
 function MoveBtns({onUp, onDown, disabledUp, disabledDown}) {
   const bs = disabled => ({
     border:'1px solid var(--border-strong)', background:'var(--surface)',
@@ -767,7 +762,7 @@ function MoveBtns({onUp, onDown, disabledUp, disabledDown}) {
   );
 }
 
-// Botón universal de cerrar/borrar (icono ×). Sustituye 8+ botones ad-hoc.
+// Universal close/delete button (× icon). Replaces 8+ ad-hoc buttons.
 function XBtn({onClick, size, title}) {
   const sz = size || 15;
   return (
@@ -798,7 +793,7 @@ function Btn({onClick, children, v, style: sx, disabled}) {
   );
 }
 
-// Section header con dot indigo delante. Reemplaza <H3>.
+// Section header with indigo dot prefix. Replaces <H3>.
 function H3({children, style}) {
   return (
     <h3 style={{...S.h3, ...(style || {})}}>
@@ -809,7 +804,7 @@ function H3({children, style}) {
   );
 }
 
-// Título de página estándar — badge cuadrado indigo con el icono + título.
+// Standard page title — square indigo badge with icon + title.
 function PageTitle({icon, children}) {
   return (
     <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:'var(--s-5)'}}>
@@ -826,7 +821,7 @@ function PageTitle({icon, children}) {
   );
 }
 
-// Icon set (Lucide-style, 20x20). currentColor => hereda color del padre.
+// Icon set (Lucide-style, 20x20). currentColor => inherits parent color.
 // Se usa en la sidebar (colapsada y expandida).
 function Icon({name, size}) {
   const sz = size || 18;
@@ -838,7 +833,7 @@ function Icon({name, size}) {
     vision: <g><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g>,
     // Month — calendario
     month: <g><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g>,
-    // Rocks — montaña
+    // Rocks — mountain
     rocks_all: <g><path d="M3 20l6-11 4 6 3-4 5 9z"/><path d="M13 15l-4 5"/></g>,
     // Projects — capas
     projects: <g><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17l9 5 9-5"/></g>,
@@ -966,7 +961,7 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
   });
   return (
     <button onClick={toggle}
-      style={{padding:'2px 8px', borderRadius:10,
+      style={{padding:'2px 8px', borderRadius:'var(--r-md)',
               border:'1px solid ' + (active ? 'var(--err-line)' : 'var(--border-strong)'),
               cursor:'pointer', fontSize:10, fontWeight:700, flexShrink:0,
               background: active ? 'var(--err-bg)' : 'white',
@@ -988,11 +983,11 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
   const HEADER_H = compact ? 38 : 50;
   const slotIdx = (h, m) => (h - 6) * 2 + (m >= 30 ? 1 : 0);
 
-  // Vista LIST — lista lineal agrupada por día. Return early.
+  // LIST view — linear list grouped by day. Return early.
   if (calView === 'list') {
     const byDay = DAYS.map((_, di) => events.filter(e => e.day === di).sort((a,b) => (a.h*60+(a.m||0)) - (b.h*60+(b.m||0))));
     return (
-      <div style={{background:'var(--surface)', borderRadius:10, padding:'10px 12px',
+      <div style={{background:'var(--surface)', borderRadius:'var(--r-md)', padding:'10px 12px',
                    boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
         {DAYS.map((day, di) => {
           const evts = byDay[di];
@@ -1011,7 +1006,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                   <div key={ev.id} onClick={() => onEdit && onEdit(ev)}
                     style={{display:'flex', gap:10, padding:'8px 10px', marginBottom:4,
                             background: st.bg, borderLeft:'3px solid ' + st.border,
-                            borderRadius:4, cursor: onEdit ? 'pointer' : 'default'}}>
+                            borderRadius:'var(--r-xs)', cursor: onEdit ? 'pointer' : 'default'}}>
                     <div style={{fontSize:12, fontWeight:700, color: st.text, minWidth:75}}>
                       {fmtTime(ev.h, ev.m || 0)}-{fmtTime(end.h, end.m)}
                     </div>
@@ -1030,13 +1025,13 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
     );
   }
 
-  // Vista DAY — solo el día focus.
-  // Vista FOCUS — día focus ancho + 6 mini columnas.
+  // DAY view — focus day only.
+  // FOCUS view — wide focus day + 6 mini columns.
   const dayCols = [0,1,2,3,4,5,6];
   const isFocus = calView === 'focus';
   const isCompact = calView === 'compact';
-  // Focus mantiene orden semanal natural (Mon..Sun) pero el día seleccionado
-  // ocupa 1fr y el resto 22px cada uno.
+  // Focus keeps natural weekly order (Mon..Sun) but selected day
+  // takes 1fr and the rest 22px each.
   const focusColsCSS = isFocus
     ? [0,1,2,3,4,5,6].map(d => d === focusDay ? '1fr' : '22px').join(' ')
     : null;
@@ -1068,14 +1063,14 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
     dayLayouts[di] = {cols: Math.max(1, colEnds.length), colMap};
   }
 
-  // Mapa día real → posición en el grid (columna visual, 1-based partiendo de 2 tras HOUR_W).
+  // Map real day → grid position (visual column, 1-based starting at 2 after HOUR_W).
   const dayToCol = {};
   focusColOrder.forEach((d, idx) => { dayToCol[d] = idx + 2; });
   const isDayMini = di => isFocus && di !== focusDay;
 
   const enableScroll = calView === 'week' || !compact;
   const minW = calView === 'week' ? (compact ? 700 : 680) : 0;
-  // isCompact = móvil sin scroll y sin botones color/x por evento (más aire para title).
+  // isCompact = mobile without scroll and without color/x buttons per event (more space for title).
   const showEvActions = !isCompact;
   return (
     <div style={{overflowX: enableScroll ? 'auto' : 'hidden'}}>
@@ -1083,14 +1078,14 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         display: 'grid',
         gridTemplateColumns: gridTemplateCols,
         gridTemplateRows: HEADER_H + 'px repeat(' + SLOTS.length + ', ' + SLOT_H + 'px)',
-        background:'var(--surface)', borderRadius:10, overflow:'hidden',
+        background:'var(--surface)', borderRadius:'var(--r-md)', overflow:'hidden',
         boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
         width:'100%', minWidth: minW, position:'relative'
       }}>
-        {/* Header — hora (vacío, la columna se entiende sola) */}
+        {/* Header — hour (empty, column implied) */}
         <div style={{gridRow:1, gridColumn:1, background:'var(--brand-soft)',
                      borderBottom:'2px solid var(--brand)'}}/>
-        {/* Header — días */}
+        {/* Header — days */}
         {focusColOrder.map(di => {
           const day = DAYS[di];
           const mini = isDayMini(di);
@@ -1126,7 +1121,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
             {slot.m === 0 ? slot.lbl : ''}
           </div>
         ))}
-        {/* Celdas vacías clicables por día × slot */}
+        {/* Empty clickable cells per day × slot */}
         {SLOTS.map((slot, si) =>
           focusColOrder.map(di => (
             <div key={'c-'+si+'-'+di}
@@ -1313,12 +1308,12 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
         <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
       </div>
-      {/* Toggle vistas — solo activo en móvil, desktop se queda con Week */}
+      {/* View toggle — mobile only, desktop stays on Week */}
       {isMobile && (
-        <div style={{display:'flex', gap:4, marginBottom:8, background:'var(--surface-alt)', padding:3, borderRadius:6}}>
+        <div style={{display:'flex', gap:4, marginBottom:8, background:'var(--surface-alt)', padding:3, borderRadius:'var(--r-sm)'}}>
           {[['week','Week'],['compact','Compact'],['list','List'],['focus','Focus']].map(([v, lbl]) => (
             <button key={v} onClick={() => setCalView(v)}
-              style={{flex:1, padding:'6px 4px', border:'none', borderRadius:4, cursor:'pointer',
+              style={{flex:1, padding:'6px 4px', border:'none', borderRadius:'var(--r-xs)', cursor:'pointer',
                       background: calView === v ? 'var(--brand)' : 'transparent',
                       color: calView === v ? 'white' : 'var(--text-2)',
                       fontSize:11, fontWeight:600, fontFamily:'inherit'}}>{lbl}</button>
@@ -1683,22 +1678,6 @@ function SetupGate({onReady}) {
 }
 
 // =====================================================================
-// Sync indicator
-// =====================================================================
-function SyncBadge({status, lastSavedAt}) {
-  const colors = {idle:'var(--ok-line)', saving:'var(--brand)', error:'var(--err-line)', loading:'var(--info-line)'};
-  const labels = {idle:'Synced', saving:'Saving...', error:'Error', loading:'Loading...'};
-  const c = colors[status] || colors.idle;
-  return (
-    <div style={{padding:'4px 10px', display:'flex', alignItems:'center', gap:6,
-                 fontSize:10, color:'rgba(255,255,255,0.55)'}}>
-      <span style={{width:8, height:8, borderRadius:'50%', background:c, flexShrink:0}}/>
-      {labels[status] || status}
-    </div>
-  );
-}
-
-// =====================================================================
 // Main App (gated by SetupGate)
 // =====================================================================
 function Root() {
@@ -1714,7 +1693,7 @@ function SearchPalette({data, onClose, onNavigate}) {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = React.useRef();
   React.useEffect(() => { if (inputRef.current) inputRef.current.focus(); }, []);
-  // Construye el índice plano de items buscables.
+  // Build flat index of searchable items.
   const items = React.useMemo(() => {
     const out = [];
     const v = data.vision || {};
@@ -1801,7 +1780,7 @@ function SearchPalette({data, onClose, onNavigate}) {
             style={{flex:1, border:'none', outline:'none', fontSize:16, fontFamily:'inherit',
                     color:'var(--text)', background:'transparent', padding:0}}/>
           <span style={{fontSize:10, color:'var(--muted-soft)', border:'1px solid var(--border)',
-                        padding:'2px 6px', borderRadius:4}}>ESC</span>
+                        padding:'2px 6px', borderRadius:'var(--r-xs)'}}>ESC</span>
         </div>
         <div style={{overflowY:'auto', flex:1}}>
           {results.length === 0 && (
@@ -1875,7 +1854,7 @@ function App({bundle, onLogout}) {
     if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     else document.documentElement.removeAttribute('data-theme');
   }, []);
-  // Popover del menú "Más" en el footer de la sidebar
+  // Popover for "More" menu in sidebar footer
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef();
   useEffect(() => {
@@ -2085,7 +2064,7 @@ function App({bundle, onLogout}) {
           )}
         </div>
 
-        {/* Nav agrupada por sección (expandida) o lista plana (colapsada) */}
+        {/* Nav grouped by section (expanded) or flat list (collapsed) */}
         <div style={{padding:'6px 0', flex:1, overflowY:'auto'}}>
           {navOpen ? GNAV.map((section, si) => (
             <div key={si} style={{marginTop: si === 0 ? 0 : 10}}>
@@ -2113,7 +2092,7 @@ function App({bundle, onLogout}) {
           ))}
         </div>
 
-        {/* Footer: Dark toggle + menú ⋯ Más */}
+        {/* Footer: Dark toggle + ⋯ More menu */}
         {navOpen && (
           <div ref={moreRef} style={{padding:'10px 12px', borderTop:'1px solid rgba(255,255,255,0.07)',
                        display:'flex', gap:6, alignItems:'center', position:'relative'}}>
@@ -2448,7 +2427,7 @@ function RocksTab({data, upd}) {
                         <span style={{fontSize:11, color:'var(--muted)'}}>To:</span>
                         {QS.filter(q => YEAR + '-' + q !== selQ).map(q => (
                           <button key={q} onClick={() => setCopyRock(s => ({...s, [rock.id]: q}))}
-                            style={{padding:'4px 10px', borderRadius:6, border:'1px solid',
+                            style={{padding:'4px 10px', borderRadius:'var(--r-sm)', border:'1px solid',
                                     borderColor: cr === q ? 'var(--brand)' : 'var(--border)',
                                     background: cr === q ? 'var(--brand)' : 'white',
                                     color: cr === q ? 'white' : 'var(--text-2)',
@@ -2489,7 +2468,7 @@ function RocksTab({data, upd}) {
                     return (
                       <div key={step.id} style={{marginBottom:3, padding:'5px 12px',
                                                  background: 'var(--surface-alt)',
-                                                 borderRadius:6}}>
+                                                 borderRadius:'var(--r-sm)'}}>
                         <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                           {editMode ? (
                             <input value={step.text}
@@ -2514,7 +2493,7 @@ function RocksTab({data, upd}) {
                               const isCur = wn === curWn;
                               return (
                                 <div key={wn} onClick={() => inR && toggleWk(rock.id, step.id, wn)}
-                                  style={{width:22, height:22, borderRadius:4,
+                                  style={{width:22, height:22, borderRadius:'var(--r-xs)',
                                           border: isCur ? '2px solid var(--brand)' : '1px solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: inR ? 'pointer' : 'default',
@@ -2533,7 +2512,7 @@ function RocksTab({data, upd}) {
                           {editMode && (
                             <button onClick={() => setEditStep(isEd ? null : rock.id + '-' + step.id)}
                               style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                                      color:'var(--muted)', fontSize:11, padding:'3px 10px', borderRadius:6}}>
+                                      color:'var(--muted)', fontSize:11, padding:'3px 10px', borderRadius:'var(--r-sm)'}}>
                               {isEd ? 'Close' : 'Edit'}
                             </button>
                           )}
@@ -2559,7 +2538,7 @@ function RocksTab({data, upd}) {
                         </div>
                         {isEd && (
                           <div style={{display:'flex', alignItems:'center', gap:8, marginTop:8,
-                                       padding:'7px 10px', background:'var(--surface)', borderRadius:6,
+                                       padding:'7px 10px', background:'var(--surface)', borderRadius:'var(--r-sm)',
                                        border:'1px solid var(--border)', flexWrap:'wrap'}}>
                             <span style={{fontSize:11, color:'var(--muted)'}}>From Wk</span>
                             <select value={sw2}
@@ -2814,8 +2793,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
   const isMobile = useIsMobile();
   const weekCount = (m, wn) => DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
   if (!scorecard || !scorecard.length) return null;
-  // Cuando se usa dentro del acordeón de Q Review (bare=true), evitamos el wrapper
-  // `S.card` para que las columnas W1..W13 se alineen con la Gantt de Rocks.
+  // When used inside Q Review card (bare=true), skip the `S.card` wrapper so
+  // W1..W13 columns align with the Rocks Gantt below.
   const bare = bareProp !== undefined ? bareProp : !!renderMetricExtra;
   const Wrapper = bare ? React.Fragment : 'div';
   const wrapProps = bare ? {} : {style: S.card};
@@ -2866,7 +2845,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
                       style={{padding:'2px 0', textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
                               background: isSel ? 'rgba(94,106,210,0.1)' : undefined,
                               outline: isSel ? '2px solid rgba(94,106,210,0.5)' : 'none', outlineOffset:-1}}>
-                      <div style={{height: isMobile ? 22 : 26, borderRadius:4,
+                      <div style={{height: isMobile ? 22 : 26, borderRadius:'var(--r-xs)',
                                    display:'flex', alignItems:'center', justifyContent:'center',
                                    fontSize: isMobile ? 11 : 13, color:col, fontWeight:700}}>
                         {cnt > 0 ? cnt : '·'}
@@ -2966,7 +2945,7 @@ function ProjectsTab({data, upd}) {
                   {editMode && (
                     <td style={{textAlign:'center', verticalAlign:'middle', padding:'4px 6px'}}>
                       <button onClick={() => createTodoFromProject(proj)}
-                        style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
+                        style={{padding:'2px 8px', borderRadius:'var(--r-md)', border:'1px solid var(--border-strong)', cursor:'pointer',
                                 fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
                                 whiteSpace:'nowrap'}}>+ To-do</button>
                     </td>
@@ -3057,7 +3036,7 @@ function TodosTab({data, upd}) {
         {editMode && (
           <button onClick={() => setEditingId(isEd ? null : t.id)}
             style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                    color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4, flexShrink:0}}>
+                    color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:'var(--r-xs)', flexShrink:0}}>
             {isEd ? 'Close' : 'Edit'}
           </button>
         )}
@@ -3077,7 +3056,7 @@ function TodosTab({data, upd}) {
           <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
         )}
         {isEd && (
-          <div style={{flexBasis:'100%', marginTop:6, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
+          <div style={{flexBasis:'100%', marginTop:6, padding:10, background:'var(--surface-alt)', borderRadius:'var(--r-sm)'}}>
             <label style={S.lbl}>Start date</label>
             <DatePicker value={t.startDate || ''}
               onChange={v => { updField('startDate', v); setEditingId(null); }}/>
@@ -3158,7 +3137,7 @@ function ProcessesTab({data, upd}) {
                             fontSize:13, fontFamily:'inherit', color:'var(--text)',
                             background:'transparent', cursor:'text', padding:0}}/>
                 </div>
-                <span style={{display:'inline-block', padding:'3px 10px', borderRadius:10,
+                <span style={{display:'inline-block', padding:'3px 10px', borderRadius:'var(--r-md)',
                               fontSize:12, fontWeight:700,
                               background: p.documented ? 'var(--ok-bg)' : 'var(--err-bg)',
                               color: p.documented ? 'var(--ok-fg)' : 'var(--err-fg)'}}>
@@ -3424,7 +3403,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     {editMode && (
                       <button onClick={() => setEditingTodoId(isEd ? null : t.id)}
                         style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
-                                color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:4}}>
+                                color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:'var(--r-xs)'}}>
                         {isEd ? 'Close' : 'Edit'}
                       </button>
                     )}
@@ -3442,7 +3421,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   </div>
                 </div>
                 {isEd && (
-                  <div style={{marginTop:6, padding:10, background:'var(--surface-alt)', borderRadius:6}}>
+                  <div style={{marginTop:6, padding:10, background:'var(--surface-alt)', borderRadius:'var(--r-sm)'}}>
                     <label style={S.lbl}>Start date</label>
                     <DatePicker value={t.startDate || ''}
                       onChange={v => { updateTodoField(t.id, 'startDate', v); setEditingTodoId(null); }}/>
@@ -3608,7 +3587,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         </div>
       )}
 
-      {/* Headlines como primera card (mismo patrón que Daily → Highlight del día) */}
+      {/* Headlines as first card (same pattern as Daily → Highlight) */}
       <div className="card-hover" style={S.card}>
         <H3 style={{marginBottom:8}}>Weekly Headlines</H3>
         <textarea value={wData.headlines || ''} onChange={e => setWD('headlines', e.target.value)}
@@ -3873,7 +3852,7 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
             {showEdit && (
               <td style={{textAlign:'center', verticalAlign:'middle', padding:'4px 6px'}}>
                 <button onClick={() => createTodoFromProject(proj)}
-                  style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
+                  style={{padding:'2px 8px', borderRadius:'var(--r-md)', border:'1px solid var(--border-strong)', cursor:'pointer',
                           fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
                           whiteSpace:'nowrap'}}>+ To-do</button>
               </td>
@@ -3960,7 +3939,7 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
             {showEdit && (
               <div style={{display:'flex', flexDirection:'column', gap:4, alignItems:'flex-end', flexShrink:0}}>
                 <button onClick={() => createTodoFromIssue(issue)}
-                  style={{padding:'2px 8px', borderRadius:10, border:'1px solid var(--border-strong)', cursor:'pointer',
+                  style={{padding:'2px 8px', borderRadius:'var(--r-md)', border:'1px solid var(--border-strong)', cursor:'pointer',
                           fontSize:10, fontWeight:700, background:'var(--surface)', color:'var(--text-2)',
                           whiteSpace:'nowrap'}}>+ To-do</button>
                 <XBtn size={14} onClick={() => deleteIssue(issue.id)}/>
@@ -4018,7 +3997,6 @@ function QReview({data, upd, qKey, qData}) {
     {k:'nextrocks', label:'Next Quarter Rocks'},
     {k:'conclude', label:'Conclude'}
   ];
-  const [open, setOpen] = useState({scorecard:true, rocks:true, issues:true, vision:true, nextrocks:true, conclude:true});
 
   // Issue list management for Q Review (operates on whole quarter)
   const [issueForm, setIssueForm] = useState(null);
@@ -4208,13 +4186,13 @@ function PrintView({data, onBack}) {
     table: {width:'100%', borderCollapse:'collapse', fontSize:12, marginTop:8, marginBottom:12},
     th: {background:'var(--brand)', color:'white', padding:'7px 9px', textAlign:'left', fontWeight:700, fontSize:13},
     td: {padding:'6px 9px', borderBottom:'1px solid var(--border)', verticalAlign:'top', fontSize:12},
-    pill: (bg, c) => ({display:'inline-block', padding:'3px 10px', borderRadius:10, fontSize:11, fontWeight:700, background:bg, color:c}),
+    pill: (bg, c) => ({display:'inline-block', padding:'3px 10px', borderRadius:'var(--r-md)', fontSize:11, fontWeight:700, background:bg, color:c}),
     empty: {color:'var(--muted-soft)', fontStyle:'italic', fontSize:12}
   };
 
   return (
     <div className="print-view" style={SH.page}>
-      <div className="no-print" style={{display:'flex', gap:10, marginBottom:18, padding:'12px 14px', background:'var(--warn-bg)', borderRadius:10, alignItems:'center', flexWrap:'wrap'}}>
+      <div className="no-print" style={{display:'flex', gap:10, marginBottom:18, padding:'12px 14px', background:'var(--warn-bg)', borderRadius:'var(--r-md)', alignItems:'center', flexWrap:'wrap'}}>
         <span style={{fontSize:13, color:'var(--warn-fg)', flex:1, minWidth:200}}>
           Print view. Click "Print / PDF" and choose "Save as PDF" in the browser dialog.
         </span>
@@ -4226,7 +4204,7 @@ function PrintView({data, onBack}) {
                   background:'var(--surface)', color:'var(--text-2)', fontSize:13, cursor:'pointer'}}>← Back</button>
       </div>
 
-      {/* Cover page — solo visible en impresión */}
+      {/* Cover page — print-only */}
       <section className="print-cover print-section" style={{textAlign:'center', padding:'40px 20px 32px'}}>
         <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center',
                      width:96, height:96, borderRadius:20,
@@ -4240,7 +4218,7 @@ function PrintView({data, onBack}) {
         </div>
         <div style={{fontSize:20, color:'var(--text)', fontWeight:600}}>{today}</div>
 
-        {/* Índice — hipervínculos a cada sección */}
+        {/* Index — links to each section */}
         <div style={{marginTop:48, textAlign:'left', display:'inline-block', minWidth:280}}>
           <div style={{fontSize:11, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, textAlign:'center'}}>Contenido</div>
           {(() => {
