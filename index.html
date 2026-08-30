@@ -1771,7 +1771,7 @@ function SearchPalette({data, onClose, onNavigate}) {
   const q = query.trim().toLowerCase();
   const results = q ? items.filter(it =>
     (it.text || '').toLowerCase().includes(q) || (it.ctx || '').toLowerCase().includes(q)
-  ).slice(0, 40) : items.slice(0, 15);
+  ).slice(0, 40) : [];
   React.useEffect(() => { setSelectedIdx(0); }, [query]);
   const go = it => { onNavigate(it); onClose(); };
   const onKey = e => {
