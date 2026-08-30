@@ -2942,22 +2942,22 @@ function TodosTab({data, upd}) {
           </div>
         </InlineForm>
       )}
-      <div style={S.card}>
+      <div style={{...S.card, marginBottom:12}}>
         <div style={{fontSize:14, fontWeight:700, color:'var(--text-2)', marginBottom:2}}>In Progress ({pending.length})</div>
         {pending.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No pending tasks. Well done.</div>}
-        {pending.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === pending.length - 1 && !(done.length > 0)}/>)}
-        {done.length > 0 && (
-          <React.Fragment>
-            <button onClick={() => setShowDone(s => !s)}
-              style={{display:'flex', alignItems:'center', gap:8, fontSize:14,
-                      fontWeight:700, color:'var(--ok-line)', background:'none', border:'none',
-                      cursor:'pointer', marginTop:12, marginBottom:2, padding:0}}>
-              Completed ({done.length}) {showDone ? '^' : 'v'}
-            </button>
-            {showDone && done.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === done.length - 1}/>)}
-          </React.Fragment>
-        )}
+        {pending.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === pending.length - 1}/>)}
       </div>
+      {done.length > 0 && (
+        <div style={S.card}>
+          <button onClick={() => setShowDone(s => !s)}
+            style={{display:'flex', alignItems:'center', gap:8, fontSize:14,
+                    fontWeight:700, color:'var(--ok-line)', background:'none', border:'none',
+                    cursor:'pointer', marginBottom: showDone ? 2 : 0, padding:0}}>
+            Completed ({done.length}) {showDone ? '^' : 'v'}
+          </button>
+          {showDone && done.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === done.length - 1}/>)}
+        </div>
+      )}
     </div>
   );
 }
