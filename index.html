@@ -3865,19 +3865,20 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
     );
   }
   // MODE = 'new' — three categories:
-  //  1. CARRYOVER: pending w/ startDate < next Monday (or missing) and not from this L10
-  //  2. NEXT WEEK CARRYOVER: pending w/ startDate === next Monday, not from this L10
+  //  1. CARRYOVER: pending w/ startDate before next week (or missing) and not from this L10
+  //  2. NEXT WEEK CARRYOVER: pending w/ startDate anywhere within next week, not from this L10
   //  3. NEXT WEEK L10: created in this L10 session (fromL10Week === weekNum)
+  const inNextWeek = ds => !!ds && dateToWn(ds) === weekNum + 1;
   const carryover = data.todos.filter(t => {
     if (t.done) return false;
     if (t.fromL10Week === weekNum) return false;
     if (!t.startDate) return true;
-    return t.startDate < nextMon;
+    return dateToWn(t.startDate) <= weekNum;
   });
   const nextCarry = data.todos.filter(t => {
     if (t.done) return false;
     if (t.fromL10Week === weekNum) return false;
-    return t.startDate === nextMon;
+    return inNextWeek(t.startDate);
   });
   const forNext = data.todos.filter(t => t.fromL10Week === weekNum);
   const Header = ({label}) => (
