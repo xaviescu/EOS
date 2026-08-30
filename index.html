@@ -1032,15 +1032,15 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
 
   // Vista DAY — solo el día focus.
   // Vista FOCUS — día focus ancho + 6 mini columnas.
-  const dayCols = calView === 'day' ? [focusDay] : [0,1,2,3,4,5,6];
+  const dayCols = [0,1,2,3,4,5,6];
   const isFocus = calView === 'focus';
+  const isCompact = calView === 'compact';
   // Focus mantiene orden semanal natural (Mon..Sun) pero el día seleccionado
   // ocupa 1fr y el resto 22px cada uno.
   const focusColsCSS = isFocus
     ? [0,1,2,3,4,5,6].map(d => d === focusDay ? '1fr' : '22px').join(' ')
     : null;
   const gridTemplateCols = (
-    calView === 'day'   ? HOUR_W + 'px 1fr' :
     calView === 'focus' ? HOUR_W + 'px ' + focusColsCSS :
                           HOUR_W + 'px repeat(7, minmax(0, 1fr))'
   );
@@ -1075,6 +1075,8 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
 
   const enableScroll = calView === 'week' || !compact;
   const minW = calView === 'week' ? (compact ? 700 : 680) : 0;
+  // isCompact = móvil sin scroll y sin botones color/x por evento (más aire para title).
+  const showEvActions = !isCompact;
   return (
     <div style={{overflowX: enableScroll ? 'auto' : 'hidden'}}>
       <div style={{
@@ -1168,7 +1170,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                         cursor: 'pointer',
                         pointerEvents:'auto', borderRadius:'2px'}}>
                 {!miniEv && (
-                  <div style={{padding: cols > 1 ? '2px 4px 2px 4px' : '2px 32px 2px 5px', boxSizing:'border-box'}}>
+                  <div style={{padding: cols > 1 ? '2px 4px 2px 4px' : (showEvActions ? '2px 32px 2px 5px' : '2px 4px 2px 5px'), boxSizing:'border-box'}}>
                     <div style={{fontWeight:700, color: st.text,
                                  fontSize: cols > 1 ? 9 : 10, overflow:'hidden', textOverflow:'ellipsis',
                                  whiteSpace:'nowrap',
@@ -1183,7 +1185,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                     )}
                   </div>
                 )}
-                {!miniEv && cols === 1 && (
+                {!miniEv && showEvActions && cols === 1 && (
                   <div style={{position:'absolute', top:2, right:3, display:'flex', gap:2, alignItems:'center'}}>
                     {onCycleColor && (
                       <button onClick={(e) => { e.stopPropagation(); onCycleColor(ev.id); }}
@@ -1198,7 +1200,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                               opacity:0.5, fontSize:12, padding:'0 2px', lineHeight:1}}>×</button>
                   </div>
                 )}
-                {!miniEv && cols > 1 && (
+                {!miniEv && showEvActions && cols > 1 && (
                   <button onClick={(e) => { e.stopPropagation(); onDelete(ev.id); }}
                     title="Eliminar"
                     style={{position:'absolute', top:1, right:1, border:'none', background:'none',
@@ -1259,7 +1261,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
   compact = compact || false;
   const isMobile = useIsMobile();
   const [form, setForm] = useState(null);
-  const [calView, setCalView] = useState(isMobile ? 'day' : 'week');
+  const [calView, setCalView] = useState(isMobile ? 'compact' : 'week');
   const [focusDay, setFocusDay] = useState(focusDayIdx != null ? focusDayIdx : 0);
   React.useEffect(() => { if (focusDayIdx != null) setFocusDay(focusDayIdx); }, [focusDayIdx]);
   const wk = wKey(selWn);
@@ -1289,10 +1291,10 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
         <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
       </div>
-      {/* Toggle 4 vistas — solo activo en móvil, desktop se queda con Week */}
+      {/* Toggle vistas — solo activo en móvil, desktop se queda con Week */}
       {isMobile && (
         <div style={{display:'flex', gap:4, marginBottom:8, background:'var(--surface-alt)', padding:3, borderRadius:6}}>
-          {[['week','Week'],['day','Day'],['list','List'],['focus','Focus']].map(([v, lbl]) => (
+          {[['week','Week'],['compact','Compact'],['list','List'],['focus','Focus']].map(([v, lbl]) => (
             <button key={v} onClick={() => setCalView(v)}
               style={{flex:1, padding:'6px 4px', border:'none', borderRadius:4, cursor:'pointer',
                       background: calView === v ? 'var(--brand)' : 'transparent',
