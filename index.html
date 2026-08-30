@@ -5033,27 +5033,12 @@ function PrintView({data, onBack}) {
                     {renderGoals(a.ltGoals, 'Long-Term')}
                     {renderGoals(a.threeYearGoals, '3-Year')}
                     {renderGoals(a.oneYearGoals, '1-Year')}
-                    {a.ltView && (<><h4 style={SH.h4}>Long-Term (notes)</h4><div style={SH.p}>{a.ltView}</div></>)}
-                    {a.threeYearView && (<><h4 style={SH.h4}>3-Year (notes)</h4><div style={SH.p}>{a.threeYearView}</div></>)}
-                    {a.oneYearView && (<><h4 style={SH.h4}>1-Year (notes)</h4><div style={SH.p}>{a.oneYearView}</div></>)}
                   </>
                 );
               })()}
             </div>
           );
         })}
-        {/* Legacy flat fields (only if user data still has content in old format) */}
-        {(v.ltView || v.threeYearView || v.oneYearView || (v.values || []).length > 0) && (
-          <div className="print-section" style={{marginTop:20, paddingTop:12, borderTop:'1px dashed var(--border)'}}>
-            <div style={{fontSize:10, color:'var(--muted-soft)', textTransform:'uppercase', letterSpacing:1, marginBottom:6}}>Legacy (pre-Areas)</div>
-            {(v.values || []).length > 0 && (
-              <div style={{marginBottom:6}}>{v.values.map((val, i) => <span key={i} style={{...SH.pill('var(--warn-bg)','var(--warn-fg)'), marginRight:5, marginBottom:4}}>{val}</span>)}</div>
-            )}
-            {v.ltView && (<><h4 style={SH.h4}>Long Term</h4><div style={SH.p}>{v.ltView}</div></>)}
-            {v.threeYearView && (<><h4 style={SH.h4}>3 Year</h4><div style={SH.p}>{v.threeYearView}</div></>)}
-            {v.oneYearView && (<><h4 style={SH.h4}>1 Year</h4><div style={SH.p}>{v.oneYearView}</div></>)}
-          </div>
-        )}
       </section>
 
       {sortedMonths.length > 0 && (
@@ -5263,20 +5248,6 @@ function PrintView({data, onBack}) {
               );
             })()}
 
-            {idsIssues.length > 0 && (
-              <div className="print-section">
-                <h3 style={SH.h3}>IDS Issues</h3>
-                {idsIssues.map(iss => (
-                  <div key={iss.id} style={{paddingLeft:10, marginBottom:5, fontSize:11, opacity: iss.solved ? 0.6 : 1}}>
-                    <strong>{iss.sourceName}</strong>{iss.solved && <span style={{fontSize:9, color:'var(--ok-line)', marginLeft:6}}>[Solved]</span>}
-                    {iss.action && <div style={{paddingLeft:18, color:'var(--text-2)', fontSize:10}}>→ {iss.action}</div>}
-                    <div style={{paddingLeft:18, color:'var(--muted-soft)', fontSize:9}}>
-                      Wk {iss.weekAdded}{iss.solved && iss.solvedWeek ? ' → resuelta Wk ' + iss.solvedWeek : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
 
             {(() => {
               const qAny = qQFields.some(f => qReview[f.k]) || qReview.issues || qReview.vision ||
