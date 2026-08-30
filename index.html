@@ -3458,7 +3458,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
     const cur = d.quarters[qKey].scorecard[mi].dayData[date];
     d.quarters[qKey].scorecard[mi].dayData[date] = cur === st ? null : st;
   });
-  const showGutter = editMode !== false;
+  const showGutter = !!editMode;
   const labelW = isMobile ? (showGutter ? 78 : 96) : 150;
   const goalW = isMobile ? 44 : 55;
   const gutterW = isMobile ? 52 : 72;
@@ -3787,8 +3787,8 @@ function QReview({data, upd, qKey, qData}) {
   const lastWk = qw[qw.length - 1]; // Last week of the quarter (used as the "review week" anchor)
   const AGENDA = [
     {k:'scorecard', label:'Scorecard'},
-    {k:'rocks', label:'Rock Review'},
-    {k:'issues', label:'Issues & Learnings'},
+    {k:'rocks', label:'Rocks'},
+    {k:'issues', label:'IDS'},
     {k:'vision', label:'Vision Alignment'},
     {k:'nextrocks', label:'Next Quarter Rocks'},
     {k:'conclude', label:'Conclude'}
