@@ -4034,8 +4034,9 @@ function L10Issues({upd, qKey, idsIssues, weekNum, editMode}) {
       {active.map(issue => (
         <div key={issue.id}
           style={{padding:'10px 12px', marginBottom:6,
-                  background: 'var(--surface-alt)',
+                  background: 'var(--surface)',
                   borderRadius:'var(--r-sm)',
+                  border:'1px solid var(--border)',
                   borderLeft:'3px solid var(--brand)'}}>
           <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
             <button onClick={() => toggleSolved(issue.id)}
@@ -4223,8 +4224,9 @@ function QReview({data, upd, qKey, qData}) {
                   {idsIssues.map(issue => (
                       <div key={issue.id}
                         style={{padding:'10px 12px', marginBottom:6,
-                                background:'var(--surface-alt)',
+                                background:'var(--surface)',
                                 borderRadius:'var(--r-sm)',
+                                border:'1px solid var(--border)',
                                 borderLeft:'3px solid var(--brand)'}}>
                         <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
                           <button onClick={() => toggleSolvedQR(issue.id)}
