@@ -115,15 +115,9 @@
   @media (max-width: 768px){
     input:not([type="checkbox"]):not([type="radio"]), textarea, select{font-size:16px !important;}
   }
-  /* iOS PWA overscroll bounce + viewport fix — en modo PWA (app instalada) usamos
-     var --app-height (píxeles exactos calculados vía window.innerHeight en JS) porque
-     ni dvh ni vh ni -webkit-fill-available cubren fiablemente toda la pantalla física
-     en iOS PWA. Safari browser intacto (la media query no se activa). */
+  /* iOS PWA overscroll bounce fix — evita el rebote al scrollear más allá del contenido. */
   @media (display-mode: standalone){
     html, body{overscroll-behavior:none;}
-    .app-shell{min-height:var(--app-height, 100vh) !important;}
-    main.main-content{max-height:var(--app-height, 100vh) !important; min-height:var(--app-height, 100vh) !important;}
-    nav.sidebar{height:var(--app-height, 100vh) !important;}
   }
   /* Zebra striping — filas pares con fondo sutil. Se activa con class="zebra". */
   table.zebra tbody tr:nth-child(even) > td{background:var(--surface-alt);}
@@ -285,17 +279,6 @@
       var t = localStorage.getItem('eos-xe-theme');
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
     } catch(e){}
-  })();
-  // iOS PWA viewport fix — usa window.innerHeight (píxeles exactos del viewport real)
-  // como CSS var --app-height. En iOS PWA, dvh/vh a veces no cubren toda la pantalla
-  // física dejando franja gris; innerHeight sí es el valor exacto.
-  (function(){
-    var setH = function(){
-      document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
-    };
-    setH();
-    window.addEventListener('resize', setH);
-    window.addEventListener('orientationchange', setH);
   })();
 </script>
 <style>
@@ -1882,7 +1865,7 @@ function App({bundle, onLogout}) {
       </nav>
       <main className="main-content print-area" style={{flex:1,
                    padding: isMobile
-                     ? 'calc(58px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) calc(14px + env(safe-area-inset-left, 0px))'
+                     ? 'calc(58px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) calc(14px + env(safe-area-inset-left, 0px))'
                      : 26,
                    overflowY:'auto', maxHeight:'100dvh', minHeight:'100dvh', minWidth:0}}>
         {isMobile && (
