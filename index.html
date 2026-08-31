@@ -2675,9 +2675,6 @@ function VisionConsolidated({data, upd}) {
       {view === 'byArea' && areasList.map((la, i) => (
         <div key={la.k} style={{...S.card, marginBottom:12}}>
           <AreaHead la={la} i={i}/>
-          {renderPhrase(la.k)}
-          <SectionHead title="Values" onAdd={() => addValue(la.k)}/>
-          {renderValuesList(la.k)}
           <SectionHead title="Long-Term" onAdd={() => addGoal(la.k, 'ltGoals')}/>
           {renderGoalsList(la.k, 'ltGoals')}
           <SectionHead title="3-Year" onAdd={() => addGoal(la.k, 'threeYearGoals')}/>
@@ -2688,7 +2685,6 @@ function VisionConsolidated({data, upd}) {
       ))}
       {view === 'byPeriod' && (() => {
         const PERIODS = [
-          {label:'Values', kind:'values'},
           {label:'Long-Term', kind:'ltGoals'},
           {label:'3-Year', kind:'threeYearGoals'},
           {label:'1-Year', kind:'oneYearGoals'}
@@ -2701,25 +2697,14 @@ function VisionConsolidated({data, upd}) {
               {p.label}
             </div>
             {areasList.map((la, i) => (
-              <div key={la.k} style={{marginBottom:16}}>
-                <AreaHead la={la} i={i}/>
+              <div key={la.k}>
+                <SectionHead
+                  title={la.label}
+                  onAdd={p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind)}/>
                 {p.kind === 'values' && renderPhrase(la.k)}
-                {p.kind === 'values' && (
-                  <React.Fragment>
-                    <SectionHead title="Values" onAdd={() => addValue(la.k)}/>
-                    {renderValuesList(la.k)}
-                  </React.Fragment>
-                )}
-                {p.kind !== 'values' && (
-                  <React.Fragment>
-                    {editMode && (
-                      <div style={{display:'flex', justifyContent:'flex-end', marginBottom:6}}>
-                        <Btn v="sec" onClick={() => addGoal(la.k, p.kind)} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
-                      </div>
-                    )}
-                    {renderGoalsList(la.k, p.kind)}
-                  </React.Fragment>
-                )}
+                {p.kind === 'values'
+                  ? renderValuesList(la.k)
+                  : renderGoalsList(la.k, p.kind)}
               </div>
             ))}
           </div>
