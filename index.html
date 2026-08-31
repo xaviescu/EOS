@@ -194,8 +194,8 @@
   }
 
   /* Cards with optional hover (elevation on pointer) */
-  .card-hover{transition:box-shadow .15s ease, transform .15s ease;}
-  .card-hover:hover{box-shadow:var(--elev-2); transform:translateY(-1px);}
+  .card-hover{transition:box-shadow .15s ease;}
+  .card-hover:hover{box-shadow:var(--elev-2);}
 
   /* DatePicker */
   .dp-nav{transition:background .12s, border-color .12s, color .12s;}
@@ -4086,7 +4086,7 @@ function TodosTab({data, upd}) {
       const tmp = d.todos[ia]; d.todos[ia] = d.todos[ib]; d.todos[ib] = tmp;
     });
   };
-  const TRow = ({t, isLast, list, idx}) => {
+  const renderRow = (t, isLast, list, idx) => {
     const ri = data.todos.indexOf(t);
     const isEd = editingId === t.id;
     const updField = (field, val) => upd(d => {
@@ -4094,7 +4094,7 @@ function TodosTab({data, upd}) {
       if (i >= 0) d.todos[i][field] = val;
     });
     return (
-      <div style={{padding:'8px 0', display:'flex', alignItems:'center', gap:9,
+      <div key={t.id} style={{padding:'8px 0', display:'flex', alignItems:'center', gap:9,
                    borderBottom: isLast ? 'none' : '1px solid var(--surface-alt)',
                    opacity: t.done ? 0.55 : 1, flexWrap:'wrap'}}>
         <input type="checkbox" checked={t.done}
@@ -4167,7 +4167,7 @@ function TodosTab({data, upd}) {
       <div style={{...S.card, marginBottom:12}}>
         <div style={{fontSize:14, fontWeight:700, color:'var(--text-2)', marginBottom:2}}>In Progress ({pending.length})</div>
         {pending.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No pending tasks. Well done.</div>}
-        {pending.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === pending.length - 1} list={pending} idx={idx}/>)}
+        {pending.map((t, idx) => renderRow(t, idx === pending.length - 1, pending, idx))}
       </div>
       {done.length > 0 && (
         <div style={S.card}>
@@ -4177,7 +4177,7 @@ function TodosTab({data, upd}) {
                     cursor:'pointer', marginBottom: showDone ? 2 : 0, padding:0}}>
             Completed ({done.length}) {showDone ? '^' : 'v'}
           </button>
-          {showDone && done.map((t, idx) => <TRow key={t.id} t={t} isLast={idx === done.length - 1} list={done} idx={idx}/>)}
+          {showDone && done.map((t, idx) => renderRow(t, idx === done.length - 1, done, idx))}
         </div>
       )}
     </div>
