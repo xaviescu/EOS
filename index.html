@@ -3111,12 +3111,30 @@ function YearRocks({data, upd}) {
     d.yearRocks[yearKey][areaKey] = d.yearRocks[yearKey][areaKey].filter(r => r.id !== id);
   });
   const moveRock = (areaKey, id, dir) => upd(d => {
-    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][areaKey]) return;
-    const arr = d.yearRocks[yearKey][areaKey];
+    if (!d.yearRocks || !d.yearRocks[yearKey]) return;
+    const arr = d.yearRocks[yearKey][areaKey] || [];
     const i = arr.findIndex(r => r.id === id);
+    if (i < 0) return;
     const j = i + dir;
-    if (i < 0 || j < 0 || j >= arr.length) return;
-    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    if (j >= 0 && j < arr.length) {
+      // Swap within the same area
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      return;
+    }
+    // At boundary — move to adjacent area
+    const areaIdx = AREAS.findIndex(x => x.k === areaKey);
+    const nextAreaIdx = areaIdx + dir;
+    if (nextAreaIdx < 0 || nextAreaIdx >= AREAS.length) return;
+    const nextAreaKey = AREAS[nextAreaIdx].k;
+    if (!d.yearRocks[yearKey][nextAreaKey]) d.yearRocks[yearKey][nextAreaKey] = [];
+    const [rock] = arr.splice(i, 1);
+    if (dir === -1) {
+      // Moving up: append to end of previous area
+      d.yearRocks[yearKey][nextAreaKey].push(rock);
+    } else {
+      // Moving down: prepend to next area
+      d.yearRocks[yearKey][nextAreaKey].unshift(rock);
+    }
   });
   return (
     <div>
@@ -3164,28 +3182,29 @@ function YearRocks({data, upd}) {
                       {r.title || '(untitled)'}
                     </div>
                   )}
+                  <div style={{display:'flex', gap:3, flexShrink:0}}>
+                    {QS_ORDER.map(qN => {
+                      const active = !!qMap[qN];
+                      return (
+                        <button key={qN}
+                          onClick={editMode ? () => toggleQuarter(la.k, r.id, qN) : undefined}
+                          style={{padding:'2px 7px', borderRadius:'var(--r-xs)',
+                                  fontSize:10, fontWeight:700,
+                                  border:'1px solid ' + (active ? 'var(--brand)' : 'var(--border)'),
+                                  background: active ? 'var(--brand)' : 'transparent',
+                                  color: active ? 'white' : 'var(--muted-soft)',
+                                  cursor: editMode ? 'pointer' : 'default'}}>{qN}</button>
+                      );
+                    })}
+                  </div>
                   {editMode && (
                     <MoveBtns
-                      disabledUp={i === 0} disabledDown={i === rocks.length - 1}
+                      disabledUp={n === 1}
+                      disabledDown={n === flat.length}
                       onUp={() => moveRock(la.k, r.id, -1)}
                       onDown={() => moveRock(la.k, r.id, 1)}/>
                   )}
                   {editMode && <XBtn size={14} onClick={() => delRock(la.k, r.id)}/>}
-                </div>
-                <div style={{display:'flex', gap:4, marginTop:6, flexWrap:'wrap'}}>
-                  {QS_ORDER.map(qN => {
-                    const active = !!qMap[qN];
-                    return (
-                      <button key={qN}
-                        onClick={editMode ? () => toggleQuarter(la.k, r.id, qN) : undefined}
-                        style={{padding:'2px 8px', borderRadius:'var(--r-xs)',
-                                fontSize:10, fontWeight:700,
-                                border:'1px solid ' + (active ? 'var(--brand)' : 'var(--border)'),
-                                background: active ? 'var(--brand)' : 'transparent',
-                                color: active ? 'white' : 'var(--muted-soft)',
-                                cursor: editMode ? 'pointer' : 'default'}}>{qN}</button>
-                    );
-                  })}
                 </div>
                 {(editMode || r.explanation) && (
                   <textarea value={r.explanation || ''}
