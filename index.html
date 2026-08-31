@@ -2722,12 +2722,10 @@ function VisionConsolidated({data, upd}) {
             {editMode ? (
               <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
                 style={{flex:'0 0 auto', minWidth:80, width:'auto', border:'none', outline:'none',
-                        fontSize:14, fontWeight:800, color:'var(--brand)',
-                        textTransform:'uppercase', letterSpacing:0.5, lineHeight:1.2,
+                        fontSize:13, fontWeight:600, color:'var(--text)', lineHeight:1.2,
                         background:'transparent', fontFamily:'inherit', padding:0}}/>
             ) : (
-              <div style={{flex:'0 0 auto', fontSize:14, fontWeight:800, color:'var(--brand)',
-                           textTransform:'uppercase', letterSpacing:0.5, lineHeight:1.2}}>{la.label}</div>
+              <div style={{flex:'0 0 auto', fontSize:13, fontWeight:600, color:'var(--text)', lineHeight:1.2}}>{la.label}</div>
             )}
             {editMode ? (
               <textarea value={a.phrase || ''}
@@ -2792,7 +2790,7 @@ function VisionConsolidated({data, upd}) {
                 </div>
                 <div style={{padding:'12px 18px 16px'}}>
                   {areasList.map((la, i) => (
-                    <div key={la.k}>
+                    <div key={la.k} style={{marginBottom: i === areasList.length - 1 ? 0 : 14}}>
                       {renderSectionHead(la.label,
                         p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind),
                         {noBorder:true})}
