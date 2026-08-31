@@ -4676,17 +4676,12 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                             </svg>
                           )}
                         </button>
-                        <div style={{flex:1, minWidth:0}}>
-                          <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
-                                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                            title={step.text}>{step.text}</div>
-                          <div style={{fontSize:11, color:'var(--muted)',
-                                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                            {rock.title}
-                            <span style={{marginLeft:6, color:'var(--muted-soft)'}}>
-                              · W{sw - qWeeks(q)[0] + 1}{sw !== ew ? '–' + (ew - qWeeks(q)[0] + 1) : ''}
-                            </span>
-                          </div>
+                        <div style={{flex:1, minWidth:0, fontSize:13,
+                                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                             title={(rock.title || '') + ' · ' + (step.text || '')}>
+                          <span style={{color:'var(--muted)', fontWeight:500}}>{rock.title}</span>
+                          <span style={{color:'var(--muted-soft)', margin:'0 6px'}}>·</span>
+                          <span style={{color:'var(--text)', fontWeight:600}}>{step.text}</span>
                         </div>
                       </div>
                     );
