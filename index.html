@@ -2652,8 +2652,13 @@ function VisionConsolidated({data, upd}) {
   const renderAreaHead = (la, i, showPhrase) => {
     const a = areas[la.k] || emptyArea();
     return (
-      <div key={'ah-' + la.k} style={{display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap',
+      <div key={'ah-' + la.k} style={{display:'flex', alignItems:'baseline', gap:8, flexWrap:'wrap',
                    marginBottom:4}}>
+        <span style={{fontSize:11, fontWeight:800, color:'var(--brand)',
+                      background:'var(--surface)', padding:'2px 6px',
+                      borderRadius:'var(--r-xs)', flexShrink:0,
+                      border:'1px solid var(--brand-ring)',
+                      alignSelf:'center'}}>{i + 1}</span>
         {editMode ? (
           <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
             style={{flex:'0 0 auto', minWidth:80, width:'auto', border:'none', outline:'none',
@@ -3477,17 +3482,25 @@ function YearRocks({data, upd}) {
       {AREAS.length === 0 && (
         <EmptyState icon="target" message="No areas defined. Go to Vision → Areas to add some."/>
       )}
-      {AREAS.map(la => {
+      {AREAS.map((la, ai) => {
         const rocks = yr[la.k] || [];
+        const areaData = ((data.vision && data.vision.areas) || {})[la.k] || {};
         return (
           <div key={la.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:14}}>
             <div style={{padding:'12px 16px', background:'var(--surface-alt)',
-                         display:'flex', alignItems:'center', justifyContent:'space-between',
-                         gap:10, flexWrap:'wrap'}}>
+                         display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+              <span style={{fontSize:11, fontWeight:800, color:'var(--brand)',
+                            background:'var(--surface)', padding:'2px 6px',
+                            borderRadius:'var(--r-xs)', flexShrink:0,
+                            border:'1px solid var(--brand-ring)'}}>{ai + 1}</span>
               <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
-                           textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
+                           textTransform:'uppercase', letterSpacing:0.5, flexShrink:0}}>{la.label}</div>
+              {areaData.phrase && (
+                <div style={{flex:1, minWidth:0, fontSize:12, fontStyle:'italic',
+                             color:'var(--muted)', lineHeight:1.4}}>{areaData.phrase}</div>
+              )}
               {editMode && (
-                <Btn v="sec" onClick={() => addRock(la.k)} style={{fontSize:11, padding:'3px 10px'}}>+ Rock</Btn>
+                <Btn v="sec" onClick={() => addRock(la.k)} style={{fontSize:11, padding:'3px 10px', marginLeft:'auto'}}>+ Rock</Btn>
               )}
             </div>
             <div style={{padding:'12px 18px 16px'}}>
