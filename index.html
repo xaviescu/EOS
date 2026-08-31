@@ -2532,118 +2532,97 @@ function VisionConsolidated({data, upd}) {
   });
 
   // ---- Renderers ----
-  const renderValuesBlock = (ak) => {
+  const renderPhrase = (ak) => {
     const a = areas[ak] || emptyArea();
-    const values = a.values || [];
-    return (
-      <div>
-        {/* Frase principal */}
+    if (editMode) {
+      return (
+        <textarea value={a.phrase || ''}
+          onChange={e => setAField(ak, 'phrase', e.target.value)}
+          placeholder="Frase principal..."
+          rows={1}
+          ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+          style={{width:'100%', border:'none', outline:'none', fontSize:14, fontWeight:700,
+                  padding:'2px 0 4px', background:'transparent', resize:'none', overflow:'hidden',
+                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.4}}/>
+      );
+    }
+    return a.phrase
+      ? <div style={{fontSize:14, fontWeight:700, color:'var(--text)', lineHeight:1.4, padding:'2px 0 4px'}}>{a.phrase}</div>
+      : null;
+  };
+  const renderValuesList = (ak) => {
+    const values = (areas[ak] && areas[ak].values) || [];
+    if (values.length === 0 && !editMode) {
+      return <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>;
+    }
+    return values.map((item, i) => (
+      <div key={i} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
+        <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:1, flexShrink:0}}>•</span>
         {editMode ? (
-          <textarea value={a.phrase || ''}
-            onChange={e => setAField(ak, 'phrase', e.target.value)}
-            placeholder="Frase principal..."
-            rows={1}
-            ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-            style={{width:'100%', border:'none', outline:'none', fontSize:14, fontWeight:700,
-                    padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
-                    color:'var(--text)', fontFamily:'inherit', lineHeight:1.4,
-                    borderBottom:'1px solid var(--surface-alt)', marginBottom:8}}/>
-        ) : (
-          a.phrase && <div style={{fontSize:14, fontWeight:700, color:'var(--text)', marginBottom:8,
-                                   lineHeight:1.4}}>{a.phrase}</div>
-        )}
-        {/* Values list */}
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4, marginTop:4}}>
-          <label style={{...S.lbl, marginBottom:0, fontSize:11}}>Values</label>
-          {editMode && (
-            <Btn v="sec" onClick={() => addValue(ak)} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
-          )}
-        </div>
-        {values.length === 0 && !editMode && (
-          <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>
-        )}
-        {values.map((item, i) => (
-          <div key={i} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
-            <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:1, flexShrink:0}}>•</span>
-            {editMode ? (
-              <React.Fragment>
-                <textarea value={item}
-                  onChange={e => updValue(ak, i, e.target.value)}
-                  placeholder="Value..." rows={1}
-                  ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                  style={{flex:1, border:'none', outline:'none', fontSize:13,
-                          padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
-                          color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
-                          borderBottom:'1px solid var(--surface-alt)'}}/>
-                <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-                  <MoveBtns
-                    disabledUp={i === 0} disabledDown={i === values.length - 1}
-                    onUp={() => moveValue(ak, i, -1)}
-                    onDown={() => moveValue(ak, i, 1)}/>
-                  <XBtn size={14} onClick={() => delValue(ak, i)}/>
-                </div>
-              </React.Fragment>
-            ) : (
-              <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{item}</div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
-  const renderGoalsBlock = (ak, field) => {
-    const goals = ((areas[ak] && areas[ak][field]) || []);
-    return (
-      <div>
-        {editMode && (
-          <div style={{marginBottom:6}}>
-            <Btn v="sec" onClick={() => addGoal(ak, field)} style={{fontSize:10, padding:'2px 8px'}}>+ Goal</Btn>
-          </div>
-        )}
-        {goals.length === 0 && !editMode && (
-          <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>
-        )}
-        {goals.map((g, i) => (
-          <div key={g.id} style={{marginBottom:8, paddingLeft:8, borderLeft:'2px solid var(--surface-alt)'}}>
-            <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
-              {editMode ? (
-                <input value={g.title || ''}
-                  onChange={e => updGoal(ak, field, g.id, 'title', e.target.value)}
-                  placeholder="Goal title"
-                  style={{flex:1, minWidth:120, border:'none', outline:'none',
-                          fontSize:13, fontWeight:500, color:'var(--text)',
-                          background:'transparent', fontFamily:'inherit', padding:0}}/>
-              ) : (
-                <div style={{flex:1, minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)'}}>
-                  {g.title || '(untitled)'}
-                </div>
-              )}
-              {editMode && (
-                <MoveBtns
-                  disabledUp={i === 0} disabledDown={i === goals.length - 1}
-                  onUp={() => moveGoal(ak, field, g.id, -1)}
-                  onDown={() => moveGoal(ak, field, g.id, 1)}/>
-              )}
-              {editMode && <XBtn size={13} onClick={() => delGoal(ak, field, g.id)}/>}
+          <React.Fragment>
+            <textarea value={item}
+              onChange={e => updValue(ak, i, e.target.value)}
+              placeholder="Value..." rows={1}
+              ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+              style={{flex:1, border:'none', outline:'none', fontSize:13,
+                      padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                      color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                      borderBottom:'1px solid var(--surface-alt)'}}/>
+            <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+              <MoveBtns
+                disabledUp={i === 0} disabledDown={i === values.length - 1}
+                onUp={() => moveValue(ak, i, -1)}
+                onDown={() => moveValue(ak, i, 1)}/>
+              <XBtn size={14} onClick={() => delValue(ak, i)}/>
             </div>
-            {(editMode || g.explanation) && (
-              <textarea value={g.explanation || ''}
-                onChange={e => updGoal(ak, field, g.id, 'explanation', e.target.value)}
-                placeholder="Explanation..." rows={1}
-                ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                style={{width:'100%', border:'none', outline:'none', fontSize:12,
-                        color:'var(--muted)', background:'transparent', fontFamily:'inherit',
-                        padding:'2px 0 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
-            )}
-          </div>
-        ))}
+          </React.Fragment>
+        ) : (
+          <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{item}</div>
+        )}
       </div>
-    );
+    ));
   };
-  const SubHead = ({title}) => (
-    <div style={{fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
-                 letterSpacing:0.5, marginTop:14, marginBottom:6,
-                 paddingBottom:3, borderBottom:'1px solid var(--surface-alt)'}}>{title}</div>
+  const renderGoalsList = (ak, field) => {
+    const goals = ((areas[ak] && areas[ak][field]) || []);
+    if (goals.length === 0 && !editMode) {
+      return <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>;
+    }
+    return goals.map((g, i) => (
+      <div key={g.id} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
+        <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:1, flexShrink:0}}>•</span>
+        {editMode ? (
+          <React.Fragment>
+            <textarea value={g.title || ''}
+              onChange={e => updGoal(ak, field, g.id, 'title', e.target.value)}
+              placeholder="Goal..." rows={1}
+              ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+              style={{flex:1, border:'none', outline:'none', fontSize:13,
+                      padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                      color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                      borderBottom:'1px solid var(--surface-alt)'}}/>
+            <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+              <MoveBtns
+                disabledUp={i === 0} disabledDown={i === goals.length - 1}
+                onUp={() => moveGoal(ak, field, g.id, -1)}
+                onDown={() => moveGoal(ak, field, g.id, 1)}/>
+              <XBtn size={14} onClick={() => delGoal(ak, field, g.id)}/>
+            </div>
+          </React.Fragment>
+        ) : (
+          <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{g.title || '(untitled)'}</div>
+        )}
+      </div>
+    ));
+  };
+  const SectionHead = ({title, onAdd}) => (
+    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                 marginTop:14, marginBottom:6, paddingBottom:3,
+                 borderBottom:'1px solid var(--surface-alt)'}}>
+      <label style={{...S.lbl, marginBottom:0, fontSize:11}}>{title}</label>
+      {editMode && onAdd && (
+        <Btn v="sec" onClick={onAdd} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
+      )}
+    </div>
   );
   const AreaHead = ({la, i}) => (
     <div style={{display:'flex', alignItems:'center', gap:6,
@@ -2696,14 +2675,15 @@ function VisionConsolidated({data, upd}) {
       {view === 'byArea' && areasList.map((la, i) => (
         <div key={la.k} style={{...S.card, marginBottom:12}}>
           <AreaHead la={la} i={i}/>
-          <SubHead title="Values"/>
-          {renderValuesBlock(la.k)}
-          <SubHead title="Long-Term"/>
-          {renderGoalsBlock(la.k, 'ltGoals')}
-          <SubHead title="3-Year"/>
-          {renderGoalsBlock(la.k, 'threeYearGoals')}
-          <SubHead title="1-Year"/>
-          {renderGoalsBlock(la.k, 'oneYearGoals')}
+          {renderPhrase(la.k)}
+          <SectionHead title="Values" onAdd={() => addValue(la.k)}/>
+          {renderValuesList(la.k)}
+          <SectionHead title="Long-Term" onAdd={() => addGoal(la.k, 'ltGoals')}/>
+          {renderGoalsList(la.k, 'ltGoals')}
+          <SectionHead title="3-Year" onAdd={() => addGoal(la.k, 'threeYearGoals')}/>
+          {renderGoalsList(la.k, 'threeYearGoals')}
+          <SectionHead title="1-Year" onAdd={() => addGoal(la.k, 'oneYearGoals')}/>
+          {renderGoalsList(la.k, 'oneYearGoals')}
         </div>
       ))}
       {view === 'byPeriod' && (() => {
@@ -2723,9 +2703,23 @@ function VisionConsolidated({data, upd}) {
             {areasList.map((la, i) => (
               <div key={la.k} style={{marginBottom:16}}>
                 <AreaHead la={la} i={i}/>
-                {p.kind === 'values'
-                  ? renderValuesBlock(la.k)
-                  : renderGoalsBlock(la.k, p.kind)}
+                {p.kind === 'values' && renderPhrase(la.k)}
+                {p.kind === 'values' && (
+                  <React.Fragment>
+                    <SectionHead title="Values" onAdd={() => addValue(la.k)}/>
+                    {renderValuesList(la.k)}
+                  </React.Fragment>
+                )}
+                {p.kind !== 'values' && (
+                  <React.Fragment>
+                    {editMode && (
+                      <div style={{display:'flex', justifyContent:'flex-end', marginBottom:6}}>
+                        <Btn v="sec" onClick={() => addGoal(la.k, p.kind)} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
+                      </div>
+                    )}
+                    {renderGoalsList(la.k, p.kind)}
+                  </React.Fragment>
+                )}
               </div>
             ))}
           </div>
