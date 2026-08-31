@@ -2441,6 +2441,7 @@ function VisionTab({data, upd}) {
 // Areas managed inline: +Area button + Edit mode (rename/reorder/delete).
 // -----------------------------------------------------------------
 function VisionConsolidated({data, upd}) {
+  const isMobile = useIsMobile();
   const areasList = ((data.vision && data.vision.areasList) || []);
   const areas = (data.vision && data.vision.areas) || {};
   const [editMode, setEditMode] = useState(false);
@@ -2625,14 +2626,17 @@ function VisionConsolidated({data, upd}) {
     </div>
   );
   const AreaHead = ({la, i}) => (
-    <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:6}}>
+    <div style={{display:'flex', alignItems:'center', gap:6,
+                 paddingBottom:6, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
       {editMode ? (
         <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
           style={{flex:1, minWidth:100, border:'none', outline:'none',
-                  fontSize:13, fontWeight:700, color:'var(--text)',
+                  fontSize:14, fontWeight:800, color:'var(--brand)',
+                  textTransform:'uppercase', letterSpacing:0.5,
                   background:'transparent', fontFamily:'inherit', padding:0}}/>
       ) : (
-        <div style={{flex:1, fontSize:13, fontWeight:700, color:'var(--text)'}}>{la.label}</div>
+        <div style={{flex:1, fontSize:14, fontWeight:800, color:'var(--brand)',
+                     textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
       )}
       {editMode && (
         <MoveBtns
@@ -2673,12 +2677,23 @@ function VisionConsolidated({data, upd}) {
         <div key={la.k} style={{...S.card, marginBottom:12}}>
           <AreaHead la={la} i={i}/>
           {renderPhrase(la.k)}
-          <SectionHead title="Long-Term" onAdd={() => addGoal(la.k, 'ltGoals')}/>
-          {renderGoalsList(la.k, 'ltGoals')}
-          <SectionHead title="3-Year" onAdd={() => addGoal(la.k, 'threeYearGoals')}/>
-          {renderGoalsList(la.k, 'threeYearGoals')}
-          <SectionHead title="1-Year" onAdd={() => addGoal(la.k, 'oneYearGoals')}/>
-          {renderGoalsList(la.k, 'oneYearGoals')}
+          <div style={{display:'grid',
+                       gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+                       gap: isMobile ? 0 : 20,
+                       marginTop:8}}>
+            <div>
+              <SectionHead title="Long-Term" onAdd={() => addGoal(la.k, 'ltGoals')}/>
+              {renderGoalsList(la.k, 'ltGoals')}
+            </div>
+            <div>
+              <SectionHead title="3-Year" onAdd={() => addGoal(la.k, 'threeYearGoals')}/>
+              {renderGoalsList(la.k, 'threeYearGoals')}
+            </div>
+            <div>
+              <SectionHead title="1-Year" onAdd={() => addGoal(la.k, 'oneYearGoals')}/>
+              {renderGoalsList(la.k, 'oneYearGoals')}
+            </div>
+          </div>
         </div>
       ))}
       {view === 'byPeriod' && (() => {
@@ -4079,7 +4094,13 @@ function TodosTab({data, upd}) {
 function ProcessesTab({data, upd}) {
   const [exp, setExp] = useState(null);
   const [procTab, setProcTab] = useState('stdweek');
+  const [editMode, setEditMode] = useState(false);
   const ps = data.processes || [];
+  const moveProc = (i, dir) => upd(d => {
+    const j = i + dir;
+    if (j < 0 || j >= (d.processes || []).length) return;
+    const t = d.processes[i]; d.processes[i] = d.processes[j]; d.processes[j] = t;
+  });
   return (
     <div>
       <PageTitle icon="procesos">Processes</PageTitle>
@@ -4094,12 +4115,15 @@ function ProcessesTab({data, upd}) {
           <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
             <Btn onClick={() => upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); })}
               style={{fontSize:13}}>+ Process</Btn>
+            <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+              {editMode ? 'Done' : 'Edit'}
+            </Btn>
           </div>
           {ps.length === 0 && <EmptyState icon="target" message="Define your core processes. Add the first one above."/>}
           {ps.map((p, i) => (
             <div key={p.id || i} style={{...S.card, padding:0, overflow:'hidden'}}>
               <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
-                           padding:'13px 18px', cursor:'pointer'}}
+                           padding:'13px 18px', cursor:'pointer', gap:8}}
                 onClick={() => setExp(exp === i ? null : i)}>
                 <div style={{flex:1, marginRight:12}}>
                   <input value={p.name || ''}
@@ -4115,6 +4139,19 @@ function ProcessesTab({data, upd}) {
                               color: p.documented ? 'var(--ok-fg)' : 'var(--err-fg)'}}>
                   {p.documented ? 'Documented' : 'Undocumented'}
                 </span>
+                {editMode && (
+                  <div style={{display:'flex', gap:3, alignItems:'center'}} onClick={e => e.stopPropagation()}>
+                    <MoveBtns
+                      disabledUp={i === 0} disabledDown={i === ps.length - 1}
+                      onUp={() => moveProc(i, -1)} onDown={() => moveProc(i, 1)}/>
+                    <XBtn size={16} onClick={() => {
+                      if (confirm('Delete process "' + (p.name || '(unnamed)') + '"?')) {
+                        upd(d => { d.processes.splice(i, 1); });
+                        setExp(null);
+                      }
+                    }}/>
+                  </div>
+                )}
               </div>
               {exp === i && (
                 <div style={{padding:'0 18px 16px'}}>
@@ -4126,8 +4163,6 @@ function ProcessesTab({data, upd}) {
                         onChange={e => upd(d => { d.processes[i].documented = e.target.checked; })}/>
                       Documented
                     </label>
-                    <Btn v="red" style={{marginLeft:'auto', fontSize:13}}
-                      onClick={() => upd(d => { d.processes.splice(i, 1); setExp(null); })}>Delete</Btn>
                   </div>
                 </div>
               )}
