@@ -2351,35 +2351,30 @@ function VisionTab({data, upd}) {
 
 function VisionHorizon({data, upd, field, title}) {
   const areasList = ((data.vision && data.vision.areasList) || []);
-  const [area, setArea] = useState(areasList[0] ? areasList[0].k : '');
   const [editMode, setEditMode] = useState(false);
-  useEffect(() => {
-    if (!areasList.some(a => a.k === area) && areasList[0]) setArea(areasList[0].k);
-  }, [areasList.map(a => a.k).join('|')]);
   if (!areasList.length) {
     return <div style={S.card}><H3>{title}</H3><div style={{color:'var(--muted-soft)', fontSize:13}}>No areas defined yet. Go to Areas to add some.</div></div>;
   }
   const areasData = (data.vision && data.vision.areas) || {};
-  const goals = ((areasData[area] && areasData[area][field]) || []);
-  const addGoal = () => upd(d => {
+  const addGoal = (areaKey) => upd(d => {
     if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
     if (!d.vision.areas) d.vision.areas = {};
-    if (!d.vision.areas[area]) d.vision.areas[area] = emptyArea();
-    if (!d.vision.areas[area][field]) d.vision.areas[area][field] = [];
-    d.vision.areas[area][field].push({id: uid(), title:'', explanation:''});
+    if (!d.vision.areas[areaKey]) d.vision.areas[areaKey] = emptyArea();
+    if (!d.vision.areas[areaKey][field]) d.vision.areas[areaKey][field] = [];
+    d.vision.areas[areaKey][field].push({id: uid(), title:'', explanation:''});
   });
-  const updGoal = (id, f, val) => upd(d => {
-    if (!d.vision || !d.vision.areas || !d.vision.areas[area] || !d.vision.areas[area][field]) return;
-    const idx = d.vision.areas[area][field].findIndex(g => g.id === id);
-    if (idx >= 0) d.vision.areas[area][field][idx][f] = val;
+  const updGoal = (areaKey, id, f, val) => upd(d => {
+    if (!d.vision || !d.vision.areas || !d.vision.areas[areaKey] || !d.vision.areas[areaKey][field]) return;
+    const idx = d.vision.areas[areaKey][field].findIndex(g => g.id === id);
+    if (idx >= 0) d.vision.areas[areaKey][field][idx][f] = val;
   });
-  const delGoal = id => upd(d => {
-    if (!d.vision || !d.vision.areas || !d.vision.areas[area] || !d.vision.areas[area][field]) return;
-    d.vision.areas[area][field] = d.vision.areas[area][field].filter(g => g.id !== id);
+  const delGoal = (areaKey, id) => upd(d => {
+    if (!d.vision || !d.vision.areas || !d.vision.areas[areaKey] || !d.vision.areas[areaKey][field]) return;
+    d.vision.areas[areaKey][field] = d.vision.areas[areaKey][field].filter(g => g.id !== id);
   });
-  const moveGoal = (id, dir) => upd(d => {
-    if (!d.vision || !d.vision.areas || !d.vision.areas[area] || !d.vision.areas[area][field]) return;
-    const arr = d.vision.areas[area][field];
+  const moveGoal = (areaKey, id, dir) => upd(d => {
+    if (!d.vision || !d.vision.areas || !d.vision.areas[areaKey] || !d.vision.areas[areaKey][field]) return;
+    const arr = d.vision.areas[areaKey][field];
     const i = arr.findIndex(g => g.id === id);
     const j = i + dir;
     if (i < 0 || j < 0 || j >= arr.length) return;
@@ -2387,126 +2382,141 @@ function VisionHorizon({data, upd, field, title}) {
   });
   return (
     <div>
-      <div className="tabbar" style={{marginBottom:12}}>
-        {areasList.map(la => (
-          <button key={la.k} onClick={() => setArea(la.k)}
-            className={'tab-underline' + (area === la.k ? ' active' : '')}>
-            {la.label}
-          </button>
-        ))}
-      </div>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn onClick={addGoal} style={{fontSize:13}} disabled={!area}>+ Goal</Btn>
         <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
           {editMode ? 'Done' : 'Edit'}
         </Btn>
       </div>
-      {goals.length === 0 && (
-        <EmptyState icon="target" message={'No ' + title.toLowerCase() + ' goals yet in this area. Add the first one above.'}/>
-      )}
-      {goals.map((g, i) => (
-        <div key={g.id} style={{...S.card, marginBottom:10}}>
-          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6, flexWrap:'wrap'}}>
-            {editMode ? (
-              <input value={g.title || ''}
-                onChange={e => updGoal(g.id, 'title', e.target.value)}
-                placeholder="Goal title"
-                style={{flex:1, minWidth:150, border:'none', outline:'none',
-                        fontSize:15, fontWeight:700, color:'var(--text)',
-                        background:'transparent', fontFamily:'inherit', padding:0}}/>
-            ) : (
-              <div style={{flex:1, minWidth:150, fontSize:15, fontWeight:700, color:'var(--text)'}}>
-                {g.title || '(untitled)'}
+      {areasList.map(la => {
+        const goals = ((areasData[la.k] && areasData[la.k][field]) || []);
+        return (
+          <div key={la.k} style={{...S.card, marginBottom:12}}>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                         paddingBottom:6, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
+              <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
+                           textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
+              {editMode && (
+                <Btn v="sec" onClick={() => addGoal(la.k)} style={{fontSize:11, padding:'3px 10px'}}>+ Goal</Btn>
+              )}
+            </div>
+            {goals.length === 0 && (
+              <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>—</div>
+            )}
+            {goals.map((g, i) => (
+              <div key={g.id} style={{marginBottom:10, paddingLeft:10, borderLeft:'2px solid var(--surface-alt)'}}>
+                <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+                  {editMode ? (
+                    <input value={g.title || ''}
+                      onChange={e => updGoal(la.k, g.id, 'title', e.target.value)}
+                      placeholder="Goal title"
+                      style={{flex:1, minWidth:150, border:'none', outline:'none',
+                              fontSize:14, fontWeight:700, color:'var(--text)',
+                              background:'transparent', fontFamily:'inherit', padding:0}}/>
+                  ) : (
+                    <div style={{flex:1, minWidth:150, fontSize:14, fontWeight:700, color:'var(--text)'}}>
+                      {g.title || '(untitled)'}
+                    </div>
+                  )}
+                  {editMode && (
+                    <MoveBtns
+                      disabledUp={i === 0} disabledDown={i === goals.length - 1}
+                      onUp={() => moveGoal(la.k, g.id, -1)}
+                      onDown={() => moveGoal(la.k, g.id, 1)}/>
+                  )}
+                  {editMode && <XBtn size={14} onClick={() => delGoal(la.k, g.id)}/>}
+                </div>
+                {(editMode || g.explanation) && (
+                  <textarea value={g.explanation || ''}
+                    onChange={e => updGoal(la.k, g.id, 'explanation', e.target.value)}
+                    placeholder="Explanation..."
+                    rows={1}
+                    ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                    style={{width:'100%', border:'none', outline:'none', fontSize:12,
+                            color:'var(--muted)', background:'transparent', fontFamily:'inherit',
+                            padding:'2px 0 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
+                )}
               </div>
-            )}
-            {editMode && (
-              <MoveBtns
-                disabledUp={i === 0} disabledDown={i === goals.length - 1}
-                onUp={() => moveGoal(g.id, -1)}
-                onDown={() => moveGoal(g.id, 1)}/>
-            )}
-            {editMode && <XBtn size={16} onClick={() => delGoal(g.id)}/>}
+            ))}
           </div>
-          <textarea value={g.explanation || ''}
-            onChange={e => updGoal(g.id, 'explanation', e.target.value)}
-            placeholder="Explanation..."
-            rows={2}
-            ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-            style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                    color:'var(--muted)', background:'transparent', fontFamily:'inherit',
-                    padding:'4px 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 function VisionAreas({data, upd}) {
   const areasList = ((data.vision && data.vision.areasList) || []);
-  const [area, setArea] = useState(areasList[0] ? areasList[0].k : '');
   const [editMode, setEditMode] = useState(false);
   const [manageMode, setManageMode] = useState(false);
-  // Snap selection if it disappears
-  useEffect(() => {
-    if (!areasList.some(x => x.k === area) && areasList[0]) setArea(areasList[0].k);
-  }, [areasList.map(x => x.k).join('|')]);
   const areas = (data.vision && data.vision.areas) || {};
-  const a = areas[area] || emptyArea();
-  const setAField = (field, val) => upd(d => {
+  const setAField = (areaKey, field, val) => upd(d => {
     if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
     if (!d.vision.areas) d.vision.areas = {};
-    if (!d.vision.areas[area]) d.vision.areas[area] = emptyArea();
-    d.vision.areas[area][field] = val;
+    if (!d.vision.areas[areaKey]) d.vision.areas[areaKey] = emptyArea();
+    d.vision.areas[areaKey][field] = val;
   });
-  const addItem = (field) => setAField(field, [...(a[field] || []), '']);
-  const updItem = (field, i, val) => setAField(field, (a[field] || []).map((x, j) => j === i ? val : x));
-  const delItem = (field, i) => setAField(field, (a[field] || []).filter((_, j) => j !== i));
-  const moveItem = (field, i, dir) => {
-    const arr = [...(a[field] || [])];
+  const addItem = (areaKey, field) => {
+    const cur = (areas[areaKey] && areas[areaKey][field]) || [];
+    setAField(areaKey, field, [...cur, '']);
+  };
+  const updItem = (areaKey, field, i, val) => {
+    const cur = (areas[areaKey] && areas[areaKey][field]) || [];
+    setAField(areaKey, field, cur.map((x, j) => j === i ? val : x));
+  };
+  const delItem = (areaKey, field, i) => {
+    const cur = (areas[areaKey] && areas[areaKey][field]) || [];
+    setAField(areaKey, field, cur.filter((_, j) => j !== i));
+  };
+  const moveItem = (areaKey, field, i, dir) => {
+    const cur = (areas[areaKey] && areas[areaKey][field]) || [];
+    const arr = [...cur];
     const j = i + dir;
     if (j < 0 || j >= arr.length) return;
     const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-    setAField(field, arr);
+    setAField(areaKey, field, arr);
   };
-  const renderList = (field, label, placeholder) => (
-    <div key={field} style={{marginBottom:16}}>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
-        <label style={{...S.lbl, marginBottom:0}}>{label}</label>
-        {editMode && (
-          <Btn v="sec" onClick={() => addItem(field)} style={{fontSize:11, padding:'3px 10px'}}>+ Add</Btn>
-        )}
-      </div>
-      {(a[field] || []).length === 0 && !editMode && (
-        <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>—</div>
-      )}
-      {(a[field] || []).map((item, i) => (
-        <div key={i} style={{display:'flex', alignItems:'flex-start', gap:8, marginBottom:6}}>
-          <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:2, flexShrink:0}}>•</span>
-          {editMode ? (
-            <React.Fragment>
-              <textarea value={item}
-                onChange={e => updItem(field, i, e.target.value)}
-                placeholder={placeholder} rows={1}
-                ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                style={{flex:1, border:'none', outline:'none', fontSize:13,
-                        padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
-                        color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
-                        borderBottom:'1px solid var(--surface-alt)'}}/>
-              <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-                <MoveBtns
-                  disabledUp={i === 0} disabledDown={i === (a[field] || []).length - 1}
-                  onUp={() => moveItem(field, i, -1)}
-                  onDown={() => moveItem(field, i, 1)}/>
-                <XBtn size={14} onClick={() => delItem(field, i)}/>
-              </div>
-            </React.Fragment>
-          ) : (
-            <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{item}</div>
+  const renderList = (areaKey, field, label, placeholder) => {
+    const list = (areas[areaKey] && areas[areaKey][field]) || [];
+    return (
+      <div key={field} style={{marginBottom:12}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
+          <label style={{...S.lbl, marginBottom:0, fontSize:11}}>{label}</label>
+          {editMode && (
+            <Btn v="sec" onClick={() => addItem(areaKey, field)} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
           )}
         </div>
-      ))}
-    </div>
-  );
+        {list.length === 0 && !editMode && (
+          <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>
+        )}
+        {list.map((item, i) => (
+          <div key={i} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
+            <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:1, flexShrink:0}}>•</span>
+            {editMode ? (
+              <React.Fragment>
+                <textarea value={item}
+                  onChange={e => updItem(areaKey, field, i, e.target.value)}
+                  placeholder={placeholder} rows={1}
+                  ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                  style={{flex:1, border:'none', outline:'none', fontSize:13,
+                          padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                          color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                          borderBottom:'1px solid var(--surface-alt)'}}/>
+                <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+                  <MoveBtns
+                    disabledUp={i === 0} disabledDown={i === list.length - 1}
+                    onUp={() => moveItem(areaKey, field, i, -1)}
+                    onDown={() => moveItem(areaKey, field, i, 1)}/>
+                  <XBtn size={14} onClick={() => delItem(areaKey, field, i)}/>
+                </div>
+              </React.Fragment>
+            ) : (
+              <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{item}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
   // Manage-areas helpers (add/remove/rename/reorder)
   const addArea = () => upd(d => {
     if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
@@ -2536,14 +2546,6 @@ function VisionAreas({data, upd}) {
   });
   return (
     <div>
-      <div className="tabbar" style={{marginBottom:12}}>
-        {areasList.map(la => (
-          <button key={la.k} onClick={() => setArea(la.k)}
-            className={'tab-underline' + (area === la.k ? ' active' : '')}>
-            {la.label}
-          </button>
-        ))}
-      </div>
       <div style={{display:'flex', gap:8, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
         <Btn v={manageMode ? 'pri' : 'sec'} onClick={() => setManageMode(m => !m)} style={{fontSize:13}}>
           {manageMode ? 'Close' : 'Manage areas'}
@@ -2576,29 +2578,35 @@ function VisionAreas({data, upd}) {
           <Btn onClick={addArea} style={{marginTop:6, fontSize:13, padding:'6px 12px'}}>+ Area</Btn>
         </div>
       )}
-      {!area && <div style={{color:'var(--muted-soft)', fontSize:13}}>No areas yet. Use "Manage areas" to add some.</div>}
-      {area && <div style={S.card}>
-        <label style={S.lbl}>Frase principal</label>
-        {editMode ? (
-          <textarea value={a.phrase || ''}
-            onChange={e => setAField('phrase', e.target.value)}
-            placeholder="Frase principal de esta área..."
-            rows={2}
-            ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-            style={{width:'100%', border:'none', outline:'none', fontSize:15, fontWeight:700,
-                    padding:'6px 0', background:'transparent', resize:'none', overflow:'hidden',
-                    color:'var(--brand)', fontFamily:'inherit', lineHeight:1.4,
-                    borderBottom:'1px solid var(--surface-alt)', marginBottom:16}}/>
-        ) : (
-          <div style={{fontSize:15, fontWeight:700, color:'var(--brand)', marginBottom:16,
-                       padding:'6px 0', borderBottom:'1px solid var(--surface-alt)', lineHeight:1.4}}>
-            {a.phrase || '—'}
+      {areasList.length === 0 && <div style={{color:'var(--muted-soft)', fontSize:13}}>No areas yet. Use "Manage areas" to add some.</div>}
+      {areasList.map(la => {
+        const a = areas[la.k] || emptyArea();
+        return (
+          <div key={la.k} style={{...S.card, marginBottom:12}}>
+            <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
+                         textTransform:'uppercase', letterSpacing:0.5,
+                         paddingBottom:6, borderBottom:'1px solid var(--surface-alt)',
+                         marginBottom:10}}>{la.label}</div>
+            {editMode ? (
+              <textarea value={a.phrase || ''}
+                onChange={e => setAField(la.k, 'phrase', e.target.value)}
+                placeholder="Frase principal..."
+                rows={1}
+                ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                style={{width:'100%', border:'none', outline:'none', fontSize:14, fontWeight:700,
+                        padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
+                        color:'var(--text)', fontFamily:'inherit', lineHeight:1.4,
+                        borderBottom:'1px solid var(--surface-alt)', marginBottom:12}}/>
+            ) : (
+              a.phrase && <div style={{fontSize:14, fontWeight:700, color:'var(--text)', marginBottom:12,
+                                       lineHeight:1.4}}>{a.phrase}</div>
+            )}
+            {renderList(la.k, 'roles',  'Roles',  'Rol...')}
+            {renderList(la.k, 'values', 'Values', 'Value...')}
+            {renderList(la.k, 'vision', 'Vision', 'Vision statement...')}
           </div>
-        )}
-        {renderList('roles',  'Roles',  'Rol...')}
-        {renderList('values', 'Values', 'Value...')}
-        {renderList('vision', 'Vision', 'Vision statement...')}
-      </div>}
+        );
+      })}
     </div>
   );
 }
@@ -3002,32 +3010,27 @@ function RocksTab({data, upd}) {
 
 function YearRocks({data, upd}) {
   const AREAS = ((data.vision && data.vision.areasList) || []);
-  const [area, setArea] = useState(AREAS[0] ? AREAS[0].k : '');
   const [editMode, setEditMode] = useState(false);
-  useEffect(() => {
-    if (!AREAS.some(a => a.k === area) && AREAS[0]) setArea(AREAS[0].k);
-  }, [AREAS.map(a => a.k).join('|')]);
   const yearKey = String(YEAR);
   const yr = (data.yearRocks && data.yearRocks[yearKey]) || {};
-  const rocks = yr[area] || [];
-  const addRock = () => upd(d => {
+  const addRock = (areaKey) => upd(d => {
     if (!d.yearRocks) d.yearRocks = {};
     if (!d.yearRocks[yearKey]) d.yearRocks[yearKey] = {};
-    if (!d.yearRocks[yearKey][area]) d.yearRocks[yearKey][area] = [];
-    d.yearRocks[yearKey][area].push({id: uid(), title:'', explanation:''});
+    if (!d.yearRocks[yearKey][areaKey]) d.yearRocks[yearKey][areaKey] = [];
+    d.yearRocks[yearKey][areaKey].push({id: uid(), title:'', explanation:''});
   });
-  const updField = (id, field, val) => upd(d => {
-    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][area]) return;
-    const idx = d.yearRocks[yearKey][area].findIndex(r => r.id === id);
-    if (idx >= 0) d.yearRocks[yearKey][area][idx][field] = val;
+  const updField = (areaKey, id, field, val) => upd(d => {
+    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][areaKey]) return;
+    const idx = d.yearRocks[yearKey][areaKey].findIndex(r => r.id === id);
+    if (idx >= 0) d.yearRocks[yearKey][areaKey][idx][field] = val;
   });
-  const delRock = id => upd(d => {
-    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][area]) return;
-    d.yearRocks[yearKey][area] = d.yearRocks[yearKey][area].filter(r => r.id !== id);
+  const delRock = (areaKey, id) => upd(d => {
+    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][areaKey]) return;
+    d.yearRocks[yearKey][areaKey] = d.yearRocks[yearKey][areaKey].filter(r => r.id !== id);
   });
-  const moveRock = (id, dir) => upd(d => {
-    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][area]) return;
-    const arr = d.yearRocks[yearKey][area];
+  const moveRock = (areaKey, id, dir) => upd(d => {
+    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][areaKey]) return;
+    const arr = d.yearRocks[yearKey][areaKey];
     const i = arr.findIndex(r => r.id === id);
     const j = i + dir;
     if (i < 0 || j < 0 || j >= arr.length) return;
@@ -3035,59 +3038,67 @@ function YearRocks({data, upd}) {
   });
   return (
     <div>
-      <div className="tabbar" style={{marginBottom:12}}>
-        {AREAS.map(a => (
-          <button key={a.k} onClick={() => setArea(a.k)}
-            className={'tab-underline' + (area === a.k ? ' active' : '')}>
-            {a.label}
-          </button>
-        ))}
-      </div>
       <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn onClick={addRock} style={{fontSize:13}} disabled={!area}>+ Rock</Btn>
         <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
           {editMode ? 'Done' : 'Edit'}
         </Btn>
       </div>
-      {!area && (
+      {AREAS.length === 0 && (
         <EmptyState icon="target" message="No areas defined. Go to Vision → Areas to add some."/>
       )}
-      {area && rocks.length === 0 && (
-        <EmptyState icon="target" message={'No rocks yet in ' + ((AREAS.find(a => a.k === area) || {}).label || '') + '. Add the first one above.'}/>
-      )}
-      {rocks.map((r, i) => (
-        <div key={r.id} style={{...S.card, marginBottom:10}}>
-          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6, flexWrap:'wrap'}}>
-            {editMode ? (
-              <input value={r.title || ''}
-                onChange={e => updField(r.id, 'title', e.target.value)}
-                placeholder="Rock title"
-                style={{flex:1, minWidth:150, border:'none', outline:'none',
-                        fontSize:15, fontWeight:700, color:'var(--text)',
-                        background:'transparent', fontFamily:'inherit', padding:0}}/>
-            ) : (
-              <div style={{flex:1, minWidth:150, fontSize:15, fontWeight:700, color:'var(--text)'}}>
-                {r.title || '(untitled)'}
+      {AREAS.map(la => {
+        const rocks = yr[la.k] || [];
+        return (
+          <div key={la.k} style={{...S.card, marginBottom:12}}>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                         paddingBottom:6, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
+              <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
+                           textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
+              {editMode && (
+                <Btn v="sec" onClick={() => addRock(la.k)} style={{fontSize:11, padding:'3px 10px'}}>+ Rock</Btn>
+              )}
+            </div>
+            {rocks.length === 0 && (
+              <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>—</div>
+            )}
+            {rocks.map((r, i) => (
+              <div key={r.id} style={{marginBottom:10, paddingLeft:10, borderLeft:'2px solid var(--surface-alt)'}}>
+                <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+                  {editMode ? (
+                    <input value={r.title || ''}
+                      onChange={e => updField(la.k, r.id, 'title', e.target.value)}
+                      placeholder="Rock title"
+                      style={{flex:1, minWidth:150, border:'none', outline:'none',
+                              fontSize:14, fontWeight:700, color:'var(--text)',
+                              background:'transparent', fontFamily:'inherit', padding:0}}/>
+                  ) : (
+                    <div style={{flex:1, minWidth:150, fontSize:14, fontWeight:700, color:'var(--text)'}}>
+                      {r.title || '(untitled)'}
+                    </div>
+                  )}
+                  {editMode && (
+                    <MoveBtns
+                      disabledUp={i === 0} disabledDown={i === rocks.length - 1}
+                      onUp={() => moveRock(la.k, r.id, -1)}
+                      onDown={() => moveRock(la.k, r.id, 1)}/>
+                  )}
+                  {editMode && <XBtn size={14} onClick={() => delRock(la.k, r.id)}/>}
+                </div>
+                {(editMode || r.explanation) && (
+                  <textarea value={r.explanation || ''}
+                    onChange={e => updField(la.k, r.id, 'explanation', e.target.value)}
+                    placeholder="Explanation..."
+                    rows={1}
+                    ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                    style={{width:'100%', border:'none', outline:'none', fontSize:12,
+                            color:'var(--muted)', background:'transparent', fontFamily:'inherit',
+                            padding:'2px 0 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
+                )}
               </div>
-            )}
-            {editMode && (
-              <MoveBtns
-                disabledUp={i === 0} disabledDown={i === rocks.length - 1}
-                onUp={() => moveRock(r.id, -1)}
-                onDown={() => moveRock(r.id, 1)}/>
-            )}
-            {editMode && <XBtn size={16} onClick={() => delRock(r.id)}/>}
+            ))}
           </div>
-          <textarea value={r.explanation || ''}
-            onChange={e => updField(r.id, 'explanation', e.target.value)}
-            placeholder="Explanation..."
-            rows={2}
-            ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-            style={{width:'100%', border:'none', outline:'none', fontSize:13,
-                    color:'var(--muted)', background:'transparent', fontFamily:'inherit',
-                    padding:'4px 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
