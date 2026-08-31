@@ -2783,22 +2783,26 @@ function VisionConsolidated({data, upd}) {
                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                        gap: isMobile ? 12 : 20}}>
             {PERIODS.map(p => (
-              <div key={p.label} style={S.card}>
-                <div style={{fontSize:15, fontWeight:800, color:'var(--brand)',
-                             textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>
-                  {p.label}
-                </div>
-                {areasList.map((la, i) => (
-                  <div key={la.k}>
-                    {renderSectionHead(la.label,
-                      p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind),
-                      {noBorder:true})}
-                    {p.kind === 'values' && renderPhrase(la.k)}
-                    {p.kind === 'values'
-                      ? renderValuesList(la.k)
-                      : renderGoalsList(la.k, p.kind)}
+              <div key={p.label} style={{...S.card, padding:0, overflow:'hidden'}}>
+                <div style={{padding:'12px 16px', background:'var(--surface-alt)'}}>
+                  <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
+                               textTransform:'uppercase', letterSpacing:0.5, lineHeight:1.2}}>
+                    {p.label}
                   </div>
-                ))}
+                </div>
+                <div style={{padding:'12px 18px 16px'}}>
+                  {areasList.map((la, i) => (
+                    <div key={la.k}>
+                      {renderSectionHead(la.label,
+                        p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind),
+                        {noBorder:true})}
+                      {p.kind === 'values' && renderPhrase(la.k)}
+                      {p.kind === 'values'
+                        ? renderValuesList(la.k)
+                        : renderGoalsList(la.k, p.kind)}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
