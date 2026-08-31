@@ -2741,25 +2741,31 @@ function VisionConsolidated({data, upd}) {
           {label:'3-Year', kind:'threeYearGoals'},
           {label:'1-Year', kind:'oneYearGoals'}
         ];
-        return PERIODS.map(p => (
-          <div key={p.label} style={{...S.card, marginBottom:12}}>
-            <div style={{fontSize:15, fontWeight:800, color:'var(--brand)',
-                         textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>
-              {p.label}
-            </div>
-            {areasList.map((la, i) => (
-              <div key={la.k}>
-                {renderSectionHead(la.label,
-                  p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind),
-                  {noBorder:true})}
-                {p.kind === 'values' && renderPhrase(la.k)}
-                {p.kind === 'values'
-                  ? renderValuesList(la.k)
-                  : renderGoalsList(la.k, p.kind)}
+        return (
+          <div style={{display:'grid',
+                       gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+                       gap: isMobile ? 12 : 20}}>
+            {PERIODS.map(p => (
+              <div key={p.label} style={S.card}>
+                <div style={{fontSize:15, fontWeight:800, color:'var(--brand)',
+                             textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>
+                  {p.label}
+                </div>
+                {areasList.map((la, i) => (
+                  <div key={la.k}>
+                    {renderSectionHead(la.label,
+                      p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind),
+                      {noBorder:true})}
+                    {p.kind === 'values' && renderPhrase(la.k)}
+                    {p.kind === 'values'
+                      ? renderValuesList(la.k)
+                      : renderGoalsList(la.k, p.kind)}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        ));
+        );
       })()}
     </div>
   );
@@ -3490,54 +3496,55 @@ function YearRocks({data, upd}) {
               const n = numOf(r.id);
               const qMap = r.quarters || {};
               return (
-              <div key={r.id} style={{padding:'10px 14px', marginBottom:4,
-                                       background:'var(--surface-alt)', borderRadius:'var(--r-sm)',
-                                       display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                <button
-                  onClick={editMode ? () => toggleCompleted(la.k, r.id) : undefined}
-                  title={r.completed ? 'Completed — click to unmark' : (editMode ? 'Click to mark completed' : '')}
-                  style={{fontSize:11, fontWeight:800,
-                          color: r.completed ? 'white' : 'var(--brand)',
-                          background: r.completed ? 'var(--ok-line)' : 'var(--surface)',
-                          padding:'2px 6px', borderRadius:'var(--r-xs)', flexShrink:0,
-                          border: '1px solid ' + (r.completed ? 'var(--ok-line)' : 'var(--brand-ring)'),
-                          cursor: editMode ? 'pointer' : 'default',
-                          fontFamily:'inherit'}}>R{n}</button>
-                {editMode ? (
-                  <input value={r.title || ''}
-                    onChange={e => updField(la.k, r.id, 'title', e.target.value)}
-                    placeholder="Rock title"
-                    style={{flex:1, minWidth:130, border:'none', outline:'none',
-                            fontSize:13, fontWeight:600, color:'var(--text)',
-                            background:'transparent', fontFamily:'inherit', padding:0}}/>
-                ) : (
-                  <div style={{flex:1, minWidth:130, fontSize:13, fontWeight:600, color:'var(--text)',
-                               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                       title={r.title}>{r.title || '(untitled)'}</div>
-                )}
-                <div style={{display:'flex', gap:3, flexShrink:0}}>
-                  {QS_ORDER.map(qN => {
-                    const active = !!qMap[qN];
-                    return (
-                      <button key={qN}
-                        onClick={editMode ? () => toggleQuarter(la.k, r.id, qN) : undefined}
-                        style={{padding:'2px 7px', borderRadius:'var(--r-xs)',
-                                fontSize:10, fontWeight:700,
-                                border:'1px solid ' + (active ? 'var(--brand)' : 'var(--border)'),
-                                background: active ? 'var(--brand)' : 'var(--surface)',
-                                color: active ? 'white' : 'var(--muted-soft)',
-                                cursor: editMode ? 'pointer' : 'default'}}>{qN}</button>
-                    );
-                  })}
+              <div key={r.id} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
+                <div style={{padding:'10px 14px', background:'var(--surface-alt)',
+                             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+                  <button
+                    onClick={editMode ? () => toggleCompleted(la.k, r.id) : undefined}
+                    title={r.completed ? 'Completed — click to unmark' : (editMode ? 'Click to mark completed' : '')}
+                    style={{fontSize:11, fontWeight:800,
+                            color: r.completed ? 'white' : 'var(--brand)',
+                            background: r.completed ? 'var(--ok-line)' : 'var(--surface)',
+                            padding:'2px 6px', borderRadius:'var(--r-xs)', flexShrink:0,
+                            border: '1px solid ' + (r.completed ? 'var(--ok-line)' : 'var(--brand-ring)'),
+                            cursor: editMode ? 'pointer' : 'default',
+                            fontFamily:'inherit'}}>R{n}</button>
+                  {editMode ? (
+                    <input value={r.title || ''}
+                      onChange={e => updField(la.k, r.id, 'title', e.target.value)}
+                      placeholder="Rock title"
+                      style={{flex:1, minWidth:130, border:'none', outline:'none',
+                              fontSize:13, fontWeight:600, color:'var(--text)',
+                              background:'transparent', fontFamily:'inherit', padding:0}}/>
+                  ) : (
+                    <div style={{flex:1, minWidth:130, fontSize:13, fontWeight:600, color:'var(--text)',
+                                 overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                         title={r.title}>{r.title || '(untitled)'}</div>
+                  )}
+                  <div style={{display:'flex', gap:3, flexShrink:0}}>
+                    {QS_ORDER.map(qN => {
+                      const active = !!qMap[qN];
+                      return (
+                        <button key={qN}
+                          onClick={editMode ? () => toggleQuarter(la.k, r.id, qN) : undefined}
+                          style={{padding:'2px 7px', borderRadius:'var(--r-xs)',
+                                  fontSize:10, fontWeight:700,
+                                  border:'1px solid ' + (active ? 'var(--brand)' : 'var(--border)'),
+                                  background: active ? 'var(--brand)' : 'var(--surface)',
+                                  color: active ? 'white' : 'var(--muted-soft)',
+                                  cursor: editMode ? 'pointer' : 'default'}}>{qN}</button>
+                      );
+                    })}
+                  </div>
+                  {editMode && (
+                    <MoveBtns
+                      disabledUp={n === 1}
+                      disabledDown={n === flat.length}
+                      onUp={() => moveRock(la.k, r.id, -1)}
+                      onDown={() => moveRock(la.k, r.id, 1)}/>
+                  )}
+                  {editMode && <XBtn size={14} onClick={() => delRock(la.k, r.id)}/>}
                 </div>
-                {editMode && (
-                  <MoveBtns
-                    disabledUp={n === 1}
-                    disabledDown={n === flat.length}
-                    onUp={() => moveRock(la.k, r.id, -1)}
-                    onDown={() => moveRock(la.k, r.id, 1)}/>
-                )}
-                {editMode && <XBtn size={14} onClick={() => delRock(la.k, r.id)}/>}
               </div>
               );
             })}
