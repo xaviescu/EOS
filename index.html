@@ -2531,6 +2531,11 @@ function VisionConsolidated({data, upd}) {
     if (i < 0 || j < 0 || j >= arr.length) return;
     const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
   });
+  const toggleGoalDone = (ak, field, id) => upd(d => {
+    if (!d.vision || !d.vision.areas || !d.vision.areas[ak] || !d.vision.areas[ak][field]) return;
+    const idx = d.vision.areas[ak][field].findIndex(g => g.id === id);
+    if (idx >= 0) d.vision.areas[ak][field][idx].done = !d.vision.areas[ak][field][idx].done;
+  });
 
   // ---- Renderers ----
   const renderPhrase = (ak) => {
@@ -2588,32 +2593,48 @@ function VisionConsolidated({data, upd}) {
     if (goals.length === 0 && !editMode) {
       return <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>;
     }
-    return goals.map((g, i) => (
-      <div key={g.id} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
-        <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:1, flexShrink:0}}>•</span>
-        {editMode ? (
-          <React.Fragment>
-            <textarea value={g.title || ''}
-              onChange={e => updGoal(ak, field, g.id, 'title', e.target.value)}
-              placeholder="Goal..." rows={1}
-              ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-              style={{flex:1, border:'none', outline:'none', fontSize:13,
-                      padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
-                      color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
-                      borderBottom:'1px solid var(--surface-alt)'}}/>
-            <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
-              <MoveBtns
-                disabledUp={i === 0} disabledDown={i === goals.length - 1}
-                onUp={() => moveGoal(ak, field, g.id, -1)}
-                onDown={() => moveGoal(ak, field, g.id, 1)}/>
-              <XBtn size={14} onClick={() => delGoal(ak, field, g.id)}/>
-            </div>
-          </React.Fragment>
-        ) : (
-          <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{g.title || '(untitled)'}</div>
-        )}
-      </div>
-    ));
+    return goals.map((g, i) => {
+      const markerColor = g.done ? 'var(--ok-line)' : 'var(--brand)';
+      const marker = editMode ? (
+        <button onClick={() => toggleGoalDone(ak, field, g.id)}
+          title={g.done ? 'Done — click to unmark' : 'Click to mark done'}
+          style={{border:'none', background:'transparent', cursor:'pointer',
+                  color: markerColor, fontWeight:700, fontSize:13, padding:0,
+                  marginTop:1, flexShrink:0, width:14, textAlign:'center',
+                  fontFamily:'inherit'}}>{g.done ? '✓' : '•'}</button>
+      ) : (
+        <span style={{color: markerColor, fontWeight:700, fontSize:13, marginTop:1,
+                      flexShrink:0, width:14, textAlign:'center', display:'inline-block'}}>
+          {g.done ? '✓' : '•'}
+        </span>
+      );
+      return (
+        <div key={g.id} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
+          {marker}
+          {editMode ? (
+            <React.Fragment>
+              <textarea value={g.title || ''}
+                onChange={e => updGoal(ak, field, g.id, 'title', e.target.value)}
+                placeholder="Goal..." rows={1}
+                ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                style={{flex:1, border:'none', outline:'none', fontSize:13,
+                        padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                        color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                        borderBottom:'1px solid var(--surface-alt)'}}/>
+              <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+                <MoveBtns
+                  disabledUp={i === 0} disabledDown={i === goals.length - 1}
+                  onUp={() => moveGoal(ak, field, g.id, -1)}
+                  onDown={() => moveGoal(ak, field, g.id, 1)}/>
+                <XBtn size={14} onClick={() => delGoal(ak, field, g.id)}/>
+              </div>
+            </React.Fragment>
+          ) : (
+            <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{g.title || '(untitled)'}</div>
+          )}
+        </div>
+      );
+    });
   };
   const SectionHead = ({title, onAdd}) => (
     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
@@ -2628,7 +2649,7 @@ function VisionConsolidated({data, upd}) {
   const AreaHead = ({la, i, showPhrase}) => {
     const a = areas[la.k] || emptyArea();
     return (
-      <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+      <div style={{display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap',
                    paddingBottom:6, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
         {editMode ? (
           <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
