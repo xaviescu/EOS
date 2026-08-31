@@ -5857,60 +5857,40 @@ function PrintView({data, onBack}) {
         {areaList.length === 0 && <div style={SH.empty}>No areas defined.</div>}
         {areaList.map(la => {
           const a = (v.areas && v.areas[la.k]) || emptyArea();
-          const hasAny = a.phrase || (a.roles || []).length || (a.values || []).length ||
-                        (a.vision || []).length || a.ltView || a.threeYearView || a.oneYearView ||
+          const hasAny = a.phrase ||
                         (a.ltGoals || []).length || (a.threeYearGoals || []).length || (a.oneYearGoals || []).length;
           if (!hasAny) return null;
+          const renderGoals = (arr, label) => (
+            <div>
+              <h4 style={SH.h4}>{label}</h4>
+              {(!arr || arr.length === 0)
+                ? <div style={{fontSize:11, color:'var(--muted-soft)'}}>—</div>
+                : arr.map((g, i) => (
+                    <div key={g.id || i} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
+                      <span style={{color: g.done ? 'var(--ok-line)' : 'var(--brand)', fontWeight:700, fontSize:12, flexShrink:0, width:12, textAlign:'center'}}>
+                        {g.done ? '✓' : '•'}
+                      </span>
+                      <div style={{flex:1, fontSize:12, color:'var(--text)', lineHeight:1.4}}>{g.title || '(untitled)'}</div>
+                    </div>
+                  ))
+              }
+            </div>
+          );
           return (
-            <div key={la.k} className="print-section" style={{marginBottom:22}}>
-              <h3 style={{...SH.h3, color:'var(--brand)', borderBottom:'1px solid var(--surface-alt)', paddingBottom:4}}>{la.label}</h3>
-              {a.phrase && (
-                <div style={{fontSize:14, fontWeight:700, color:'var(--brand)', marginBottom:10}}>{a.phrase}</div>
-              )}
-              {(a.roles || []).length > 0 && (
-                <>
-                  <h4 style={SH.h4}>Roles</h4>
-                  <ul style={{margin:'4px 0 8px 18px', padding:0, fontSize:12, lineHeight:1.5}}>
-                    {a.roles.map((r, i) => <li key={i}>{r}</li>)}
-                  </ul>
-                </>
-              )}
-              {(a.values || []).length > 0 && (
-                <>
-                  <h4 style={SH.h4}>Values</h4>
-                  <ul style={{margin:'4px 0 8px 18px', padding:0, fontSize:12, lineHeight:1.5}}>
-                    {a.values.map((val, i) => <li key={i}>{val}</li>)}
-                  </ul>
-                </>
-              )}
-              {(a.vision || []).length > 0 && (
-                <>
-                  <h4 style={SH.h4}>Vision</h4>
-                  <ul style={{margin:'4px 0 8px 18px', padding:0, fontSize:12, lineHeight:1.5}}>
-                    {a.vision.map((val, i) => <li key={i}>{val}</li>)}
-                  </ul>
-                </>
-              )}
-              {(() => {
-                const renderGoals = (arr, label) => (arr && arr.length > 0) && (
-                  <>
-                    <h4 style={SH.h4}>{label}</h4>
-                    {arr.map((g, i) => (
-                      <div key={g.id || i} style={{marginBottom:6, paddingLeft:12, borderLeft:'2px solid var(--brand)'}}>
-                        <div style={{fontSize:13, fontWeight:700, color:'var(--text)'}}>{g.title || '(untitled)'}</div>
-                        {g.explanation && <div style={{fontSize:12, color:'var(--text-2)', whiteSpace:'pre-wrap'}}>{g.explanation}</div>}
-                      </div>
-                    ))}
-                  </>
-                );
-                return (
-                  <>
-                    {renderGoals(a.ltGoals, 'Long-Term')}
-                    {renderGoals(a.threeYearGoals, '3-Year')}
-                    {renderGoals(a.oneYearGoals, '1-Year')}
-                  </>
-                );
-              })()}
+            <div key={la.k} className="print-section" style={{marginBottom:18}}>
+              <div style={{display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap',
+                           paddingBottom:4, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
+                <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
+                             textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
+                {a.phrase && (
+                  <div style={{fontSize:12, fontStyle:'italic', color:'var(--text)', lineHeight:1.4}}>{a.phrase}</div>
+                )}
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:20}}>
+                {renderGoals(a.ltGoals, 'Long-Term')}
+                {renderGoals(a.threeYearGoals, '3-Year')}
+                {renderGoals(a.oneYearGoals, '1-Year')}
+              </div>
             </div>
           );
         })}
