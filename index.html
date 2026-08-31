@@ -2652,7 +2652,7 @@ function VisionConsolidated({data, upd}) {
   const renderAreaHead = (la, i, showPhrase) => {
     const a = areas[la.k] || emptyArea();
     return (
-      <div key={'ah-' + la.k} style={{display:'flex', alignItems:'baseline', gap:8, flexWrap:'wrap',
+      <div key={'ah-' + la.k} style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
                    marginBottom:4}}>
         {editMode ? (
           <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
