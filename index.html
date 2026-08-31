@@ -1752,7 +1752,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                                       borderRadius:2, margin:'0 1px',
                                       opacity: (chk || isLateMarker || isOverdueSlot) ? 1 : 0.5,
                                       cursor: clickable ? 'pointer' : 'default',
-                                      border: isOverdueSlot ? '2.5px dotted var(--warn-line)' : 'none',
+                                      border: isOverdueSlot ? '2px dashed var(--warn-line)' : 'none',
                                       boxSizing:'border-box',
                                       transition:'background .15s'}}/>
                           )}
@@ -3337,8 +3337,8 @@ function RocksTab({data, upd}) {
                                 <div key={wn} onClick={() => clickable && toggleWk(rock.id, step.id, wn)}
                                   title={isOverdueSlot ? 'Overdue — click to mark done (late)' : isLateMarker ? 'Marked done late' : undefined}
                                   style={{width:22, height:22, borderRadius:'var(--r-xs)',
-                                          border: isOverdueSlot ? '3px solid' : (isCur || isLateMarker) ? '2px solid' : '1px solid',
-                                          borderStyle: isOverdueSlot ? 'dotted' : 'solid',
+                                          border: isOverdueSlot ? '2px solid' : (isCur || isLateMarker) ? '2px solid' : '1px solid',
+                                          borderStyle: isOverdueSlot ? 'dashed' : 'solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: clickable ? 'pointer' : 'default',
                                           borderColor: brdColor,
@@ -6112,7 +6112,7 @@ function PrintView({data, onBack}) {
                                     <div style={{height:10, borderRadius:2,
                                                  background: barBg,
                                                  opacity: (done || isLateMarker || isOverdueSlot) ? 1 : 0.55,
-                                                 border: isOverdueSlot ? '2.5px dotted var(--warn-line)' : 'none',
+                                                 border: isOverdueSlot ? '2px dashed var(--warn-line)' : 'none',
                                                  boxSizing:'border-box'}}/>
                                   )}
                                 </td>
