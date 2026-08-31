@@ -3295,7 +3295,7 @@ function ScorecardTab({data, upd}) {
                                 }}
                                 style={{width:'100%', minWidth:0, height: isMobile ? 30 : 24, borderRadius:0,
                                         border:'none', background:'transparent',
-                                        color:'var(--brand)', fontWeight:700,
+                                        color:'var(--text-2)', fontWeight:700,
                                         fontSize: isMobile ? 14 : 13, textAlign:'center',
                                         fontFamily:'inherit', padding:0, boxSizing:'border-box',
                                         MozAppearance:'textfield'}}
@@ -3750,6 +3750,15 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
   const today = todayStr();
   const [dispWn, setDispWn] = useState(() => getCurWn());
   const [showCal, setShowCal] = useState(false);
+  // Remembered per-card view toggles (persisted in localStorage)
+  const [scorecardView, setScorecardView] = useState(() => {
+    try { return localStorage.getItem('eos-ds-scorecard-view') || 'week'; } catch (e) { return 'week'; }
+  });
+  const [rocksView, setRocksView] = useState(() => {
+    try { return localStorage.getItem('eos-ds-rocks-view') || 'gantt'; } catch (e) { return 'gantt'; }
+  });
+  useEffect(() => { try { localStorage.setItem('eos-ds-scorecard-view', scorecardView); } catch (e) {} }, [scorecardView]);
+  useEffect(() => { try { localStorage.setItem('eos-ds-rocks-view', rocksView); } catch (e) {} }, [rocksView]);
   const calEvents = ((data.weeklyCalendar && data.weeklyCalendar[wKey(wn)]) || [])
     .filter(e => e.day === dayOfWeek)
     .sort((a, b) => a.h * 60 + (a.m || 0) - (b.h * 60 + (b.m || 0)));
@@ -3980,12 +3989,12 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   <button onClick={cycleState}
                     title={donOnDay ? 'Done — click for "tomorrow"' : snoozedToday ? 'Tomorrow — click to clear' : 'Pending — click to mark done'}
                     style={{width:16, height:16, borderRadius:3, flexShrink:0, padding:0,
-                            border:'1.5px solid ' + (donOnDay ? 'var(--muted)' : snoozedToday ? 'var(--muted)' : 'var(--border-strong)'),
-                            background: donOnDay ? 'var(--muted)' : 'white',
+                            border:'1.5px solid ' + (donOnDay || snoozedToday ? 'var(--muted)' : 'var(--border-strong)'),
+                            background: 'white',
                             cursor:'pointer', display:'inline-flex',
                             alignItems:'center', justifyContent:'center'}}>
                     {donOnDay && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)"
                            strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12"/>
                       </svg>
@@ -4045,25 +4054,135 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         )}
       </div>
 
-      {/* Rocks — foto de las 13 semanas del trimestre */}
+      {/* Rocks — gantt or list toggle */}
       <div className="card-hover" style={{...S.cardAccent, padding:0, overflow:'hidden'}}>
-        <div style={{padding:'14px 18px 4px'}}>
+        <div style={{padding:'14px 18px 4px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap'}}>
           <H3 style={{marginBottom:0}}>Rocks</H3>
+          <div style={{display:'flex', gap:0, border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
+            {[['gantt','Gantt'], ['list','Week list']].map(([k, lbl]) => (
+              <button key={k} onClick={() => setRocksView(k)}
+                style={{padding:'4px 10px', border:'none', cursor:'pointer',
+                        fontSize:11, fontWeight:700,
+                        background: rocksView === k ? 'var(--brand)' : 'transparent',
+                        color: rocksView === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
+            ))}
+          </div>
         </div>
         {rocks.length === 0
           ? <div style={{padding:'0 18px 14px'}}>
               <EmptyState icon="target" message="No Rocks this quarter." compact/>
             </div>
-          : <div style={{padding:'6px 12px 14px'}}>
-              <GanttChart rocks={rocks} wr={wr} qw={qWeeks(q)} upd={upd} qKey={curQ} highlightWn={wn}/>
-            </div>
+          : rocksView === 'gantt' ? (
+              <div style={{padding:'6px 12px 14px'}}>
+                <GanttChart rocks={rocks} wr={wr} qw={qWeeks(q)} upd={upd} qKey={curQ} highlightWn={wn}/>
+              </div>
+            ) : (() => {
+              // Week list: steps active THIS week (sw <= wn <= ew) OR overdue steps.
+              const curWnNow = wn;
+              const items = [];
+              rocks.forEach(rock => {
+                (wr[rock.id] || []).forEach(step => {
+                  const sw = step.startWeek || step.weekNum || 1;
+                  const ew = step.endWeek || step.weekNum || sw;
+                  const inWeek = curWnNow >= sw && curWnNow <= ew;
+                  const overdue = isStepOverdue(step, curWnNow);
+                  if (inWeek || overdue) items.push({rock, step, sw, ew, overdue});
+                });
+              });
+              if (!items.length) {
+                return <div style={{padding:'0 18px 14px'}}><EmptyState icon="check" message="No rock steps this week." compact/></div>;
+              }
+              return (
+                <div style={{padding:'6px 12px 14px'}}>
+                  {items.map(({rock, step, sw, ew, overdue}) => {
+                    const chk = stepDone(step);
+                    const late = chk && !!step.completedLate;
+                    // Click marks endWeek (on time) if we're within range, or curWn (late) if overdue.
+                    const clickWn = overdue ? curWnNow : ew;
+                    const toggleStep = () => upd(d => {
+                      ensureQ(d, curQ);
+                      const arr = d.quarters[curQ].weeklyRocks[rock.id] || [];
+                      const idx = arr.findIndex(x => x.id === step.id);
+                      if (idx < 0) return;
+                      const s = arr[idx];
+                      if (!s.weeklyDone) s.weeklyDone = {};
+                      // If already done, uncheck the marking week; else check the appropriate cell.
+                      if (stepDone(s)) {
+                        // Find which cell is marked and toggle it off
+                        const eW = stepEndWk(s);
+                        if (s.weeklyDone[eW]) delete s.weeklyDone[eW];
+                        Object.keys(s.weeklyDone).forEach(w => {
+                          if (parseInt(w) > eW) delete s.weeklyDone[w];
+                        });
+                        delete s.completedLate;
+                      } else {
+                        s.weeklyDone[clickWn] = true;
+                        if (clickWn > stepEndWk(s)) s.completedLate = true;
+                        else delete s.completedLate;
+                      }
+                    });
+                    const boxBg = late ? 'var(--warn-line)' : chk ? 'var(--ok-line)' : 'transparent';
+                    const boxBorder = late || chk
+                      ? boxBg
+                      : (overdue ? 'var(--warn-line)' : 'var(--border-strong)');
+                    const boxStyle = overdue && !chk ? 'dotted' : 'solid';
+                    return (
+                      <div key={rock.id + '-' + step.id}
+                        style={{display:'flex', alignItems:'center', gap:10,
+                                padding:'8px 6px', borderBottom:'1px solid var(--surface-alt)',
+                                opacity: chk ? 0.55 : 1}}>
+                        <button onClick={toggleStep}
+                          title={overdue ? 'Overdue — click to mark done (late)' : chk ? 'Uncheck' : 'Mark done'}
+                          style={{width:18, height:18, borderRadius:3, flexShrink:0, padding:0,
+                                  border: '2px ' + boxStyle + ' ' + boxBorder,
+                                  background: boxBg, cursor:'pointer',
+                                  display:'inline-flex', alignItems:'center', justifyContent:'center'}}>
+                          {chk && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                                 strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          )}
+                        </button>
+                        <div style={{flex:1, minWidth:0}}>
+                          <div style={{fontSize:13, fontWeight:600, color:'var(--text)',
+                                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                            title={step.text}>{step.text}</div>
+                          <div style={{fontSize:11, color:'var(--muted)',
+                                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                            {rock.title}
+                            <span style={{marginLeft:6, color:'var(--muted-soft)'}}>
+                              · W{sw - qWeeks(q)[0] + 1}{sw !== ew ? '–' + (ew - qWeeks(q)[0] + 1) : ''}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
         }
       </div>
 
       {/* Weekly Scorecard */}
       {scorecard.length > 0 && (
         <div className="card-hover" style={S.cardAccent}>
-          <H3>Scorecard</H3>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:8, flexWrap:'wrap'}}>
+            <H3 style={{marginBottom:0}}>Scorecard</H3>
+            <div style={{display:'flex', gap:0, border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
+              {[['week','Week'], ['q','13 weeks']].map(([k, lbl]) => (
+                <button key={k} onClick={() => setScorecardView(k)}
+                  style={{padding:'4px 10px', border:'none', cursor:'pointer',
+                          fontSize:11, fontWeight:700,
+                          background: scorecardView === k ? 'var(--brand)' : 'transparent',
+                          color: scorecardView === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
+              ))}
+            </div>
+          </div>
+          {scorecardView === 'q' ? (
+            <ScorecardSummary scorecard={scorecard} qw={qWeeks(q)} selWn={wn} onSelectWn={null}/>
+          ) : (
           <div style={{overflowX:'auto'}}>
             <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:isMobile ? 0 : 560}}>
               <colgroup>
@@ -4127,7 +4246,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                               }}
                               style={{width:'100%', minWidth:0, height: isMobile ? 22 : 24, borderRadius:0,
                                       border:'none', background:'transparent',
-                                      color:'var(--brand)', fontWeight:700,
+                                      color:'var(--text-2)', fontWeight:700,
                                       fontSize:12, textAlign:'center',
                                       fontFamily:'inherit', padding:0, boxSizing:'border-box',
                                       MozAppearance:'textfield'}}
@@ -4158,6 +4277,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       )}
 
@@ -4211,8 +4331,8 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
   const idsIssues = qData.idsIssues || [];
   const editable = k => !!blockEdit[k];
   const AGENDA = [
-    {k:'todosreview', label:'To-Dos'},
     {k:'scorecard', label:'Scorecard'},
+    {k:'todosreview', label:'To-Dos'},
     {k:'rocks', label:'Rocks'},
     {k:'projects', label:'Projects'},
     {k:'ids', label:'IDS'},
@@ -4420,7 +4540,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
                         }}
                         style={{width:'100%', minWidth:0, height: isMobile ? 28 : 24, borderRadius:0,
                                 border:'none', background:'transparent',
-                                color:'var(--brand)', fontWeight:700,
+                                color:'var(--text-2)', fontWeight:700,
                                 fontSize: isMobile ? 13 : 12, textAlign:'center',
                                 fontFamily:'inherit', padding:0, boxSizing:'border-box',
                                 MozAppearance:'textfield'}}
