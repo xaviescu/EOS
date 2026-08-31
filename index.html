@@ -452,7 +452,13 @@ const sWks = s => {
   return Array.from({length: b-a+1}, (_,i) => a+i);
 };
 const isWkDone = (s, wn) => !!(s.weeklyDone && s.weeklyDone[wn]);
-const stepDone = s => sWks(s).every(wn => isWkDone(s, wn));
+const stepEndWk = s => s.endWeek || s.weekNum || s.startWeek || 1;
+// A step counts as DONE when its end-week ("delivery") cell is marked, or the
+// legacy step.done flag is set. Intermediate cells count as progress only.
+const stepDone = s => isWkDone(s, stepEndWk(s)) || !!s.done;
+// A step is OVERDUE when we've passed its end-week (in the same quarter) and
+// the end-week cell hasn't been ticked yet.
+const isStepOverdue = (s, curWn) => curWn > stepEndWk(s) && !isWkDone(s, stepEndWk(s));
 const getDayOfWeek = ds => {
   const d = new Date(ds + 'T12:00:00Z');
   return ['S','M','T','W','T','F','S'][d.getUTCDay()];
@@ -1508,12 +1514,21 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
     if (!upd || !qKey) return;
     upd(d => {
       ensureQ(d, qKey);
-      const idx = (d.quarters[qKey].weeklyRocks[rid] || []).findIndex(x => x.id === sid);
-      if (idx >= 0) {
-        if (!d.quarters[qKey].weeklyRocks[rid][idx].weeklyDone)
-          d.quarters[qKey].weeklyRocks[rid][idx].weeklyDone = {};
-        d.quarters[qKey].weeklyRocks[rid][idx].weeklyDone[wn] =
-          !isWkDone(d.quarters[qKey].weeklyRocks[rid][idx], wn);
+      const arr = d.quarters[qKey].weeklyRocks[rid] || [];
+      const idx = arr.findIndex(x => x.id === sid);
+      if (idx < 0) return;
+      const step = arr[idx];
+      if (!step.weeklyDone) step.weeklyDone = {};
+      const nowChecked = !isWkDone(step, wn);
+      step.weeklyDone[wn] = nowChecked;
+      if (wn === stepEndWk(step)) {
+        if (nowChecked) {
+          const curWn = getCurWn();
+          if (curWn > stepEndWk(step)) step.completedLate = true;
+          else delete step.completedLate;
+        } else {
+          delete step.completedLate;
+        }
       }
     });
   };
@@ -1576,27 +1591,42 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                   )}
                 </tr>
               );
+              const curWnNow = getCurWn();
               const stepRows = steps.map(step => {
                 const sw = step.startWeek || step.weekNum || fw;
                 const ew = step.endWeek || step.weekNum || fw;
+                const overdue = isStepOverdue(step, curWnNow);
+                const doneLate = stepDone(step) && !!step.completedLate;
                 return (
                   <tr key={'s' + step.id} style={{borderTop:'1px solid var(--border)'}}>
                     <td style={{padding: '6px ' + labelPadX + 'px 6px ' + stepIndent + 'px', fontSize: isMobile ? 10 : 12, color:'var(--text-2)',
-                                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                        title={step.text}>{step.text}</td>
+                                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                                borderLeft: (overdue || doneLate) ? '3px solid var(--warn-line)' : '3px solid transparent'}}
+                        title={overdue ? 'Overdue' : doneLate ? 'Done late' : step.text}>
+                      {step.text}
+                      {overdue && <span style={{marginLeft:6, fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:8, background:'var(--warn-bg)', color:'var(--warn-fg)', border:'1px solid var(--warn-line)', textTransform:'uppercase', letterSpacing:0.3}}>Overdue</span>}
+                      {doneLate && <span style={{marginLeft:6, fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:8, background:'var(--warn-bg)', color:'var(--warn-fg)', border:'1px solid var(--warn-line)', textTransform:'uppercase', letterSpacing:0.3}}>Late</span>}
+                    </td>
                     {qw.map(wn => {
                       const inR = wn >= sw && wn <= ew;
                       const chk = isWkDone(step, wn) || step.done;
                       const isCur = highlightWn && wn === highlightWn;
+                      const isEndCell = wn === ew;
+                      const endOverdue = isEndCell && overdue;
+                      const endLate = isEndCell && chk && doneLate;
+                      const barBg = endLate ? 'var(--warn-line)' : (chk ? 'var(--ok-line)' : 'var(--brand)');
                       return (
                         <td key={wn} style={{padding:'5px 1px',
                                              background: isCur ? 'rgba(94,106,210,0.08)' : 'transparent'}}>
                           {inR && (
                             <div onClick={() => toggle(rock.id, step.id, wn)}
-                              style={{height:11, background: chk ? 'var(--ok-line)' : 'var(--brand)',
+                              title={endOverdue ? 'Overdue — click to mark done (late)' : undefined}
+                              style={{height:11, background: barBg,
                                       borderRadius:2, margin:'0 1px',
-                                      opacity: chk ? 1 : 0.5,
+                                      opacity: chk ? 1 : (endOverdue ? 0.75 : 0.5),
                                       cursor: upd ? 'pointer' : 'default',
+                                      border: endOverdue ? '1px dashed var(--warn-line)' : 'none',
+                                      boxSizing:'border-box',
                                       transition:'background .15s'}}/>
                           )}
                         </td>
@@ -2619,11 +2649,22 @@ function RocksTab({data, upd}) {
 
   const toggleWk = (rid, sid, wn) => upd(d => {
     ensureQ(d, selQ);
-    const idx = (d.quarters[selQ].weeklyRocks[rid] || []).findIndex(x => x.id === sid);
-    if (idx >= 0) {
-      if (!d.quarters[selQ].weeklyRocks[rid][idx].weeklyDone)
-        d.quarters[selQ].weeklyRocks[rid][idx].weeklyDone = {};
-      d.quarters[selQ].weeklyRocks[rid][idx].weeklyDone[wn] = !isWkDone(d.quarters[selQ].weeklyRocks[rid][idx], wn);
+    const arr = d.quarters[selQ].weeklyRocks[rid] || [];
+    const idx = arr.findIndex(x => x.id === sid);
+    if (idx < 0) return;
+    const step = arr[idx];
+    if (!step.weeklyDone) step.weeklyDone = {};
+    const nowChecked = !isWkDone(step, wn);
+    step.weeklyDone[wn] = nowChecked;
+    // Track "late completion" only when toggling the end-week cell.
+    if (wn === stepEndWk(step)) {
+      if (nowChecked) {
+        const curWn = getCurWn();
+        if (curWn > stepEndWk(step)) step.completedLate = true;
+        else delete step.completedLate;
+      } else {
+        delete step.completedLate;
+      }
     }
   });
   const updRange = (rid, sid, sw, ew) => upd(d => {
@@ -2779,11 +2820,16 @@ function RocksTab({data, upd}) {
                     const sw2 = step.startWeek || step.weekNum || qw[0];
                     const ew2 = step.endWeek || step.weekNum || qw[0];
                     const d2 = stepDone(step);
+                    const overdue = isStepOverdue(step, curWn);
+                    const doneLate = d2 && !!step.completedLate;
                     const isEd = editStep === rock.id + '-' + step.id;
                     return (
                       <div key={step.id} style={{marginBottom:3, padding:'5px 12px',
                                                  background: 'var(--surface-alt)',
-                                                 borderRadius:'var(--r-sm)'}}>
+                                                 borderRadius:'var(--r-sm)',
+                                                 borderLeft: overdue
+                                                   ? '3px solid var(--warn-line)'
+                                                   : (doneLate ? '3px solid var(--warn-line)' : '3px solid transparent')}}>
                         <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                           {editMode ? (
                             <input value={step.text}
@@ -2801,21 +2847,53 @@ function RocksTab({data, upd}) {
                                          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                                  title={step.text}>{step.text}</div>
                           )}
+                          {overdue && (
+                            <span style={{fontSize:9, fontWeight:700, padding:'2px 6px',
+                                          borderRadius:10, background:'var(--warn-bg)',
+                                          color:'var(--warn-fg)', border:'1px solid var(--warn-line)',
+                                          whiteSpace:'nowrap', flexShrink:0,
+                                          textTransform:'uppercase', letterSpacing:0.4}}>Overdue</span>
+                          )}
+                          {doneLate && (
+                            <span style={{fontSize:9, fontWeight:700, padding:'2px 6px',
+                                          borderRadius:10, background:'var(--warn-bg)',
+                                          color:'var(--warn-fg)', border:'1px solid var(--warn-line)',
+                                          whiteSpace:'nowrap', flexShrink:0,
+                                          textTransform:'uppercase', letterSpacing:0.4}}>Done late</span>
+                          )}
                           <div style={{display:'flex', gap:3, flexWrap:'nowrap'}}>
                             {qw.map(wn => {
                               const inR = wn >= sw2 && wn <= ew2;
                               const chk = isWkDone(step, wn);
                               const isCur = wn === curWn;
+                              const isEndCell = wn === ew2;
+                              const endOverdue = isEndCell && overdue;
+                              const endLate = isEndCell && chk && doneLate;
+                              // Overdue: dashed orange border on endWeek cell.
+                              // Done late: orange fill on endWeek cell.
+                              const brdColor = endOverdue
+                                ? 'var(--warn-line)'
+                                : endLate
+                                  ? 'var(--warn-line)'
+                                  : (isCur ? 'var(--brand)' : !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)');
+                              const bgColor = endLate
+                                ? 'var(--warn-bg)'
+                                : (!inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(94,106,210,0.12)');
+                              const fgColor = endLate
+                                ? 'var(--warn-fg)'
+                                : (!inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)');
                               return (
                                 <div key={wn} onClick={() => inR && toggleWk(rock.id, step.id, wn)}
+                                  title={endOverdue ? 'Overdue — click to mark done (late)' : endLate ? 'Done late' : undefined}
                                   style={{width:22, height:22, borderRadius:'var(--r-xs)',
-                                          border: isCur ? '2px solid var(--brand)' : '1px solid',
+                                          border: (isCur || endOverdue || endLate) ? '2px solid' : '1px solid',
+                                          borderStyle: endOverdue ? 'dashed' : 'solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: inR ? 'pointer' : 'default',
-                                          borderColor: isCur ? 'var(--brand)' : !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)',
-                                          background: !inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(94,106,210,0.12)',
-                                          color: !inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)',
-                                          boxShadow: isCur ? '0 0 0 2px var(--brand-ring)' : 'none'}}>
+                                          borderColor: brdColor,
+                                          background: bgColor,
+                                          color: fgColor,
+                                          boxShadow: isCur && !endOverdue && !endLate ? '0 0 0 2px var(--brand-ring)' : 'none'}}>
                                   {wn - qw[0] + 1}
                                 </div>
                               );
@@ -5136,23 +5214,36 @@ function PrintView({data, onBack}) {
                         </tr>
                       );
                       // Step rows
+                      const curWnPrint = getCurWn();
                       steps.forEach(s => {
                         const sw = s.startWeek || qw[0];
                         const ew = s.endWeek || sw;
                         const dn = stepDone(s);
+                        const overduePrint = isStepOverdue(s, curWnPrint);
+                        const doneLatePrint = dn && !!s.completedLate;
                         rows.push(
                           <tr key={'s' + s.id} style={{borderTop:'1px solid var(--border)'}}>
-                            <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'var(--text-2)'}}>{s.text}</td>
+                            <td style={{...SH.td, paddingLeft:22, fontSize:11, color:'var(--text-2)',
+                                        borderLeft:(overduePrint || doneLatePrint) ? '3px solid var(--warn-line)' : '3px solid transparent'}}>
+                              {s.text}
+                              {overduePrint && <span style={{marginLeft:5, fontSize:8, fontWeight:700, padding:'1px 4px', borderRadius:6, background:'var(--warn-bg)', color:'var(--warn-fg)', textTransform:'uppercase', letterSpacing:0.3}}>Overdue</span>}
+                              {doneLatePrint && <span style={{marginLeft:5, fontSize:8, fontWeight:700, padding:'1px 4px', borderRadius:6, background:'var(--warn-bg)', color:'var(--warn-fg)', textTransform:'uppercase', letterSpacing:0.3}}>Late</span>}
+                            </td>
                             <td style={{...SH.td, textAlign:'center', fontSize:10, color:'var(--muted)'}}>W{sw - qw[0] + 1}{sw !== ew ? '-' + (ew - qw[0] + 1) : ''}</td>
                             {qw.map(wn => {
                               const inRange = wn >= sw && wn <= ew;
                               const done = isWkDone(s, wn) || s.done;
+                              const isEndCell = wn === ew;
+                              const endLate = isEndCell && done && doneLatePrint;
+                              const endOverdue = isEndCell && overduePrint;
                               return (
                                 <td key={wn} style={{padding:'3px 1px'}}>
                                   {inRange && (
                                     <div style={{height:10, borderRadius:2,
-                                                 background: done ? 'var(--ok-line)' : 'var(--brand)',
-                                                 opacity: done ? 1 : 0.55}}/>
+                                                 background: endLate ? 'var(--warn-line)' : (done ? 'var(--ok-line)' : 'var(--brand)'),
+                                                 opacity: done ? 1 : (endOverdue ? 0.8 : 0.55),
+                                                 border: endOverdue ? '1px dashed var(--warn-line)' : 'none',
+                                                 boxSizing:'border-box'}}/>
                                   )}
                                 </td>
                               );
