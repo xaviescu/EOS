@@ -3368,6 +3368,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
                 <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                   style={{padding:'8px 0', textAlign:'center',
                           color: wn === selWn ? 'var(--brand)' : 'var(--text-2)',
+                          background: wn === selWn ? 'rgba(94,106,210,0.15)' : 'transparent',
                           fontSize: isMobile ? 10 : 11, cursor: onSelectWn ? 'pointer' : 'default',
                           fontWeight: wn === selWn ? 800 : 600}}>{i + 1}</th>
               ))}
@@ -3404,8 +3405,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                       style={{padding:'2px 0', textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
-                              background: isSel ? 'rgba(94,106,210,0.1)' : undefined,
-                              outline: isSel ? '2px solid rgba(94,106,210,0.5)' : 'none', outlineOffset:-1}}>
+                              background: isSel ? 'rgba(94,106,210,0.08)' : undefined}}>
                       <div style={{height: isMobile ? 22 : 26, borderRadius:'var(--r-xs)',
                                    display:'flex', alignItems:'center', justifyContent:'center',
                                    fontSize: isMobile ? 11 : 13, color:col, fontWeight:700}}>
@@ -4077,7 +4077,9 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                 <GanttChart rocks={rocks} wr={wr} qw={qWeeks(q)} upd={upd} qKey={curQ} highlightWn={wn}/>
               </div>
             ) : (() => {
-              // Week list: steps active THIS week (sw <= wn <= ew) OR overdue steps.
+              // Week list: steps active THIS week (sw <= wn <= ew), overdue steps,
+              // OR steps that were MARKED (any cell) during this week — so once you
+              // check something in the current week it stays visible until next week.
               const curWnNow = wn;
               const items = [];
               rocks.forEach(rock => {
@@ -4086,7 +4088,8 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   const ew = step.endWeek || step.weekNum || sw;
                   const inWeek = curWnNow >= sw && curWnNow <= ew;
                   const overdue = isStepOverdue(step, curWnNow);
-                  if (inWeek || overdue) items.push({rock, step, sw, ew, overdue});
+                  const markedThisWeek = !!(step.weeklyDone && step.weeklyDone[curWnNow]);
+                  if (inWeek || overdue || markedThisWeek) items.push({rock, step, sw, ew, overdue});
                 });
               });
               if (!items.length) {
@@ -4181,7 +4184,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             </div>
           </div>
           {scorecardView === 'q' ? (
-            <ScorecardSummary scorecard={scorecard} qw={qWeeks(q)} selWn={wn} onSelectWn={null}/>
+            <ScorecardSummary scorecard={scorecard} qw={qWeeks(q)} selWn={wn} onSelectWn={null} bare={true}/>
           ) : (
           <div style={{overflowX:'auto'}}>
             <table className="zebra" style={{tableLayout:'fixed', borderCollapse:'collapse', width:'100%', minWidth:isMobile ? 0 : 560}}>
