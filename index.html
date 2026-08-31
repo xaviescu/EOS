@@ -2722,10 +2722,10 @@ function VisionConsolidated({data, upd}) {
             {editMode ? (
               <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
                 style={{flex:'0 0 auto', minWidth:80, width:'auto', border:'none', outline:'none',
-                        fontSize:13, fontWeight:600, color:'var(--text)', lineHeight:1.2,
+                        fontSize:13, fontWeight:600, color:'var(--brand)', lineHeight:1.2,
                         background:'transparent', fontFamily:'inherit', padding:0}}/>
             ) : (
-              <div style={{flex:'0 0 auto', fontSize:13, fontWeight:600, color:'var(--text)', lineHeight:1.2}}>{la.label}</div>
+              <div style={{flex:'0 0 auto', fontSize:13, fontWeight:600, color:'var(--brand)', lineHeight:1.2}}>{la.label}</div>
             )}
             {editMode ? (
               <textarea value={a.phrase || ''}
