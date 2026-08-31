@@ -4513,14 +4513,15 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               if (a < 0 || b < 0) return;
               const tmp = d.todos[a]; d.todos[a] = d.todos[b]; d.todos[b] = tmp;
             });
+            const carriedOver = !donOnDay && !snoozedToday && t.startDate && t.startDate < selDay;
             return (
               <div key={t.id} style={{padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
                                       opacity: dimmed ? 0.5 : 1}}>
                 <div style={{display:'flex', alignItems:'center', gap:9}}>
                   <button onClick={cycleState}
-                    title={donOnDay ? 'Done — click for "tomorrow"' : snoozedToday ? 'Tomorrow — click to clear' : 'Pending — click to mark done'}
+                    title={donOnDay ? 'Done — click for "tomorrow"' : snoozedToday ? 'Tomorrow — click to clear' : carriedOver ? 'Carried over from a previous day' : 'Pending — click to mark done'}
                     style={{width:16, height:16, borderRadius:3, flexShrink:0, padding:0,
-                            border:'1.5px solid ' + (donOnDay || snoozedToday ? 'var(--muted)' : 'var(--border-strong)'),
+                            border:'1.5px solid ' + (donOnDay || snoozedToday || carriedOver ? 'var(--muted)' : 'var(--border-strong)'),
                             background: 'white',
                             cursor:'pointer', display:'inline-flex',
                             alignItems:'center', justifyContent:'center'}}>
@@ -4534,6 +4535,12 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)"
                            strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 6 15 12 9 18"/>
+                      </svg>
+                    )}
+                    {carriedOver && !donOnDay && !snoozedToday && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)"
+                           strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 6 9 12 15 18"/>
                       </svg>
                     )}
                   </button>
