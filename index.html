@@ -2636,16 +2636,19 @@ function VisionConsolidated({data, upd}) {
       );
     });
   };
-  const renderSectionHead = (title, onAdd) => (
-    <div key={'sh-' + title} style={{display:'flex', alignItems:'center', justifyContent:'space-between',
-                 marginTop:6, marginBottom:6, paddingBottom:3,
-                 borderBottom:'1px solid var(--surface-alt)'}}>
-      <label style={{...S.lbl, marginBottom:0, fontSize:11}}>{title}</label>
-      {editMode && onAdd && (
-        <Btn v="sec" onClick={onAdd} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
-      )}
-    </div>
-  );
+  const renderSectionHead = (title, onAdd, opts) => {
+    const noBorder = opts && opts.noBorder;
+    return (
+      <div key={'sh-' + title} style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                   marginTop:6, marginBottom:6, paddingBottom: noBorder ? 0 : 3,
+                   borderBottom: noBorder ? 'none' : '1px solid var(--surface-alt)'}}>
+        <label style={{...S.lbl, marginBottom:0, fontSize:11}}>{title}</label>
+        {editMode && onAdd && (
+          <Btn v="sec" onClick={onAdd} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
+        )}
+      </div>
+    );
+  };
   const renderAreaHead = (la, i, showPhrase) => {
     const a = areas[la.k] || emptyArea();
     return (
@@ -2718,15 +2721,15 @@ function VisionConsolidated({data, upd}) {
                        gap: isMobile ? 0 : 20,
                        marginTop:8}}>
             <div>
-              {renderSectionHead('Long-Term', () => addGoal(la.k, 'ltGoals'))}
+              {renderSectionHead('Long-Term', () => addGoal(la.k, 'ltGoals'), {noBorder:true})}
               {renderGoalsList(la.k, 'ltGoals')}
             </div>
             <div>
-              {renderSectionHead('3-Year', () => addGoal(la.k, 'threeYearGoals'))}
+              {renderSectionHead('3-Year', () => addGoal(la.k, 'threeYearGoals'), {noBorder:true})}
               {renderGoalsList(la.k, 'threeYearGoals')}
             </div>
             <div>
-              {renderSectionHead('1-Year', () => addGoal(la.k, 'oneYearGoals'))}
+              {renderSectionHead('1-Year', () => addGoal(la.k, 'oneYearGoals'), {noBorder:true})}
               {renderGoalsList(la.k, 'oneYearGoals')}
             </div>
           </div>
@@ -2747,7 +2750,8 @@ function VisionConsolidated({data, upd}) {
             {areasList.map((la, i) => (
               <div key={la.k}>
                 {renderSectionHead(la.label,
-                  p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind))}
+                  p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind),
+                  {noBorder:true})}
                 {p.kind === 'values' && renderPhrase(la.k)}
                 {p.kind === 'values'
                   ? renderValuesList(la.k)
@@ -5835,6 +5839,8 @@ function PrintView({data, onBack}) {
           <div style={{fontSize:11, fontWeight:700, color:'var(--muted-soft)', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, textAlign:'center'}}>Contenido</div>
           {(() => {
             let secs = [['sec-vision', 'Vision ' + YEAR]];
+            const yrFlat = getYearRocksFlat(data);
+            if (yrFlat.length > 0) secs.push(['sec-year-rocks', 'Rocks ' + YEAR]);
             if (sortedMonths.length > 0) secs.push(['sec-notes', 'Notas mensuales']);
             sortedQs.forEach(qk => secs.push(['sec-' + qk, qk.split('-')[1] + ' ' + YEAR]));
             if (ps.length > 0) secs.push(['sec-processes', 'Processes']);
@@ -5893,6 +5899,59 @@ function PrintView({data, onBack}) {
           );
         })}
       </section>
+
+      {(() => {
+        const yrFlat = getYearRocksFlat(data);
+        if (yrFlat.length === 0) return null;
+        // Group flat list by area, preserving order
+        const groups = [];
+        const seen = {};
+        yrFlat.forEach(x => {
+          if (!seen[x.areaKey]) {
+            seen[x.areaKey] = groups.length;
+            groups.push({areaLabel: x.areaLabel, areaKey: x.areaKey, items: []});
+          }
+          groups[seen[x.areaKey]].items.push(x);
+        });
+        return (
+          <section id="sec-year-rocks" className="print-page-break">
+            <SectionHead title={'Rocks ' + YEAR}/>
+            {groups.map(g => (
+              <div key={g.areaKey} className="print-section" style={{marginBottom:14}}>
+                <div style={{fontSize:12, fontWeight:800, color:'var(--brand)',
+                             textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>
+                  {g.areaLabel}
+                </div>
+                {g.items.map(x => {
+                  const r = x.rock;
+                  const qs = QS_ORDER.filter(q => r.quarters && r.quarters[q]);
+                  return (
+                    <div key={r.id} style={{display:'flex', alignItems:'baseline', gap:8, padding:'3px 0', borderBottom:'1px dotted var(--surface-alt)'}}>
+                      <span style={{fontSize:11, fontWeight:800,
+                                    color: r.completed ? 'white' : 'var(--brand)',
+                                    background: r.completed ? 'var(--ok-line)' : 'var(--brand-soft)',
+                                    padding:'1px 5px', borderRadius:'var(--r-xs)', flexShrink:0}}>R{x.num}</span>
+                      <div style={{flex:1, fontSize:12, color:'var(--text)'}}>{r.title || '(untitled)'}</div>
+                      <div style={{display:'flex', gap:3, flexShrink:0}}>
+                        {QS_ORDER.map(q => {
+                          const active = qs.includes(q);
+                          return (
+                            <span key={q} style={{padding:'1px 6px', borderRadius:'var(--r-xs)',
+                                                  fontSize:10, fontWeight:700,
+                                                  border:'1px solid ' + (active ? 'var(--brand)' : 'var(--border)'),
+                                                  background: active ? 'var(--brand)' : 'transparent',
+                                                  color: active ? 'white' : 'var(--muted-soft)'}}>{q}</span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </section>
+        );
+      })()}
 
       {sortedMonths.length > 0 && (
         <section id="sec-notes" className="print-page-break">
