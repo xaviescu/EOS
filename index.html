@@ -1611,7 +1611,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                       const isCur = highlightWn && wn === highlightWn;
                       const isLateMarker = chk && wn > ew;                                // clicked late historically
                       const isOverdueSlot = overdue && wn === curWnNow && wn > ew;        // active overdue slot NOW
-                      const clickable = inR || isOverdueSlot;
+                      const clickable = inR || isOverdueSlot || isLateMarker;
                       const barBg = (isLateMarker || isOverdueSlot) ? 'var(--warn-line)' : (chk ? 'var(--ok-line)' : 'var(--brand)');
                       return (
                         <td key={wn} style={{padding:'5px 1px',
@@ -2844,7 +2844,7 @@ function RocksTab({data, upd}) {
                               const isCur = wn === curWn;
                               const isLateMarker = chk && wn > ew2;   // marked past deadline
                               const isOverdueSlot = overdue && isCur && wn > ew2;  // active slot NOW
-                              const clickable = inR || isOverdueSlot;
+                              const clickable = inR || isOverdueSlot || isLateMarker;
                               const brdColor = isLateMarker || isOverdueSlot
                                 ? 'var(--warn-line)'
                                 : (isCur ? 'var(--brand)' : !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)');
@@ -3914,6 +3914,21 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         )}
       </div>
 
+      {/* Rocks — foto de las 13 semanas del trimestre */}
+      <div className="card-hover" style={{...S.cardAccent, padding:0, overflow:'hidden'}}>
+        <div style={{padding:'14px 18px 4px'}}>
+          <H3 style={{marginBottom:0}}>Rocks</H3>
+        </div>
+        {rocks.length === 0
+          ? <div style={{padding:'0 18px 14px'}}>
+              <EmptyState icon="target" message="No Rocks this quarter." compact/>
+            </div>
+          : <div style={{padding:'6px 12px 14px'}}>
+              <GanttChart rocks={rocks} wr={wr} qw={qWeeks(q)} upd={upd} qKey={curQ} highlightWn={wn}/>
+            </div>
+        }
+      </div>
+
       {/* Weekly Scorecard */}
       {scorecard.length > 0 && (
         <div className="card-hover" style={S.cardAccent}>
@@ -3979,21 +3994,6 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           </div>
         </div>
       )}
-
-      {/* Rocks — foto de las 13 semanas del trimestre */}
-      <div className="card-hover" style={{...S.cardAccent, padding:0, overflow:'hidden'}}>
-        <div style={{padding:'14px 18px 4px'}}>
-          <H3 style={{marginBottom:0}}>Rocks</H3>
-        </div>
-        {rocks.length === 0
-          ? <div style={{padding:'0 18px 14px'}}>
-              <EmptyState icon="target" message="No Rocks this quarter." compact/>
-            </div>
-          : <div style={{padding:'6px 12px 14px'}}>
-              <GanttChart rocks={rocks} wr={wr} qw={qWeeks(q)} upd={upd} qKey={curQ} highlightWn={wn}/>
-            </div>
-        }
-      </div>
 
       {meetingForm && <EventModal form={meetingForm} setForm={setMeetingForm}
         onSave={saveMeeting} onClose={() => setMeetingForm(null)}
@@ -4490,7 +4490,15 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
 
 function L10Issues({data, upd, qKey, idsIssues, weekNum, editMode}) {
   const showEdit = !!editMode;
-  const active = (idsIssues || []).filter(i => i.weekAdded <= weekNum);
+  // Show issues created this week + carryover from previous weeks that are
+  // still open (or that were solved during THIS week — so they remain visible
+  // here). Issues solved in a previous week disappear from later views.
+  const active = (idsIssues || []).filter(i => {
+    if (i.weekAdded > weekNum) return false;
+    if (i.weekAdded === weekNum) return true;
+    if (!i.solved) return true;
+    return (i.solvedWeek || 0) >= weekNum;
+  });
   const setField = (id, field, val) => upd(d => {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.id === id);
