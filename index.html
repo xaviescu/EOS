@@ -2652,17 +2652,17 @@ function VisionConsolidated({data, upd}) {
   const renderAreaHead = (la, i, showPhrase) => {
     const a = areas[la.k] || emptyArea();
     return (
-      <div key={'ah-' + la.k} style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
+      <div key={'ah-' + la.k} style={{display:'flex', alignItems:'baseline', gap:8, flexWrap:'wrap',
                    marginBottom:4}}>
         {editMode ? (
           <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
             style={{flex:'0 0 auto', minWidth:80, width:'auto', border:'none', outline:'none',
                     fontSize:14, fontWeight:800, color:'var(--brand)',
-                    textTransform:'uppercase', letterSpacing:0.5,
+                    textTransform:'uppercase', letterSpacing:0.5, lineHeight:1.2,
                     background:'transparent', fontFamily:'inherit', padding:0}}/>
         ) : (
           <div style={{flex:'0 0 auto', fontSize:14, fontWeight:800, color:'var(--brand)',
-                       textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
+                       textTransform:'uppercase', letterSpacing:0.5, lineHeight:1.2}}>{la.label}</div>
         )}
         {showPhrase && editMode && (
           <textarea value={a.phrase || ''}
@@ -2672,10 +2672,10 @@ function VisionConsolidated({data, upd}) {
             ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
             style={{flex:1, minWidth:120, border:'none', outline:'none', fontSize:12, fontStyle:'italic',
                     padding:0, background:'transparent', resize:'none', overflow:'hidden',
-                    color:'var(--muted)', fontFamily:'inherit', lineHeight:1.4}}/>
+                    color:'var(--muted)', fontFamily:'inherit', lineHeight:1.2}}/>
         )}
         {showPhrase && !editMode && a.phrase && (
-          <div style={{flex:1, minWidth:0, fontSize:12, fontStyle:'italic', color:'var(--muted)', lineHeight:1.4}}>{a.phrase}</div>
+          <div style={{flex:1, minWidth:0, fontSize:12, fontStyle:'italic', color:'var(--muted)', lineHeight:1.2}}>{a.phrase}</div>
         )}
         {editMode && (
           <div style={{marginLeft:'auto', display:'flex', gap:6, alignItems:'center'}}>
@@ -3483,12 +3483,12 @@ function YearRocks({data, upd}) {
         return (
           <div key={la.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:14}}>
             <div style={{padding:'12px 16px', background:'var(--surface-alt)',
-                         display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+                         display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap'}}>
               <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
-                           textTransform:'uppercase', letterSpacing:0.5, flexShrink:0}}>{la.label}</div>
+                           textTransform:'uppercase', letterSpacing:0.5, flexShrink:0, lineHeight:1.2}}>{la.label}</div>
               {areaData.phrase && (
                 <div style={{flex:1, minWidth:0, fontSize:12, fontStyle:'italic',
-                             color:'var(--muted)', lineHeight:1.4}}>{areaData.phrase}</div>
+                             color:'var(--muted)', lineHeight:1.2}}>{areaData.phrase}</div>
               )}
               {editMode && (
                 <Btn v="sec" onClick={() => addRock(la.k)} style={{fontSize:11, padding:'3px 10px', marginLeft:'auto'}}>+ Rock</Btn>
@@ -3501,10 +3501,10 @@ function YearRocks({data, upd}) {
             {rocks.map((r, i) => {
               const n = numOf(r.id);
               const qMap = r.quarters || {};
+              const isLast = i === rocks.length - 1;
               return (
-              <div key={r.id} style={{marginBottom:4, padding:'8px 12px',
-                                       background:'var(--surface-alt)',
-                                       borderRadius:'var(--r-sm)',
+              <div key={r.id} style={{padding:'8px 0',
+                                       borderBottom: isLast ? 'none' : '1px dotted var(--surface-alt)',
                                        display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
                   <button
                     onClick={editMode ? () => toggleCompleted(la.k, r.id) : undefined}
