@@ -452,6 +452,18 @@ const sWks = s => {
   return Array.from({length: b-a+1}, (_,i) => a+i);
 };
 const isWkDone = (s, wn) => !!(s.weeklyDone && s.weeklyDone[wn]);
+// Metric types: 'tick' (ok/nok/null per day) or 'score' (0-100 per day).
+const metricIsScore = m => m && m.type === 'score';
+// Weekly count of 'ok' ticks for tick metrics.
+const weekTickCnt = (m, wn) => DAYS.reduce((acc, _, di) =>
+  (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
+// Weekly average of numeric scores (0-100). Returns null if no entries.
+const weekScoreAvg = (m, wn) => {
+  const vals = DAYS.map((_, di) => m.dayData && m.dayData[dayStr(wn, di)])
+    .filter(v => typeof v === 'number' && !isNaN(v));
+  if (!vals.length) return null;
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+};
 const stepEndWk = s => s.endWeek || s.weekNum || s.startWeek || 1;
 // A step is DONE if its end-week cell is marked OR any week AFTER end-week is
 // marked (that's the "late marker" click), or the legacy step.done flag is set.
@@ -1039,9 +1051,16 @@ function StatusPill({status, onChange}) {
 }
 
 function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
-  // Stay highlighted while an issue exists for this source, solved or not —
-  // preserves the "we opened an issue here" trace even after it's closed.
-  const active = (idsIssues || []).some(i => i.sourceId === sourceId);
+  // Highlight only if there's an issue for this source that is VISIBLE in this
+  // week's IDS view (created this week, or carried over unsolved from before,
+  // or solved during this week). An issue solved in a previous week is gone.
+  const active = (idsIssues || []).some(i => {
+    if (i.sourceId !== sourceId) return false;
+    if (i.weekAdded > weekNum) return false;
+    if (i.weekAdded === weekNum) return true;
+    if (!i.solved) return true;
+    return (i.solvedWeek || 0) >= weekNum;
+  });
   const toggle = () => upd(d => {
     ensureQ(d, qKey);
     const idx = d.quarters[qKey].idsIssues.findIndex(i => i.sourceId === sourceId && !i.solved);
@@ -1612,7 +1631,13 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                       const isLateMarker = chk && wn > ew;                                // clicked late historically
                       const isOverdueSlot = overdue && wn === curWnNow && wn > ew;        // active overdue slot NOW
                       const clickable = inR || isOverdueSlot || isLateMarker;
-                      const barBg = (isLateMarker || isOverdueSlot) ? 'var(--warn-line)' : (chk ? 'var(--ok-line)' : 'var(--brand)');
+                      // Overdue not done = transparent bar with dotted orange border.
+                      // Done late = solid orange fill.
+                      const barBg = isLateMarker
+                        ? 'var(--warn-line)'
+                        : isOverdueSlot
+                          ? 'transparent'
+                          : (chk ? 'var(--ok-line)' : 'var(--brand)');
                       return (
                         <td key={wn} style={{padding:'5px 1px',
                                              background: isCur ? 'rgba(94,106,210,0.08)' : 'transparent'}}>
@@ -1621,9 +1646,9 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                               title={isOverdueSlot ? 'Overdue — click to mark done (late)' : isLateMarker ? 'Marked done late' : undefined}
                               style={{height:11, background: barBg,
                                       borderRadius:2, margin:'0 1px',
-                                      opacity: (chk || isLateMarker) ? 1 : (isOverdueSlot ? 0.75 : 0.5),
+                                      opacity: (chk || isLateMarker || isOverdueSlot) ? 1 : 0.5,
                                       cursor: clickable ? 'pointer' : 'default',
-                                      border: isOverdueSlot ? '1px dashed var(--warn-line)' : 'none',
+                                      border: isOverdueSlot ? '1.5px dotted var(--warn-line)' : 'none',
                                       boxSizing:'border-box',
                                       transition:'background .15s'}}/>
                           )}
@@ -2848,20 +2873,24 @@ function RocksTab({data, upd}) {
                               const brdColor = isLateMarker || isOverdueSlot
                                 ? 'var(--warn-line)'
                                 : (isCur ? 'var(--brand)' : !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)');
+                              // Overdue not done = empty (transparent) with dotted orange border.
+                              // Done late = solid orange fill.
                               const bgColor = isLateMarker
-                                ? 'var(--warn-bg)'
+                                ? 'var(--warn-line)'
                                 : isOverdueSlot
-                                  ? 'var(--warn-bg)'
+                                  ? 'transparent'
                                   : (!inR ? 'var(--surface-alt)' : chk ? 'var(--ok-bg)' : 'rgba(94,106,210,0.12)');
-                              const fgColor = isLateMarker || isOverdueSlot
-                                ? 'var(--warn-fg)'
-                                : (!inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)');
+                              const fgColor = isLateMarker
+                                ? 'white'
+                                : isOverdueSlot
+                                  ? 'var(--warn-fg)'
+                                  : (!inR ? 'var(--border-strong)' : chk ? 'var(--ok-fg)' : 'var(--brand)');
                               return (
                                 <div key={wn} onClick={() => clickable && toggleWk(rock.id, step.id, wn)}
                                   title={isOverdueSlot ? 'Overdue — click to mark done (late)' : isLateMarker ? 'Marked done late' : undefined}
                                   style={{width:22, height:22, borderRadius:'var(--r-xs)',
                                           border: (isCur || isLateMarker || isOverdueSlot) ? '2px solid' : '1px solid',
-                                          borderStyle: isOverdueSlot ? 'dashed' : 'solid',
+                                          borderStyle: isOverdueSlot ? 'dotted' : 'solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: clickable ? 'pointer' : 'default',
                                           borderColor: brdColor,
@@ -3065,7 +3094,7 @@ function ScorecardTab({data, upd}) {
   const [selQ, setSelQ] = useState(getCurQ());
   const [selWn, setSelWn] = useState(curWn);
   const [showF, setShowF] = useState(false);
-  const [form, setForm] = useState({metric:'', goal:''});
+  const [form, setForm] = useState({metric:'', goal:'', type:'tick'});
   const [showCopyQ, setShowCopyQ] = useState(false);
   const [view, setView] = useState('daily'); // 'daily' | 'summary'
   const [editMode, setEditMode] = useState(false);
@@ -3093,8 +3122,13 @@ function ScorecardTab({data, upd}) {
   });
   const addM = () => {
     if (!form.metric) return;
-    upd(d => { ensureQ(d, selQ); d.quarters[selQ].scorecard.push({id: uid(), ...form, dayData:{}}); });
-    setForm({metric:'', goal:''}); setShowF(false);
+    upd(d => {
+      ensureQ(d, selQ);
+      const m = {id: uid(), metric: form.metric, type: form.type || 'tick', dayData:{}};
+      if (m.type === 'tick') m.goal = form.goal;
+      d.quarters[selQ].scorecard.push(m);
+    });
+    setForm({metric:'', goal:'', type:'tick'}); setShowF(false);
   };
   const copyToQ = tqk => {
     upd(d => {
@@ -3143,7 +3177,22 @@ function ScorecardTab({data, upd}) {
         <InlineForm marginTop={0}>
           <H3>New metric — {selQ.split('-')[1]}</H3>
           <Fld label="Metric" value={form.metric} onChange={v => setForm(f => ({...f, metric:v}))} placeholder="e.g. Sales calls"/>
-          <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
+          <div style={{marginBottom:11}}>
+            <label style={S.lbl}>Type</label>
+            <div style={{display:'flex', gap:6}}>
+              {[['tick','Tick (ok / nok)'], ['score','Score 0–100']].map(([k, lbl]) => (
+                <button key={k} onClick={() => setForm(f => ({...f, type:k}))}
+                  style={{flex:'1 1 0', padding:'8px 10px', fontSize:12, fontWeight:700,
+                          borderRadius:'var(--r-sm)', cursor:'pointer',
+                          border:'1px solid ' + (form.type === k ? 'var(--brand)' : 'var(--border)'),
+                          background: form.type === k ? 'var(--brand)' : 'white',
+                          color: form.type === k ? 'white' : 'var(--text-2)'}}>{lbl}</button>
+              ))}
+            </div>
+          </div>
+          {form.type === 'tick' && (
+            <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
+          )}
           <div style={{display:'flex', gap:8}}>
             <Btn onClick={addM}>Save</Btn>
             <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
@@ -3185,7 +3234,14 @@ function ScorecardTab({data, upd}) {
                   </tr>
                 </thead>
                 <tbody>
-                  {scorecard.map((m, mi) => (
+                  {scorecard.map((m, mi) => {
+                    const isScore = metricIsScore(m);
+                    const setScore = (date, val) => upd(d => {
+                      ensureQ(d, selQ);
+                      if (!d.quarters[selQ].scorecard[mi].dayData) d.quarters[selQ].scorecard[mi].dayData = {};
+                      d.quarters[selQ].scorecard[mi].dayData[date] = val;
+                    });
+                    return (
                     <tr key={m.id}>
                       <td style={{padding: isMobile ? '6px 6px' : '6px 12px'}}>
                         <input value={m.metric}
@@ -3195,8 +3251,14 @@ function ScorecardTab({data, upd}) {
                                   background:'transparent', padding:0}} placeholder="Metric..."/>
                       </td>
                       <td style={{padding:'6px 2px', textAlign:'center'}}>
-                        {(() => {
-                          const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(selWn, di)] === 'ok' ? acc + 1 : acc), 0);
+                        {isScore ? (() => {
+                          const avg = weekScoreAvg(m, selWn);
+                          return (
+                            <div style={{color:'var(--brand)', fontWeight:700, fontSize:13}}
+                              title="Weekly average">{avg == null ? '—' : avg}</div>
+                          );
+                        })() : (() => {
+                          const cnt = weekTickCnt(m, selWn);
                           return (
                             <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
                               <span style={{width:14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
@@ -3213,6 +3275,28 @@ function ScorecardTab({data, upd}) {
                       {DAYS.map((_, di) => {
                         const date = dayStr(selWn, di);
                         const st = m.dayData && m.dayData[date];
+                        if (isScore) {
+                          const val = typeof st === 'number' ? st : '';
+                          return (
+                            <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
+                              <input type="number" min="0" max="100"
+                                value={val}
+                                onChange={e => {
+                                  const v = e.target.value;
+                                  if (v === '') { setScore(date, null); return; }
+                                  const n = parseInt(v);
+                                  if (isNaN(n)) return;
+                                  setScore(date, Math.max(0, Math.min(100, n)));
+                                }}
+                                style={{width:'100%', height: isMobile ? 30 : 24, borderRadius:5,
+                                        border:'1px solid var(--border)', background:'white',
+                                        color:'var(--brand)', fontWeight:700,
+                                        fontSize: isMobile ? 14 : 13, textAlign:'center',
+                                        fontFamily:'inherit', padding:0, boxSizing:'border-box'}}
+                                placeholder="—"/>
+                            </td>
+                          );
+                        }
                         const info = getDayStatus(st);
                         return (
                           <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
@@ -3236,7 +3320,8 @@ function ScorecardTab({data, upd}) {
                         </td>
                       )}
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -3251,7 +3336,6 @@ function ScorecardTab({data, upd}) {
 
 function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, bare: bareProp}) {
   const isMobile = useIsMobile();
-  const weekCount = (m, wn) => DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
   if (!scorecard || !scorecard.length) return null;
   // When used inside Q Review card (bare=true), skip the `S.card` wrapper so
   // W1..W13 columns align with the Rocks Gantt below.
@@ -3285,21 +3369,32 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
             </tr>
           </thead>
           <tbody>
-            {scorecard.map(m => (
+            {scorecard.map(m => {
+              const isScore = metricIsScore(m);
+              return (
               <tr key={m.id}>
                 <td style={{padding: '7px ' + labelPadX + 'px', fontSize: isMobile ? 11 : 13, fontWeight:600, color:'var(--text)',
                             overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                     title={m.metric}>
                   {m.metric}
-                  {m.goal && <span style={{color:'var(--muted)', fontWeight:500, marginLeft:isMobile ? 3 : 6, fontSize: isMobile ? 10 : 13}}>({m.goal})</span>}
+                  {!isScore && m.goal && <span style={{color:'var(--muted)', fontWeight:500, marginLeft:isMobile ? 3 : 6, fontSize: isMobile ? 10 : 13}}>({m.goal})</span>}
+                  {isScore && <span style={{color:'var(--muted)', fontWeight:500, marginLeft:isMobile ? 3 : 6, fontSize: isMobile ? 10 : 13}}>(avg)</span>}
                 </td>
                 {qw.map(wn => {
-                  const cnt = weekCount(m, wn);
-                  const goal = parseInt(m.goal || 0);
-                  const hasGoal = !isNaN(goal) && goal > 0;
                   const isSel = wn === selWn;
-                  const done = hasGoal && cnt >= goal;
-                  const col = done ? 'var(--brand)' : 'var(--muted-soft)';
+                  let content, col;
+                  if (isScore) {
+                    const avg = weekScoreAvg(m, wn);
+                    col = avg == null ? 'var(--muted-soft)' : 'var(--brand)';
+                    content = avg == null ? '·' : avg;
+                  } else {
+                    const cnt = weekTickCnt(m, wn);
+                    const goal = parseInt(m.goal || 0);
+                    const hasGoal = !isNaN(goal) && goal > 0;
+                    const done = hasGoal && cnt >= goal;
+                    col = done ? 'var(--brand)' : 'var(--muted-soft)';
+                    content = cnt > 0 ? cnt : '·';
+                  }
                   return (
                     <td key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
                       style={{padding:'2px 0', textAlign:'center', cursor: onSelectWn ? 'pointer' : 'default',
@@ -3308,7 +3403,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
                       <div style={{height: isMobile ? 22 : 26, borderRadius:'var(--r-xs)',
                                    display:'flex', alignItems:'center', justifyContent:'center',
                                    fontSize: isMobile ? 11 : 13, color:col, fontWeight:700}}>
-                        {cnt > 0 ? cnt : '·'}
+                        {content}
                       </div>
                     </td>
                   );
@@ -3317,7 +3412,8 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
                   <td style={{padding: isMobile ? '4px 4px' : '4px 8px', textAlign:'right'}}>{renderMetricExtra(m)}</td>
                 )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -3953,22 +4049,55 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
               </thead>
               <tbody>
                 {scorecard.map((m, mi) => {
-                  const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
+                  const isScore = metricIsScore(m);
+                  const cnt = weekTickCnt(m, wn);
+                  const avg = weekScoreAvg(m, wn);
+                  const setScore = (date, val) => upd(d => {
+                    ensureQ(d, curQ);
+                    if (!d.quarters[curQ].scorecard[mi].dayData) d.quarters[curQ].scorecard[mi].dayData = {};
+                    d.quarters[curQ].scorecard[mi].dayData[date] = val;
+                  });
                   return (
                   <tr key={m.id}>
                     <td style={{padding:'4px 12px'}}>
                       <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{m.metric}</div>
                     </td>
                     <td style={{padding:'4px 4px', textAlign:'center'}}>
-                      <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
-                        <span style={{width:14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
-                        <span style={{color:'var(--muted)'}}>/</span>
-                        <span style={{width:14, textAlign:'left', display:'inline-block'}}>{m.goal || '—'}</span>
-                      </div>
+                      {isScore ? (
+                        <div style={{color:'var(--brand)', fontWeight:700, fontSize:13}} title="Weekly average">{avg == null ? '—' : avg}</div>
+                      ) : (
+                        <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
+                          <span style={{width:14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
+                          <span style={{color:'var(--muted)'}}>/</span>
+                          <span style={{width:14, textAlign:'left', display:'inline-block'}}>{m.goal || '—'}</span>
+                        </div>
+                      )}
                     </td>
                     {DAYS.map((_, di) => {
                       const date = dayStr(wn, di);
                       const st = m.dayData && m.dayData[date];
+                      if (isScore) {
+                        const val = typeof st === 'number' ? st : '';
+                        return (
+                          <td key={di} style={{padding:2, textAlign:'center'}}>
+                            <input type="number" min="0" max="100"
+                              value={val}
+                              onChange={e => {
+                                const v = e.target.value;
+                                if (v === '') { setScore(date, null); return; }
+                                const n = parseInt(v);
+                                if (isNaN(n)) return;
+                                setScore(date, Math.max(0, Math.min(100, n)));
+                              }}
+                              style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
+                                      border:'1px solid var(--border)', background:'white',
+                                      color:'var(--brand)', fontWeight:700,
+                                      fontSize:12, textAlign:'center',
+                                      fontFamily:'inherit', padding:0, boxSizing:'border-box'}}
+                              placeholder="—"/>
+                          </td>
+                        );
+                      }
                       const info = getDayStatus(st);
                       return (
                         <td key={di} style={{padding:2, textAlign:'center'}}>
@@ -4209,22 +4338,57 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
         </thead>
         <tbody>
           {scorecard.map((m, mi) => {
-            const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(weekNum, di)] === 'ok' ? acc + 1 : acc), 0);
+            const isScore = metricIsScore(m);
+            const cnt = weekTickCnt(m, weekNum);
+            const avg = weekScoreAvg(m, weekNum);
+            const setScore = (date, val) => upd(d => {
+              ensureQ(d, qKey);
+              if (!d.quarters[qKey].scorecard[mi].dayData) d.quarters[qKey].scorecard[mi].dayData = {};
+              d.quarters[qKey].scorecard[mi].dayData[date] = val;
+            });
             return (
             <tr key={m.id}>
               <td style={{padding: '4px ' + labelPadX + 'px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={m.metric}>
                 <div style={{fontSize: isMobile ? 12 : 13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{m.metric}</div>
               </td>
               <td style={{padding:'4px 2px', textAlign:'center'}}>
-                <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize: isMobile ? 12 : 13}}>
-                  <span style={{width: isMobile ? 12 : 14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
-                  <span style={{color:'var(--muted)'}}>/</span>
-                  <span style={{width: isMobile ? 12 : 14, textAlign:'left', display:'inline-block'}}>{m.goal || '—'}</span>
-                </div>
+                {isScore ? (
+                  <div style={{color:'var(--brand)', fontWeight:700, fontSize: isMobile ? 12 : 13}} title="Weekly average">
+                    {avg == null ? '—' : avg}
+                  </div>
+                ) : (
+                  <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize: isMobile ? 12 : 13}}>
+                    <span style={{width: isMobile ? 12 : 14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
+                    <span style={{color:'var(--muted)'}}>/</span>
+                    <span style={{width: isMobile ? 12 : 14, textAlign:'left', display:'inline-block'}}>{m.goal || '—'}</span>
+                  </div>
+                )}
               </td>
               {DAYS.map((_, di) => {
                 const date = dayStr(weekNum, di);
                 const st = m.dayData && m.dayData[date];
+                if (isScore) {
+                  const val = typeof st === 'number' ? st : '';
+                  return (
+                    <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
+                      <input type="number" min="0" max="100"
+                        value={val}
+                        onChange={e => {
+                          const v = e.target.value;
+                          if (v === '') { setScore(date, null); return; }
+                          const n = parseInt(v);
+                          if (isNaN(n)) return;
+                          setScore(date, Math.max(0, Math.min(100, n)));
+                        }}
+                        style={{width:'100%', height: isMobile ? 28 : 24, borderRadius:5,
+                                border:'1px solid var(--border)', background:'white',
+                                color:'var(--brand)', fontWeight:700,
+                                fontSize: isMobile ? 13 : 12, textAlign:'center',
+                                fontFamily:'inherit', padding:0, boxSizing:'border-box'}}
+                        placeholder="—"/>
+                    </td>
+                  );
+                }
                 const info = getDayStatus(st);
                 return (
                   <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
@@ -5211,14 +5375,18 @@ function PrintView({data, onBack}) {
                               const isLateMarker = done && wn > ew;
                               const isOverdueSlot = overduePrint && wn === curWnPrint && wn > ew;
                               const show = inRange || isLateMarker || isOverdueSlot;
-                              const barBg = (isLateMarker || isOverdueSlot) ? 'var(--warn-line)' : (done ? 'var(--ok-line)' : 'var(--brand)');
+                              const barBg = isLateMarker
+                                ? 'var(--warn-line)'
+                                : isOverdueSlot
+                                  ? 'transparent'
+                                  : (done ? 'var(--ok-line)' : 'var(--brand)');
                               return (
                                 <td key={wn} style={{padding:'3px 1px'}}>
                                   {show && (
                                     <div style={{height:10, borderRadius:2,
                                                  background: barBg,
-                                                 opacity: (done || isLateMarker) ? 1 : (isOverdueSlot ? 0.8 : 0.55),
-                                                 border: isOverdueSlot ? '1px dashed var(--warn-line)' : 'none',
+                                                 opacity: (done || isLateMarker || isOverdueSlot) ? 1 : 0.55,
+                                                 border: isOverdueSlot ? '1.5px dotted var(--warn-line)' : 'none',
                                                  boxSizing:'border-box'}}/>
                                   )}
                                 </td>
@@ -5252,14 +5420,25 @@ function PrintView({data, onBack}) {
                   </thead>
                   <tbody>
                     {sc.map(m => {
+                      const isScore = metricIsScore(m);
                       const goal = parseInt(m.goal || 0);
                       const hasGoal = !isNaN(goal) && goal > 0;
                       return (
                         <tr key={m.id}>
-                          <td style={{...SH.td, fontSize:11, color:'var(--text-2)'}}>{m.metric}</td>
-                          <td style={{...SH.td, fontWeight:700, color:'var(--brand)', textAlign:'center'}}>{m.goal || ''}</td>
+                          <td style={{...SH.td, fontSize:11, color:'var(--text-2)'}}>{m.metric}{isScore && <span style={{marginLeft:4, color:'var(--muted-soft)', fontWeight:500}}>(avg)</span>}</td>
+                          <td style={{...SH.td, fontWeight:700, color:'var(--brand)', textAlign:'center'}}>{isScore ? '' : (m.goal || '')}</td>
                           {qw.map(wn => {
-                            const cnt = DAYS.reduce((acc, _, di) => (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
+                            if (isScore) {
+                              const avg = weekScoreAvg(m, wn);
+                              return (
+                                <td key={wn} style={{...SH.td, textAlign:'center', fontWeight:700,
+                                                     color: avg == null ? 'var(--border-strong)' : 'var(--brand)',
+                                                     background: avg == null ? 'transparent' : 'var(--info-bg)'}}>
+                                  {avg == null ? '·' : avg}
+                                </td>
+                              );
+                            }
+                            const cnt = weekTickCnt(m, wn);
                             const ok = hasGoal && cnt >= goal;
                             return (
                               <td key={wn} style={{...SH.td, textAlign:'center', fontWeight:700,
