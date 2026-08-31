@@ -2509,10 +2509,10 @@ function VisionHorizon({data, upd, field, title}) {
                       onChange={e => updGoal(la.k, g.id, 'title', e.target.value)}
                       placeholder="Goal title"
                       style={{flex:1, minWidth:150, border:'none', outline:'none',
-                              fontSize:14, fontWeight:700, color:'var(--text)',
+                              fontSize:14, fontWeight:500, color:'var(--text)',
                               background:'transparent', fontFamily:'inherit', padding:0}}/>
                   ) : (
-                    <div style={{flex:1, minWidth:150, fontSize:14, fontWeight:700, color:'var(--text)'}}>
+                    <div style={{flex:1, minWidth:150, fontSize:14, fontWeight:500, color:'var(--text)'}}>
                       {g.title || '(untitled)'}
                     </div>
                   )}
@@ -3101,6 +3101,12 @@ function YearRocks({data, upd}) {
     if (!r.quarters) r.quarters = {};
     r.quarters[qN] = !r.quarters[qN];
   });
+  const toggleCompleted = (areaKey, id) => upd(d => {
+    if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][areaKey]) return;
+    const idx = d.yearRocks[yearKey][areaKey].findIndex(r => r.id === id);
+    if (idx < 0) return;
+    d.yearRocks[yearKey][areaKey][idx].completed = !d.yearRocks[yearKey][areaKey][idx].completed;
+  });
   const updField = (areaKey, id, field, val) => upd(d => {
     if (!d.yearRocks || !d.yearRocks[yearKey] || !d.yearRocks[yearKey][areaKey]) return;
     const idx = d.yearRocks[yearKey][areaKey].findIndex(r => r.id === id);
@@ -3167,9 +3173,16 @@ function YearRocks({data, upd}) {
               return (
               <div key={r.id} style={{marginBottom:10, paddingLeft:10, borderLeft:'2px solid var(--surface-alt)'}}>
                 <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-                  <span style={{fontSize:11, fontWeight:800, color:'var(--brand)',
-                                background:'var(--brand-soft)', padding:'2px 6px',
-                                borderRadius:'var(--r-xs)', flexShrink:0}}>R{n}</span>
+                  <button
+                    onClick={editMode ? () => toggleCompleted(la.k, r.id) : undefined}
+                    title={r.completed ? 'Completed — click to unmark' : (editMode ? 'Click to mark completed' : '')}
+                    style={{fontSize:11, fontWeight:800,
+                            color: r.completed ? 'white' : 'var(--brand)',
+                            background: r.completed ? 'var(--ok-line)' : 'var(--brand-soft)',
+                            padding:'2px 6px', borderRadius:'var(--r-xs)', flexShrink:0,
+                            border: 'none',
+                            cursor: editMode ? 'pointer' : 'default',
+                            fontFamily:'inherit'}}>R{n}</button>
                   {editMode ? (
                     <input value={r.title || ''}
                       onChange={e => updField(la.k, r.id, 'title', e.target.value)}
