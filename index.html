@@ -492,6 +492,7 @@ const getQuarterRocks = (data, qKey) => {
       num: x.num,
       area: x.areaLabel,
       areaKey: x.areaKey,
+      completed: !!x.rock.completed,
       status: rs[x.rock.id] || 'on-track'
     }));
 };
@@ -1700,7 +1701,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                               fontWeight:600,
                               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                       title={rock.title}>
-                    {rock.num != null && <span style={{color:'var(--brand)', fontWeight:800, marginRight:4}}>R{rock.num}</span>}
+                    {rock.num != null && <span style={{color: rock.completed ? 'var(--ok-line)' : 'var(--brand)', fontWeight:800, marginRight:4}}>R{rock.num}</span>}
                     {rock.title}
                   </td>
                   {qw.map(wn => {
@@ -2426,24 +2427,310 @@ function App({bundle, onLogout}) {
 }
 
 function VisionTab({data, upd}) {
-  const isMobile = useIsMobile();
-  const v = data.vision || INIT_V;
-  const sv = (key, val) => upd(d => { d.vision[key] = val; });
-  const [vTab, setVTab] = useState('areas');
-  const VTABS = [['areas','Areas'], ['lt','Long-Term'], ['3y','3-Year'], ['1y','1-Year']];
   return (
     <div>
       <PageTitle icon="vision">Vision {YEAR}</PageTitle>
-      <div className="tabbar">
-        {VTABS.map(([id, lbl]) => (
-          <button key={id} onClick={() => setVTab(id)}
-            className={'tab-underline' + (vTab === id ? ' active' : '')}>{lbl}</button>
+      <VisionConsolidated data={data} upd={upd}/>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------
+// Consolidated Vision view: everything (per-area content + per-period
+// goals) in a single page with a By-area / By-period toggle.
+// Areas managed inline: +Area button + Edit mode (rename/reorder/delete).
+// -----------------------------------------------------------------
+function VisionConsolidated({data, upd}) {
+  const areasList = ((data.vision && data.vision.areasList) || []);
+  const areas = (data.vision && data.vision.areas) || {};
+  const [editMode, setEditMode] = useState(false);
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem('eos-vision-view') || 'byArea'; } catch (e) { return 'byArea'; }
+  });
+  useEffect(() => { try { localStorage.setItem('eos-vision-view', view); } catch (e) {} }, [view]);
+
+  // ---- Area management ----
+  const addArea = () => upd(d => {
+    if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
+    if (!d.vision.areasList) d.vision.areasList = [];
+    if (!d.vision.areas) d.vision.areas = {};
+    const nk = 'a_' + uid();
+    d.vision.areasList.push({k: nk, label: 'New area'});
+    d.vision.areas[nk] = emptyArea();
+  });
+  const renameArea = (k, label) => upd(d => {
+    if (!d.vision || !d.vision.areasList) return;
+    const idx = d.vision.areasList.findIndex(x => x.k === k);
+    if (idx >= 0) d.vision.areasList[idx].label = label;
+  });
+  const deleteArea = k => upd(d => {
+    if (!d.vision || !d.vision.areasList) return;
+    d.vision.areasList = d.vision.areasList.filter(x => x.k !== k);
+    if (d.vision.areas) delete d.vision.areas[k];
+  });
+  const moveArea = (k, dir) => upd(d => {
+    if (!d.vision || !d.vision.areasList) return;
+    const arr = d.vision.areasList;
+    const i = arr.findIndex(x => x.k === k);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  });
+
+  // ---- Per-area content setters ----
+  const setAField = (areaKey, field, val) => upd(d => {
+    if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
+    if (!d.vision.areas) d.vision.areas = {};
+    if (!d.vision.areas[areaKey]) d.vision.areas[areaKey] = emptyArea();
+    d.vision.areas[areaKey][field] = val;
+  });
+  // Values list helpers
+  const addValue = (ak) => {
+    const cur = (areas[ak] && areas[ak].values) || [];
+    setAField(ak, 'values', [...cur, '']);
+  };
+  const updValue = (ak, i, val) => {
+    const cur = (areas[ak] && areas[ak].values) || [];
+    setAField(ak, 'values', cur.map((x, j) => j === i ? val : x));
+  };
+  const delValue = (ak, i) => {
+    const cur = (areas[ak] && areas[ak].values) || [];
+    setAField(ak, 'values', cur.filter((_, j) => j !== i));
+  };
+  const moveValue = (ak, i, dir) => {
+    const cur = (areas[ak] && areas[ak].values) || [];
+    const arr = [...cur];
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    setAField(ak, 'values', arr);
+  };
+  // Goals list helpers (ltGoals / threeYearGoals / oneYearGoals)
+  const addGoal = (ak, field) => upd(d => {
+    if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
+    if (!d.vision.areas) d.vision.areas = {};
+    if (!d.vision.areas[ak]) d.vision.areas[ak] = emptyArea();
+    if (!d.vision.areas[ak][field]) d.vision.areas[ak][field] = [];
+    d.vision.areas[ak][field].push({id: uid(), title:'', explanation:''});
+  });
+  const updGoal = (ak, field, id, f, val) => upd(d => {
+    if (!d.vision || !d.vision.areas || !d.vision.areas[ak] || !d.vision.areas[ak][field]) return;
+    const idx = d.vision.areas[ak][field].findIndex(g => g.id === id);
+    if (idx >= 0) d.vision.areas[ak][field][idx][f] = val;
+  });
+  const delGoal = (ak, field, id) => upd(d => {
+    if (!d.vision || !d.vision.areas || !d.vision.areas[ak] || !d.vision.areas[ak][field]) return;
+    d.vision.areas[ak][field] = d.vision.areas[ak][field].filter(g => g.id !== id);
+  });
+  const moveGoal = (ak, field, id, dir) => upd(d => {
+    if (!d.vision || !d.vision.areas || !d.vision.areas[ak] || !d.vision.areas[ak][field]) return;
+    const arr = d.vision.areas[ak][field];
+    const i = arr.findIndex(g => g.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  });
+
+  // ---- Renderers ----
+  const renderValuesBlock = (ak) => {
+    const a = areas[ak] || emptyArea();
+    const values = a.values || [];
+    return (
+      <div>
+        {/* Frase principal */}
+        {editMode ? (
+          <textarea value={a.phrase || ''}
+            onChange={e => setAField(ak, 'phrase', e.target.value)}
+            placeholder="Frase principal..."
+            rows={1}
+            ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+            style={{width:'100%', border:'none', outline:'none', fontSize:14, fontWeight:700,
+                    padding:'4px 0', background:'transparent', resize:'none', overflow:'hidden',
+                    color:'var(--text)', fontFamily:'inherit', lineHeight:1.4,
+                    borderBottom:'1px solid var(--surface-alt)', marginBottom:8}}/>
+        ) : (
+          a.phrase && <div style={{fontSize:14, fontWeight:700, color:'var(--text)', marginBottom:8,
+                                   lineHeight:1.4}}>{a.phrase}</div>
+        )}
+        {/* Values list */}
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4, marginTop:4}}>
+          <label style={{...S.lbl, marginBottom:0, fontSize:11}}>Values</label>
+          {editMode && (
+            <Btn v="sec" onClick={() => addValue(ak)} style={{fontSize:10, padding:'2px 8px'}}>+ Add</Btn>
+          )}
+        </div>
+        {values.length === 0 && !editMode && (
+          <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>
+        )}
+        {values.map((item, i) => (
+          <div key={i} style={{display:'flex', alignItems:'flex-start', gap:6, marginBottom:3}}>
+            <span style={{color:'var(--brand)', fontWeight:700, fontSize:13, marginTop:1, flexShrink:0}}>•</span>
+            {editMode ? (
+              <React.Fragment>
+                <textarea value={item}
+                  onChange={e => updValue(ak, i, e.target.value)}
+                  placeholder="Value..." rows={1}
+                  ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                  style={{flex:1, border:'none', outline:'none', fontSize:13,
+                          padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
+                          color:'var(--text)', fontFamily:'inherit', lineHeight:1.5,
+                          borderBottom:'1px solid var(--surface-alt)'}}/>
+                <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
+                  <MoveBtns
+                    disabledUp={i === 0} disabledDown={i === values.length - 1}
+                    onUp={() => moveValue(ak, i, -1)}
+                    onDown={() => moveValue(ak, i, 1)}/>
+                  <XBtn size={14} onClick={() => delValue(ak, i)}/>
+                </div>
+              </React.Fragment>
+            ) : (
+              <div style={{flex:1, fontSize:13, color:'var(--text)', lineHeight:1.5}}>{item}</div>
+            )}
+          </div>
         ))}
       </div>
-      {vTab === 'areas' && <VisionAreas data={data} upd={upd}/>}
-      {vTab === 'lt' && <VisionHorizon data={data} upd={upd} field="ltGoals" title="Long-Term"/>}
-      {vTab === '3y' && <VisionHorizon data={data} upd={upd} field="threeYearGoals" title="3-Year"/>}
-      {vTab === '1y' && <VisionHorizon data={data} upd={upd} field="oneYearGoals" title="1-Year"/>}
+    );
+  };
+  const renderGoalsBlock = (ak, field) => {
+    const goals = ((areas[ak] && areas[ak][field]) || []);
+    return (
+      <div>
+        {editMode && (
+          <div style={{marginBottom:6}}>
+            <Btn v="sec" onClick={() => addGoal(ak, field)} style={{fontSize:10, padding:'2px 8px'}}>+ Goal</Btn>
+          </div>
+        )}
+        {goals.length === 0 && !editMode && (
+          <div style={{fontSize:12, color:'var(--muted-soft)', padding:'2px 0'}}>—</div>
+        )}
+        {goals.map((g, i) => (
+          <div key={g.id} style={{marginBottom:8, paddingLeft:8, borderLeft:'2px solid var(--surface-alt)'}}>
+            <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+              {editMode ? (
+                <input value={g.title || ''}
+                  onChange={e => updGoal(ak, field, g.id, 'title', e.target.value)}
+                  placeholder="Goal title"
+                  style={{flex:1, minWidth:120, border:'none', outline:'none',
+                          fontSize:13, fontWeight:500, color:'var(--text)',
+                          background:'transparent', fontFamily:'inherit', padding:0}}/>
+              ) : (
+                <div style={{flex:1, minWidth:120, fontSize:13, fontWeight:500, color:'var(--text)'}}>
+                  {g.title || '(untitled)'}
+                </div>
+              )}
+              {editMode && (
+                <MoveBtns
+                  disabledUp={i === 0} disabledDown={i === goals.length - 1}
+                  onUp={() => moveGoal(ak, field, g.id, -1)}
+                  onDown={() => moveGoal(ak, field, g.id, 1)}/>
+              )}
+              {editMode && <XBtn size={13} onClick={() => delGoal(ak, field, g.id)}/>}
+            </div>
+            {(editMode || g.explanation) && (
+              <textarea value={g.explanation || ''}
+                onChange={e => updGoal(ak, field, g.id, 'explanation', e.target.value)}
+                placeholder="Explanation..." rows={1}
+                ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                style={{width:'100%', border:'none', outline:'none', fontSize:12,
+                        color:'var(--muted)', background:'transparent', fontFamily:'inherit',
+                        padding:'2px 0 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+  const SubHead = ({title}) => (
+    <div style={{fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
+                 letterSpacing:0.5, marginTop:14, marginBottom:6,
+                 paddingBottom:3, borderBottom:'1px solid var(--surface-alt)'}}>{title}</div>
+  );
+  const AreaHead = ({la, i}) => (
+    <div style={{display:'flex', alignItems:'center', gap:6,
+                 paddingBottom:6, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
+      {editMode ? (
+        <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
+          style={{flex:1, minWidth:100, border:'none', outline:'none',
+                  fontSize:14, fontWeight:800, color:'var(--brand)',
+                  textTransform:'uppercase', letterSpacing:0.5,
+                  background:'transparent', fontFamily:'inherit', padding:0}}/>
+      ) : (
+        <div style={{flex:1, fontSize:14, fontWeight:800, color:'var(--brand)',
+                     textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
+      )}
+      {editMode && (
+        <MoveBtns
+          disabledUp={i === 0} disabledDown={i === areasList.length - 1}
+          onUp={() => moveArea(la.k, -1)}
+          onDown={() => moveArea(la.k, 1)}/>
+      )}
+      {editMode && (
+        <XBtn size={14} onClick={() => {
+          if (confirm('Delete area "' + la.label + '"? Its content will be lost.')) deleteArea(la.k);
+        }}/>
+      )}
+    </div>
+  );
+
+  // ---- Layout ----
+  return (
+    <div>
+      <div style={{display:'flex', gap:8, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
+        <Btn onClick={addArea} style={{fontSize:13}}>+ Area</Btn>
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+          {editMode ? 'Done' : 'Edit'}
+        </Btn>
+        <div style={{display:'flex', gap:0, marginLeft:'auto', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
+          {[['byArea','By area'], ['byPeriod','By period']].map(([k, lbl]) => (
+            <button key={k} onClick={() => setView(k)}
+              style={{padding:'4px 10px', border:'none', cursor:'pointer',
+                      fontSize:11, fontWeight:700,
+                      background: view === k ? 'var(--brand)' : 'transparent',
+                      color: view === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
+          ))}
+        </div>
+      </div>
+      {areasList.length === 0 && (
+        <div style={{color:'var(--muted-soft)', fontSize:13}}>No areas yet. Click "+ Area" to add one.</div>
+      )}
+      {view === 'byArea' && areasList.map((la, i) => (
+        <div key={la.k} style={{...S.card, marginBottom:12}}>
+          <AreaHead la={la} i={i}/>
+          <SubHead title="Values"/>
+          {renderValuesBlock(la.k)}
+          <SubHead title="Long-Term"/>
+          {renderGoalsBlock(la.k, 'ltGoals')}
+          <SubHead title="3-Year"/>
+          {renderGoalsBlock(la.k, 'threeYearGoals')}
+          <SubHead title="1-Year"/>
+          {renderGoalsBlock(la.k, 'oneYearGoals')}
+        </div>
+      ))}
+      {view === 'byPeriod' && (() => {
+        const PERIODS = [
+          {label:'Values', kind:'values'},
+          {label:'Long-Term', kind:'ltGoals'},
+          {label:'3-Year', kind:'threeYearGoals'},
+          {label:'1-Year', kind:'oneYearGoals'}
+        ];
+        return PERIODS.map(p => (
+          <div key={p.label} style={{...S.card, marginBottom:12}}>
+            <div style={{fontSize:15, fontWeight:800, color:'var(--brand)',
+                         textTransform:'uppercase', letterSpacing:0.5,
+                         paddingBottom:6, borderBottom:'2px solid var(--brand-soft)', marginBottom:10}}>
+              {p.label}
+            </div>
+            {areasList.map((la, i) => (
+              <div key={la.k} style={{marginBottom:16}}>
+                <AreaHead la={la} i={i}/>
+                {p.kind === 'values'
+                  ? renderValuesBlock(la.k)
+                  : renderGoalsBlock(la.k, p.kind)}
+              </div>
+            ))}
+          </div>
+        ));
+      })()}
     </div>
   );
 }
@@ -2895,10 +3182,12 @@ function RocksTab({data, upd}) {
               <div key={rock.id} style={{...S.card, padding:0, overflow:'hidden', marginBottom:14}}>
                 <div style={{padding:'12px 16px', background:'var(--surface-alt)', display:'flex',
                              alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                  <span style={{fontSize:11, fontWeight:800, color:'var(--brand)',
-                                background:'var(--surface)', padding:'2px 6px',
+                  <span style={{fontSize:11, fontWeight:800,
+                                color: rock.completed ? 'white' : 'var(--brand)',
+                                background: rock.completed ? 'var(--ok-line)' : 'var(--surface)',
+                                padding:'2px 6px',
                                 borderRadius:'var(--r-xs)', flexShrink:0,
-                                border:'1px solid var(--brand-ring)'}}>R{rock.num}</span>
+                                border:'1px solid ' + (rock.completed ? 'var(--ok-line)' : 'var(--brand-ring)')}}>R{rock.num}</span>
                   <div style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:13,
                                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                        title={rock.title}>{rock.title || '(sin título)'}</div>
@@ -5653,7 +5942,7 @@ function PrintView({data, onBack}) {
                       // Rock row (header): title + step counter (no bar)
                       rows.push(
                         <tr key={'r' + r.id} style={{background:'var(--surface-alt)', borderTop:'2px solid var(--border-strong)'}}>
-                          <td style={{...SH.td, fontWeight:700, fontSize:12}}>{r.num != null && <span style={{color:'var(--brand)', marginRight:4}}>R{r.num}</span>}{r.title}</td>
+                          <td style={{...SH.td, fontWeight:700, fontSize:12}}>{r.num != null && <span style={{color: r.completed ? 'var(--ok-line)' : 'var(--brand)', marginRight:4}}>R{r.num}</span>}{r.title}</td>
                           <td style={{...SH.td, textAlign:'center', fontWeight:700, color:'var(--brand)'}}>{doneCount}/{steps.length}</td>
                           {qw.map(wn => <td key={wn}/>)}
                         </tr>
