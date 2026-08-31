@@ -2636,9 +2636,9 @@ function VisionConsolidated({data, upd}) {
       );
     });
   };
-  const SectionHead = ({title, onAdd}) => (
-    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
-                 marginTop:14, marginBottom:6, paddingBottom:3,
+  const renderSectionHead = (title, onAdd) => (
+    <div key={'sh-' + title} style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                 marginTop:6, marginBottom:6, paddingBottom:3,
                  borderBottom:'1px solid var(--surface-alt)'}}>
       <label style={{...S.lbl, marginBottom:0, fontSize:11}}>{title}</label>
       {editMode && onAdd && (
@@ -2646,11 +2646,11 @@ function VisionConsolidated({data, upd}) {
       )}
     </div>
   );
-  const AreaHead = ({la, i, showPhrase}) => {
+  const renderAreaHead = (la, i, showPhrase) => {
     const a = areas[la.k] || emptyArea();
     return (
-      <div style={{display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap',
-                   paddingBottom:6, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
+      <div key={'ah-' + la.k} style={{display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap',
+                   marginBottom:4}}>
         {editMode ? (
           <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
             style={{flex:'0 0 auto', minWidth:80, width:'auto', border:'none', outline:'none',
@@ -2712,21 +2712,21 @@ function VisionConsolidated({data, upd}) {
       )}
       {view === 'byArea' && areasList.map((la, i) => (
         <div key={la.k} style={{...S.card, marginBottom:12}}>
-          <AreaHead la={la} i={i} showPhrase={true}/>
+          {renderAreaHead(la, i, true)}
           <div style={{display:'grid',
                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                        gap: isMobile ? 0 : 20,
                        marginTop:8}}>
             <div>
-              <SectionHead title="Long-Term" onAdd={() => addGoal(la.k, 'ltGoals')}/>
+              {renderSectionHead('Long-Term', () => addGoal(la.k, 'ltGoals'))}
               {renderGoalsList(la.k, 'ltGoals')}
             </div>
             <div>
-              <SectionHead title="3-Year" onAdd={() => addGoal(la.k, 'threeYearGoals')}/>
+              {renderSectionHead('3-Year', () => addGoal(la.k, 'threeYearGoals'))}
               {renderGoalsList(la.k, 'threeYearGoals')}
             </div>
             <div>
-              <SectionHead title="1-Year" onAdd={() => addGoal(la.k, 'oneYearGoals')}/>
+              {renderSectionHead('1-Year', () => addGoal(la.k, 'oneYearGoals'))}
               {renderGoalsList(la.k, 'oneYearGoals')}
             </div>
           </div>
@@ -2741,15 +2741,13 @@ function VisionConsolidated({data, upd}) {
         return PERIODS.map(p => (
           <div key={p.label} style={{...S.card, marginBottom:12}}>
             <div style={{fontSize:15, fontWeight:800, color:'var(--brand)',
-                         textTransform:'uppercase', letterSpacing:0.5,
-                         paddingBottom:6, borderBottom:'2px solid var(--brand-soft)', marginBottom:10}}>
+                         textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>
               {p.label}
             </div>
             {areasList.map((la, i) => (
               <div key={la.k}>
-                <SectionHead
-                  title={la.label}
-                  onAdd={p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind)}/>
+                {renderSectionHead(la.label,
+                  p.kind === 'values' ? () => addValue(la.k) : () => addGoal(la.k, p.kind))}
                 {p.kind === 'values' && renderPhrase(la.k)}
                 {p.kind === 'values'
                   ? renderValuesList(la.k)
@@ -5862,7 +5860,7 @@ function PrintView({data, onBack}) {
           if (!hasAny) return null;
           const renderGoals = (arr, label) => (
             <div>
-              <h4 style={SH.h4}>{label}</h4>
+              <h4 style={{...SH.h4, marginTop:4}}>{label}</h4>
               {(!arr || arr.length === 0)
                 ? <div style={{fontSize:11, color:'var(--muted-soft)'}}>—</div>
                 : arr.map((g, i) => (
@@ -5879,7 +5877,7 @@ function PrintView({data, onBack}) {
           return (
             <div key={la.k} className="print-section" style={{marginBottom:18}}>
               <div style={{display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap',
-                           paddingBottom:4, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
+                           marginBottom:4}}>
                 <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
                              textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
                 {a.phrase && (
