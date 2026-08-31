@@ -231,6 +231,10 @@
   .tab-underline:hover{color:var(--text); background:var(--brand-soft);}
   .tab-underline:focus-visible{outline:none; box-shadow:0 0 0 3px var(--brand-ring); border-radius:6px 6px 0 0;}
   .tab-underline.active{color:var(--brand); border-bottom-color:var(--brand); font-weight:700;}
+  /* Hide number input spinner buttons (score metrics use bare numeric cells) */
+  input.score-cell::-webkit-outer-spin-button,
+  input.score-cell::-webkit-inner-spin-button {-webkit-appearance:none; margin:0;}
+  input.score-cell {-moz-appearance:textfield;}
   /* iOS safe areas */
   body{padding:0;}
 
@@ -3280,6 +3284,7 @@ function ScorecardTab({data, upd}) {
                           return (
                             <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
                               <input type="number" min="0" max="100"
+                                className="score-cell"
                                 value={val}
                                 onChange={e => {
                                   const v = e.target.value;
@@ -3288,11 +3293,12 @@ function ScorecardTab({data, upd}) {
                                   if (isNaN(n)) return;
                                   setScore(date, Math.max(0, Math.min(100, n)));
                                 }}
-                                style={{width:'100%', height: isMobile ? 30 : 24, borderRadius:5,
-                                        border:'1px solid var(--border)', background:'white',
+                                style={{width:'100%', minWidth:0, height: isMobile ? 30 : 24, borderRadius:0,
+                                        border:'none', background:'transparent',
                                         color:'var(--brand)', fontWeight:700,
                                         fontSize: isMobile ? 14 : 13, textAlign:'center',
-                                        fontFamily:'inherit', padding:0, boxSizing:'border-box'}}
+                                        fontFamily:'inherit', padding:0, boxSizing:'border-box',
+                                        MozAppearance:'textfield'}}
                                 placeholder="—"/>
                             </td>
                           );
@@ -4110,6 +4116,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                         return (
                           <td key={di} style={{padding:2, textAlign:'center'}}>
                             <input type="number" min="0" max="100"
+                              className="score-cell"
                               value={val}
                               onChange={e => {
                                 const v = e.target.value;
@@ -4118,11 +4125,12 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                                 if (isNaN(n)) return;
                                 setScore(date, Math.max(0, Math.min(100, n)));
                               }}
-                              style={{width:'100%', height: isMobile ? 22 : 24, borderRadius:5,
-                                      border:'1px solid var(--border)', background:'white',
+                              style={{width:'100%', minWidth:0, height: isMobile ? 22 : 24, borderRadius:0,
+                                      border:'none', background:'transparent',
                                       color:'var(--brand)', fontWeight:700,
                                       fontSize:12, textAlign:'center',
-                                      fontFamily:'inherit', padding:0, boxSizing:'border-box'}}
+                                      fontFamily:'inherit', padding:0, boxSizing:'border-box',
+                                      MozAppearance:'textfield'}}
                               placeholder="—"/>
                           </td>
                         );
@@ -4401,6 +4409,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
                   return (
                     <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
                       <input type="number" min="0" max="100"
+                        className="score-cell"
                         value={val}
                         onChange={e => {
                           const v = e.target.value;
@@ -4409,11 +4418,12 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
                           if (isNaN(n)) return;
                           setScore(date, Math.max(0, Math.min(100, n)));
                         }}
-                        style={{width:'100%', height: isMobile ? 28 : 24, borderRadius:5,
-                                border:'1px solid var(--border)', background:'white',
+                        style={{width:'100%', minWidth:0, height: isMobile ? 28 : 24, borderRadius:0,
+                                border:'none', background:'transparent',
                                 color:'var(--brand)', fontWeight:700,
                                 fontSize: isMobile ? 13 : 12, textAlign:'center',
-                                fontFamily:'inherit', padding:0, boxSizing:'border-box'}}
+                                fontFamily:'inherit', padding:0, boxSizing:'border-box',
+                                MozAppearance:'textfield'}}
                         placeholder="—"/>
                     </td>
                   );
