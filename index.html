@@ -1648,7 +1648,7 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                                       borderRadius:2, margin:'0 1px',
                                       opacity: (chk || isLateMarker || isOverdueSlot) ? 1 : 0.5,
                                       cursor: clickable ? 'pointer' : 'default',
-                                      border: isOverdueSlot ? '1.5px dotted var(--warn-line)' : 'none',
+                                      border: isOverdueSlot ? '2.5px dotted var(--warn-line)' : 'none',
                                       boxSizing:'border-box',
                                       transition:'background .15s'}}/>
                           )}
@@ -2889,7 +2889,7 @@ function RocksTab({data, upd}) {
                                 <div key={wn} onClick={() => clickable && toggleWk(rock.id, step.id, wn)}
                                   title={isOverdueSlot ? 'Overdue — click to mark done (late)' : isLateMarker ? 'Marked done late' : undefined}
                                   style={{width:22, height:22, borderRadius:'var(--r-xs)',
-                                          border: (isCur || isLateMarker || isOverdueSlot) ? '2px solid' : '1px solid',
+                                          border: isOverdueSlot ? '3px solid' : (isCur || isLateMarker) ? '2px solid' : '1px solid',
                                           borderStyle: isOverdueSlot ? 'dotted' : 'solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: clickable ? 'pointer' : 'default',
@@ -3934,7 +3934,29 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
           ? <EmptyState icon="check" message="No to-dos today." compact/>
           : dayTodos.map((t, dti) => {
             const donOnDay = t.completedDate && t.completedDate <= selDay;
+            const snoozedToday = !donOnDay && t.snoozedOn === selDay;
+            const dimmed = donOnDay || snoozedToday;
             const isEd = editingTodoId === t.id;
+            // State cycle for this day view: empty → done → snoozed → empty.
+            const cycleState = () => upd(d => {
+              const ri = d.todos.findIndex(x => x.id === t.id);
+              if (ri < 0) return;
+              const td = d.todos[ri];
+              if (donOnDay) {
+                // done → snoozed
+                td.done = false;
+                td.completedDate = null;
+                td.snoozedOn = selDay;
+              } else if (t.snoozedOn === selDay) {
+                // snoozed → empty
+                td.snoozedOn = null;
+              } else {
+                // empty → done
+                td.done = true;
+                td.completedDate = selDay;
+                td.snoozedOn = null;
+              }
+            });
             const swapWithNeighbor = (dir) => upd(d => {
               // Find target neighbor within the FILTERED dayTodos view, then
               // swap the two todos in the underlying d.todos array.
@@ -3947,24 +3969,31 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             });
             return (
               <div key={t.id} style={{padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
-                                      opacity: donOnDay ? 0.5 : 1}}>
+                                      opacity: dimmed ? 0.5 : 1}}>
                 <div style={{display:'flex', alignItems:'center', gap:9}}>
-                  <input type="checkbox" checked={!!donOnDay}
-                    onChange={() => upd(d => {
-                      const ri = d.todos.findIndex(x => x.id === t.id);
-                      if (ri >= 0) {
-                        d.todos[ri].done = !donOnDay;
-                        // Anchor completion to the DAY BEING VIEWED, so the
-                        // todo stays visible on that day and disappears the
-                        // day after — even if we're completing from a past/
-                        // future view.
-                        d.todos[ri].completedDate = !donOnDay ? selDay : null;
-                      }
-                    })}
-                    style={{width:15, height:15, cursor:'pointer', flexShrink:0}}/>
+                  <button onClick={cycleState}
+                    title={donOnDay ? 'Done — click for "tomorrow"' : snoozedToday ? 'Tomorrow — click to clear' : 'Pending — click to mark done'}
+                    style={{width:16, height:16, borderRadius:3, flexShrink:0, padding:0,
+                            border:'1.5px solid ' + (donOnDay ? 'var(--muted)' : snoozedToday ? 'var(--muted)' : 'var(--border-strong)'),
+                            background: donOnDay ? 'var(--muted)' : 'white',
+                            cursor:'pointer', display:'inline-flex',
+                            alignItems:'center', justifyContent:'center'}}>
+                    {donOnDay && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                           strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    )}
+                    {snoozedToday && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)"
+                           strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 6 15 12 9 18"/>
+                      </svg>
+                    )}
+                  </button>
                   <input value={t.task} onChange={ev => updateTodoTask(t.id, ev.target.value)}
                     style={{flex:1, border:'none', outline:'none', fontSize:13, fontWeight:500,
-                            color:'var(--text)', textDecoration: 'none',
+                            color: dimmed ? 'var(--muted)' : 'var(--text)', textDecoration: 'none',
                             background:'transparent', fontFamily:'inherit', padding:0}}/>
                   <div style={{display:'flex', gap:3, alignItems:'center', flexShrink:0}}>
                     {editMode && (
@@ -5386,7 +5415,7 @@ function PrintView({data, onBack}) {
                                     <div style={{height:10, borderRadius:2,
                                                  background: barBg,
                                                  opacity: (done || isLateMarker || isOverdueSlot) ? 1 : 0.55,
-                                                 border: isOverdueSlot ? '1.5px dotted var(--warn-line)' : 'none',
+                                                 border: isOverdueSlot ? '2.5px dotted var(--warn-line)' : 'none',
                                                  boxSizing:'border-box'}}/>
                                   )}
                                 </td>
