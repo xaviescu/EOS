@@ -3260,7 +3260,7 @@ function RocksTab({data, upd}) {
                   <span style={{fontSize:11, fontWeight:800,
                                 color: rock.completed ? 'white' : 'var(--brand)',
                                 background: rock.completed ? 'var(--ok-line)' : 'var(--surface)',
-                                padding:'2px 6px',
+                                padding:'2px 6px', minWidth:28, textAlign:'center',
                                 borderRadius:'var(--r-xs)', flexShrink:0,
                                 border:'1px solid ' + (rock.completed ? 'var(--ok-line)' : 'var(--brand-ring)')}}>R{rock.num}</span>
                   <div style={{flex:1, minWidth:130, fontWeight:600, color:'var(--text)', fontSize:13,
@@ -3320,7 +3320,8 @@ function RocksTab({data, upd}) {
                               const clickable = inR || isOverdueSlot || isLateMarker;
                               const brdColor = isLateMarker || isOverdueSlot
                                 ? 'var(--warn-line)'
-                                : (isCur ? 'var(--brand)' : !inR ? 'var(--border)' : chk ? 'var(--ok-line)' : 'var(--brand)');
+                                : chk ? 'var(--ok-line)'
+                                : (isCur ? 'var(--brand)' : !inR ? 'var(--border)' : 'var(--brand)');
                               // Overdue not done = empty (transparent) with dotted orange border.
                               // Done late = solid orange fill.
                               const bgColor = isLateMarker
@@ -3337,14 +3338,14 @@ function RocksTab({data, upd}) {
                                 <div key={wn} onClick={() => clickable && toggleWk(rock.id, step.id, wn)}
                                   title={isOverdueSlot ? 'Overdue — click to mark done (late)' : isLateMarker ? 'Marked done late' : undefined}
                                   style={{width:22, height:22, borderRadius:'var(--r-xs)',
-                                          border: isOverdueSlot ? '2px solid' : (isCur || isLateMarker) ? '2px solid' : '1px solid',
+                                          border: isOverdueSlot ? '2px solid' : (chk || isCur || isLateMarker) ? '2px solid' : '1px solid',
                                           borderStyle: isOverdueSlot ? 'dashed' : 'solid',
                                           display:'flex', alignItems:'center', justifyContent:'center',
                                           fontSize:9, fontWeight:700, cursor: clickable ? 'pointer' : 'default',
                                           borderColor: brdColor,
                                           background: bgColor,
                                           color: fgColor,
-                                          boxShadow: isCur && !isOverdueSlot && !isLateMarker ? '0 0 0 2px var(--brand-ring)' : 'none'}}>
+                                          boxShadow: isCur && !chk && !isOverdueSlot && !isLateMarker ? '0 0 0 2px var(--brand-ring)' : 'none'}}>
                                   {wn - qw[0] + 1}
                                 </div>
                               );
@@ -3551,7 +3552,8 @@ function YearRocks({data, upd}) {
                     style={{fontSize:11, fontWeight:800,
                             color: r.completed ? 'white' : 'var(--brand)',
                             background: r.completed ? 'var(--ok-line)' : 'var(--surface)',
-                            padding:'2px 6px', borderRadius:'var(--r-xs)', flexShrink:0,
+                            padding:'2px 6px', minWidth:28, textAlign:'center',
+                            borderRadius:'var(--r-xs)', flexShrink:0,
                             border: '1px solid ' + (r.completed ? 'var(--ok-line)' : 'var(--brand-ring)'),
                             cursor: editMode ? 'pointer' : 'default',
                             fontFamily:'inherit'}}>R{n}</button>
@@ -4653,35 +4655,41 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                         else delete s.completedLate;
                       }
                     });
-                    const boxBg = late ? 'var(--warn-line)' : chk ? 'var(--ok-line)' : 'transparent';
-                    const boxBorder = late || chk
-                      ? boxBg
-                      : (overdue ? 'var(--warn-line)' : 'var(--border-strong)');
-                    const boxStyle = overdue && !chk ? 'dotted' : 'solid';
+                    const rockNum = getRockNumById(data, rock.id);
                     return (
                       <div key={rock.id + '-' + step.id}
-                        style={{display:'flex', alignItems:'center', gap:10,
+                        style={{display:'flex', alignItems:'center', gap:9,
                                 padding:'8px 6px', borderBottom:'1px solid var(--surface-alt)',
                                 opacity: chk ? 0.55 : 1}}>
                         <button onClick={toggleStep}
                           title={overdue ? 'Overdue — click to mark done (late)' : chk ? 'Uncheck' : 'Mark done'}
-                          style={{width:18, height:18, borderRadius:3, flexShrink:0, padding:0,
-                                  border: '2px ' + boxStyle + ' ' + boxBorder,
-                                  background: boxBg, cursor:'pointer',
+                          style={{width:16, height:16, borderRadius:3, flexShrink:0, padding:0,
+                                  border:'1.5px solid ' + (chk ? 'var(--muted)' : 'var(--border-strong)'),
+                                  background:'white', cursor:'pointer',
                                   display:'inline-flex', alignItems:'center', justifyContent:'center'}}>
                           {chk && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white"
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)"
                                  strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="20 6 9 17 4 12"/>
                             </svg>
                           )}
                         </button>
-                        <div style={{flex:1, minWidth:0, fontSize:13,
+                        {rockNum != null && (
+                          <span style={{fontSize:11, fontWeight:800,
+                                        color: rock.completed ? 'white' : 'var(--brand)',
+                                        background: rock.completed ? 'var(--ok-line)' : 'var(--surface)',
+                                        padding:'2px 6px', minWidth:28, textAlign:'center',
+                                        borderRadius:'var(--r-xs)', flexShrink:0,
+                                        border:'1px solid ' + (rock.completed ? 'var(--ok-line)' : 'var(--brand-ring)')}}>
+                            R{rockNum}
+                          </span>
+                        )}
+                        <div style={{flex:1, minWidth:0, fontSize:13, fontWeight:500, color:'var(--text)',
                                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
                              title={(rock.title || '') + ' · ' + (step.text || '')}>
-                          <span style={{color:'var(--muted)', fontWeight:500}}>{rock.title}</span>
+                          <span>{rock.title}</span>
                           <span style={{color:'var(--muted-soft)', margin:'0 6px'}}>·</span>
-                          <span style={{color:'var(--text)', fontWeight:600}}>{step.text}</span>
+                          <span>{step.text}</span>
                         </div>
                       </div>
                     );
@@ -5978,7 +5986,8 @@ function PrintView({data, onBack}) {
                       <span style={{fontSize:11, fontWeight:800,
                                     color: r.completed ? 'white' : 'var(--brand)',
                                     background: r.completed ? 'var(--ok-line)' : 'var(--brand-soft)',
-                                    padding:'1px 5px', borderRadius:'var(--r-xs)', flexShrink:0}}>R{x.num}</span>
+                                    padding:'1px 5px', minWidth:26, textAlign:'center',
+                                    borderRadius:'var(--r-xs)', flexShrink:0}}>R{x.num}</span>
                       <div style={{flex:1, fontSize:12, color:'var(--text)'}}>{r.title || '(untitled)'}</div>
                       <div style={{display:'flex', gap:3, flexShrink:0}}>
                         {QS_ORDER.map(q => {
