@@ -2541,13 +2541,13 @@ function VisionConsolidated({data, upd}) {
           placeholder="Frase principal..."
           rows={1}
           ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-          style={{width:'100%', border:'none', outline:'none', fontSize:14, fontWeight:700,
-                  padding:'2px 0 4px', background:'transparent', resize:'none', overflow:'hidden',
-                  color:'var(--text)', fontFamily:'inherit', lineHeight:1.4}}/>
+          style={{width:'100%', border:'none', outline:'none', fontSize:12, fontStyle:'italic',
+                  padding:'0 0 6px', background:'transparent', resize:'none', overflow:'hidden',
+                  color:'var(--muted)', fontFamily:'inherit', lineHeight:1.4}}/>
       );
     }
     return a.phrase
-      ? <div style={{fontSize:14, fontWeight:700, color:'var(--text)', lineHeight:1.4, padding:'2px 0 4px'}}>{a.phrase}</div>
+      ? <div style={{fontSize:12, fontStyle:'italic', color:'var(--muted)', lineHeight:1.4, padding:'0 0 6px'}}>{a.phrase}</div>
       : null;
   };
   const renderValuesList = (ak) => {
@@ -2625,17 +2625,14 @@ function VisionConsolidated({data, upd}) {
     </div>
   );
   const AreaHead = ({la, i}) => (
-    <div style={{display:'flex', alignItems:'center', gap:6,
-                 paddingBottom:6, borderBottom:'1px solid var(--surface-alt)', marginBottom:10}}>
+    <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:6}}>
       {editMode ? (
         <input value={la.label} onChange={e => renameArea(la.k, e.target.value)}
           style={{flex:1, minWidth:100, border:'none', outline:'none',
-                  fontSize:14, fontWeight:800, color:'var(--brand)',
-                  textTransform:'uppercase', letterSpacing:0.5,
+                  fontSize:13, fontWeight:700, color:'var(--text)',
                   background:'transparent', fontFamily:'inherit', padding:0}}/>
       ) : (
-        <div style={{flex:1, fontSize:14, fontWeight:800, color:'var(--brand)',
-                     textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
+        <div style={{flex:1, fontSize:13, fontWeight:700, color:'var(--text)'}}>{la.label}</div>
       )}
       {editMode && (
         <MoveBtns
@@ -2675,6 +2672,7 @@ function VisionConsolidated({data, upd}) {
       {view === 'byArea' && areasList.map((la, i) => (
         <div key={la.k} style={{...S.card, marginBottom:12}}>
           <AreaHead la={la} i={i}/>
+          {renderPhrase(la.k)}
           <SectionHead title="Long-Term" onAdd={() => addGoal(la.k, 'ltGoals')}/>
           {renderGoalsList(la.k, 'ltGoals')}
           <SectionHead title="3-Year" onAdd={() => addGoal(la.k, 'threeYearGoals')}/>
