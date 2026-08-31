@@ -3206,16 +3206,6 @@ function YearRocks({data, upd}) {
                   )}
                   {editMode && <XBtn size={14} onClick={() => delRock(la.k, r.id)}/>}
                 </div>
-                {(editMode || r.explanation) && (
-                  <textarea value={r.explanation || ''}
-                    onChange={e => updField(la.k, r.id, 'explanation', e.target.value)}
-                    placeholder="Explanation..."
-                    rows={1}
-                    ref={el => { if (el) { el.style.height='auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                    style={{width:'100%', border:'none', outline:'none', fontSize:12,
-                            color:'var(--muted)', background:'transparent', fontFamily:'inherit',
-                            padding:'6px 0 0', resize:'none', overflow:'hidden', lineHeight:1.5}}/>
-                )}
               </div>
               );
             })}
