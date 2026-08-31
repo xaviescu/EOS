@@ -3480,25 +3480,28 @@ function YearRocks({data, upd}) {
       {AREAS.map(la => {
         const rocks = yr[la.k] || [];
         return (
-          <div key={la.k} style={{marginBottom:16}}>
-            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
-                         marginBottom:6}}>
+          <div key={la.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:14}}>
+            <div style={{padding:'12px 16px', background:'var(--surface-alt)',
+                         display:'flex', alignItems:'center', justifyContent:'space-between',
+                         gap:10, flexWrap:'wrap'}}>
               <div style={{fontSize:14, fontWeight:800, color:'var(--brand)',
                            textTransform:'uppercase', letterSpacing:0.5}}>{la.label}</div>
               {editMode && (
                 <Btn v="sec" onClick={() => addRock(la.k)} style={{fontSize:11, padding:'3px 10px'}}>+ Rock</Btn>
               )}
             </div>
+            <div style={{padding:'12px 18px 16px'}}>
             {rocks.length === 0 && (
-              <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>—</div>
+              <div style={{color:'var(--muted-soft)', fontSize:11, marginBottom:4, fontStyle:'italic'}}>No rocks yet.</div>
             )}
             {rocks.map((r, i) => {
               const n = numOf(r.id);
               const qMap = r.quarters || {};
               return (
-              <div key={r.id} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
-                <div style={{padding:'10px 14px', background:'var(--surface-alt)',
-                             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+              <div key={r.id} style={{marginBottom:4, padding:'8px 12px',
+                                       background:'var(--surface-alt)',
+                                       borderRadius:'var(--r-sm)',
+                                       display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
                   <button
                     onClick={editMode ? () => toggleCompleted(la.k, r.id) : undefined}
                     title={r.completed ? 'Completed — click to unmark' : (editMode ? 'Click to mark completed' : '')}
@@ -3544,10 +3547,10 @@ function YearRocks({data, upd}) {
                       onDown={() => moveRock(la.k, r.id, 1)}/>
                   )}
                   {editMode && <XBtn size={14} onClick={() => delRock(la.k, r.id)}/>}
-                </div>
               </div>
               );
             })}
+            </div>
           </div>
         );
       })}
