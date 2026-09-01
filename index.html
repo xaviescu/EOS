@@ -4543,7 +4543,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   <button onClick={cycleState}
                     title={donOnDay ? 'Done — click for "tomorrow"' : snoozedToday ? 'Tomorrow — click to clear' : carriedOver ? 'Carried over from a previous day' : 'Pending — click to mark done'}
                     style={{width:16, height:16, borderRadius:3, flexShrink:0, padding:0,
-                            border:'1.5px solid ' + (donOnDay || snoozedToday || carriedOver ? 'var(--muted)' : 'var(--border-strong)'),
+                            border:'1.5px solid var(--muted)',
                             background: 'white',
                             cursor:'pointer', display:'inline-flex',
                             alignItems:'center', justifyContent:'center'}}>
