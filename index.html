@@ -685,6 +685,21 @@ const normalizeData = p => {
     if (!base.quarters[qk].rockStatus) base.quarters[qk].rockStatus = {};
   });
 
+  // IDS session scoping migration: tag every existing issue with a sessionKey
+  // ('w'+weekNum for L10 origin, 'qreview' for Q Review origin). Legacy issues
+  // have no sessionKey — infer from weekAdded/weekNum. Since we can't reliably
+  // distinguish historical L10 vs QReview issues, default all legacy ones to
+  // their week's L10 session.
+  Object.keys(base.quarters || {}).forEach(qk => {
+    const arr = base.quarters[qk].idsIssues || [];
+    arr.forEach(i => {
+      if (!i.sessionKey) {
+        const wk = i.weekAdded || i.weekNum;
+        i.sessionKey = wk ? ('w' + wk) : 'qreview';
+      }
+    });
+  });
+
   return base;
 };
 
@@ -1157,12 +1172,13 @@ function StatusPill({status, onChange}) {
   );
 }
 
-function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
+function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey, sessionKey}) {
   // Highlight only if there's an issue for this source that is VISIBLE in this
-  // week's IDS view (created this week, or carried over unsolved from before,
-  // or solved during this week). An issue solved in a previous week is gone.
+  // session's IDS view. Issues are scoped per-session (L10 week or QReview) via
+  // sessionKey — we only match issues tagged with the current sessionKey.
   const active = (idsIssues || []).some(i => {
     if (i.sourceId !== sourceId) return false;
+    if (sessionKey && i.sessionKey !== sessionKey) return false;
     if (i.weekAdded > weekNum) return false;
     if (i.weekAdded === weekNum) return true;
     if (!i.solved) return true;
@@ -1170,14 +1186,17 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey}) {
   });
   const toggle = () => upd(d => {
     ensureQ(d, qKey);
-    const idx = d.quarters[qKey].idsIssues.findIndex(i => i.sourceId === sourceId && !i.solved);
+    const idx = d.quarters[qKey].idsIssues.findIndex(i =>
+      i.sourceId === sourceId && !i.solved &&
+      (!sessionKey || i.sessionKey === sessionKey));
     if (idx >= 0) {
       d.quarters[qKey].idsIssues[idx].solved = true;
       d.quarters[qKey].idsIssues[idx].solvedWeek = weekNum;
     } else {
       d.quarters[qKey].idsIssues.push({
         id: uid(), sourceId, sourceName,
-        action:'', solved:false, solvedWeek:null, weekAdded: weekNum
+        action:'', solved:false, solvedWeek:null, weekAdded: weekNum,
+        sessionKey: sessionKey || ('w' + weekNum)
       });
     }
   });
@@ -4007,6 +4026,7 @@ function ProjectsTab({data, upd}) {
         </div>}
       {projects.length > 0 && (
         <div style={S.card}>
+          <H3>Week {selWn} · {wDates(selWn)}</H3>
           <table style={{width:'100%', borderCollapse:'collapse'}}>
             <thead>
               <tr style={{borderBottom:'2px solid var(--border)'}}>
@@ -4187,18 +4207,16 @@ function TodosTab({data, upd}) {
         </InlineForm>
       )}
       <div style={{...S.card, marginBottom:12}}>
-        <div style={{fontSize:14, fontWeight:700, color:'var(--text-2)', marginBottom:2}}>In Progress ({pending.length})</div>
+        <H3>In Progress ({pending.length})</H3>
         {pending.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No pending tasks. Well done.</div>}
         {pending.map((t, idx) => renderRow(t, idx === pending.length - 1, pending, idx))}
       </div>
       {done.length > 0 && (
         <div style={S.card}>
-          <button onClick={() => setShowDone(s => !s)}
-            style={{display:'flex', alignItems:'center', gap:8, fontSize:14,
-                    fontWeight:700, color:'var(--ok-line)', background:'none', border:'none',
-                    cursor:'pointer', marginBottom: showDone ? 2 : 0, padding:0}}>
-            Completed ({done.length}) {showDone ? '^' : 'v'}
-          </button>
+          <div onClick={() => setShowDone(s => !s)} style={{cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
+            <H3 style={{marginBottom: showDone ? 2 : 0}}>Completed ({done.length})</H3>
+            <span style={{fontSize:12, color:'var(--muted)'}}>{showDone ? '^' : 'v'}</span>
+          </div>
           {showDone && done.map((t, idx) => renderRow(t, idx === done.length - 1, done, idx))}
         </div>
       )}
@@ -4891,17 +4909,18 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
     if (!d.quarters[qKey].weeks[weekNum].areaRatings[areaK]) d.quarters[qKey].weeks[weekNum].areaRatings[areaK] = {};
     d.quarters[qKey].weeks[weekNum].areaRatings[areaK][field] = val;
   });
-  const idsIssues = qData.idsIssues || [];
+  const sessionKey = 'w' + weekNum;
+  const idsIssues = (qData.idsIssues || []).filter(i => i.sessionKey === sessionKey);
   const editable = k => !!blockEdit[k];
   const AGENDA = [
-    {k:'scorecard', label:'Scorecard'},
-    {k:'todosreview', label:'To-Dos Review'},
-    {k:'rocks', label:'Rocks Review'},
-    {k:'projects', label:'Projects Review'},
-    {k:'ids', label:'IDS'},
-    {k:'todosnew', label:'To-Dos Next Week'},
-    {k:'conclude', label:'Conclude'},
-    {k:'rating', label:'Week Rating'}
+    {k:'scorecard', label:'Scorecard', phase:'REVIEW'},
+    {k:'rocks', label:'Rocks Review', phase:'REVIEW'},
+    {k:'todosreview', label:'To-Dos Review', phase:'REVIEW'},
+    {k:'projects', label:'Projects Review', phase:'REVIEW'},
+    {k:'ids', label:'IDS', phase:'SOLVE (IDS)'},
+    {k:'todosnew', label:'To-Dos Next Week', phase:'CONCLUDE'},
+    {k:'conclude', label:'Conclude', phase:'CONCLUDE'},
+    {k:'rating', label:'Week Rating', phase:'CONCLUDE'}
   ];
   return (
     <div>
@@ -4916,8 +4935,19 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
         </div>
       )}
 
-      {AGENDA.map(seg => (
-        <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
+      {AGENDA.map((seg, si) => (
+        <React.Fragment key={seg.k}>
+        {(si === 0 || seg.phase !== AGENDA[si-1].phase) && (
+          <div style={{display:'flex', alignItems:'center', gap:10,
+                       marginTop: si === 0 ? 4 : 22, marginBottom:8}}>
+            <div style={{flex:'0 0 auto', fontSize:11, fontWeight:800, color:'var(--muted)',
+                         letterSpacing:1.2, textTransform:'uppercase'}}>
+              Phase {seg.phase === 'REVIEW' ? '1' : seg.phase === 'SOLVE (IDS)' ? '2' : '3'} · {seg.phase}
+            </div>
+            <div style={{flex:'1 1 auto', height:1, background:'var(--border)'}}/>
+          </div>
+        )}
+        <div style={{...S.card, padding:0, overflow:'hidden', marginBottom:9}}>
           <div style={{padding:'13px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
             <H3 style={{marginBottom:0}}>{seg.label}</H3>
             {seg.k !== 'conclude' && seg.k !== 'rating' && (
@@ -4931,7 +4961,71 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
           {true && (
             <div style={{padding:'0 18px 16px'}}>
               {seg.k === 'todosreview' && <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('todosreview')} mode="review"/>}
-              {seg.k === 'todosnew' && <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('todosnew')} mode="new"/>}
+              {seg.k === 'todosnew' && (<React.Fragment>
+                <L10Todos data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('todosnew')} mode="new"/>
+                {(() => {
+                  // Rocks/Steps expected for next week — split into "carryover" and "new for next week".
+                  const nextWn = weekNum + 1;
+                  const wr = qData.weeklyRocks || {};
+                  const carried = [];
+                  const forNext = [];
+                  getQuarterRocks(data, qKey).forEach(rock => {
+                    (wr[rock.id] || []).forEach(step => {
+                      if (stepDone(step)) return;
+                      const sw = step.startWeek || step.weekNum || 1;
+                      const ew = step.endWeek || step.weekNum || sw;
+                      // Overdue: was due by this week and not done
+                      if (ew <= weekNum) {
+                        carried.push({rock, step, sw, ew});
+                      } else if (nextWn >= sw && nextWn <= ew) {
+                        // Programmed for next week (nextWn falls inside step range)
+                        forNext.push({rock, step, sw, ew});
+                      }
+                    });
+                  });
+                  if (!carried.length && !forNext.length) return null;
+                  const renderItem = ({rock, step, sw, ew}, kind) => (
+                    <div key={rock.id + '-' + step.id + '-' + kind} style={{display:'flex', alignItems:'center', gap:9,
+                                     padding:'6px 0', borderBottom:'1px solid var(--surface-alt)'}}>
+                      {rock.num != null && (
+                        <span style={{fontSize:11, fontWeight:800,
+                                      color:'var(--brand)', background:'var(--surface)',
+                                      padding:'2px 6px', minWidth:28, textAlign:'center',
+                                      borderRadius:'var(--r-xs)', flexShrink:0,
+                                      border:'1px solid var(--brand-ring)'}}>R{rock.num}</span>
+                      )}
+                      <div style={{flex:1, minWidth:0, fontSize:13, fontWeight:500, color:'var(--text)',
+                                   overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                        <span>{rock.title}</span>
+                        <span style={{color:'var(--muted-soft)', margin:'0 6px'}}>·</span>
+                        <span>{step.text}</span>
+                      </div>
+                    </div>
+                  );
+                  const Header = ({label}) => (
+                    <div style={{fontSize:12, fontWeight:700, color:'var(--muted)', textTransform:'uppercase',
+                                 letterSpacing:0.5, marginTop:16, marginBottom:4}}>{label}</div>
+                  );
+                  return (
+                    <div style={{marginTop:20, paddingTop:16, borderTop:'1px solid var(--surface-alt)'}}>
+                      <div style={{fontSize:12, fontWeight:700, color:'var(--brand)', textTransform:'uppercase',
+                                   letterSpacing:0.5, marginBottom:2}}>Rocks / Steps</div>
+                      {carried.length > 0 && (
+                        <React.Fragment>
+                          <Header label="Carryover"/>
+                          {carried.map(x => renderItem(x, 'c'))}
+                        </React.Fragment>
+                      )}
+                      {forNext.length > 0 && (
+                        <React.Fragment>
+                          <Header label="Next week"/>
+                          {forNext.map(x => renderItem(x, 'n'))}
+                        </React.Fragment>
+                      )}
+                    </div>
+                  );
+                })()}
+              </React.Fragment>)}
               {seg.k === 'scorecard' && <L10Scorecard scorecard={qData.scorecard || []} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('scorecard')}/>}
               {seg.k === 'rocks' && <L10Rocks rocks={getQuarterRocks(data, qKey)} wr={qData.weeklyRocks || {}} qw={weeks} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} upd={upd} editMode={editable('rocks')}/>}
               {seg.k === 'projects' && <L10Projects data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('projects')}/>}
@@ -5004,6 +5098,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
             </div>
           )}
         </div>
+        </React.Fragment>
       ))}
     </div>
   );
@@ -5017,7 +5112,7 @@ function L10Rocks({rocks, wr, qw, qKey, weekNum, idsIssues, upd, editMode}) {
       rightGutterWidth={showEdit ? 70 : 0}
       renderRockGutter={showEdit ? (r => (
         <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
-          weekNum={weekNum} upd={upd} qKey={qKey}/>
+          weekNum={weekNum} upd={upd} qKey={qKey} sessionKey={'w' + weekNum}/>
       )) : undefined}/>
   );
 }
@@ -5126,7 +5221,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
               {showGutter && (
                 <td style={{padding: isMobile ? '2px 2px' : '2px 6px', textAlign:'center', verticalAlign:'middle'}}>
                   <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
-                    weekNum={weekNum} upd={upd} qKey={qKey}/>
+                    weekNum={weekNum} upd={upd} qKey={qKey} sessionKey={'w' + weekNum}/>
                 </td>
               )}
             </tr>
@@ -5283,12 +5378,12 @@ function L10Todos({data, upd, qKey, weekNum, idsIssues, editMode, mode}) {
         <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0 8px'}}>No carryover pending.</div>
       )}
       {carryover.map(renderRow)}
-      <Header label={'Next week carryover (' + nextMon + ')'}/>
+      <Header label="Next Week"/>
       {nextCarry.length === 0 && (
         <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0 8px'}}>None.</div>
       )}
       {nextCarry.map(renderRow)}
-      <Header label={'Next week L10 (' + nextMon + ')'}/>
+      <Header label="Next Week L10"/>
       {forNext.length === 0 && (
         <div style={{fontSize:12, color:'var(--muted-soft)', padding:'4px 0'}}>No new to-dos yet. Create from IDS above or use + To-do.</div>
       )}
@@ -5363,7 +5458,7 @@ function L10Projects({data, upd, qKey, weekNum, idsIssues, editMode}) {
             {showEdit && (
               <td style={{textAlign:'right', verticalAlign:'middle', padding:'4px 0'}}>
                 <IssueBtn idsIssues={idsIssues} sourceId={proj.id} sourceName={'Project: ' + (proj.name || '(unnamed)')}
-                  weekNum={weekNum} upd={upd} qKey={qKey}/>
+                  weekNum={weekNum} upd={upd} qKey={qKey} sessionKey={'w' + weekNum}/>
               </td>
             )}
           </tr>
@@ -5420,7 +5515,8 @@ function L10Issues({data, upd, qKey, idsIssues, weekNum, editMode}) {
       ensureQ(d, qKey);
       d.quarters[qKey].idsIssues.push({
         id: uid(), sourceId:null, sourceName: '',
-        explanation:'', action:'', weekAdded: weekNum
+        explanation:'', action:'', weekAdded: weekNum,
+        sessionKey: 'w' + weekNum
       });
     });
   };
@@ -5543,19 +5639,19 @@ function QReview({data, upd, qKey, qData}) {
   });
   const rocks = getQuarterRocks(data, qKey);
   const sc = qData.scorecard || [];
-  const idsIssues = qData.idsIssues || [];
+  const idsIssues = (qData.idsIssues || []).filter(i => i.sessionKey === 'qreview');
   const qn = parseInt(qKey.split('-Q')[1]);
   const qw = qWeeks(qn);
   const lastWk = qw[qw.length - 1]; // Last week of the quarter (used as the "review week" anchor)
   const AGENDA = [
-    {k:'scorecard', label:'Scorecard'},
-    {k:'rocks', label:'Rocks Review'},
-    {k:'issues', label:'IDS'},
-    {k:'todosnew', label:'To-Dos Next Week'},
-    {k:'vision', label:'Vision Alignment'},
-    {k:'nextrocks', label:'Next Quarter Rocks'},
-    {k:'conclude', label:'Conclude'},
-    {k:'rating', label:'Quarter Rating'}
+    {k:'scorecard', label:'Scorecard', phase:'REVIEW'},
+    {k:'rocks', label:'Rocks Review', phase:'REVIEW'},
+    {k:'issues', label:'IDS', phase:'SOLVE (IDS)'},
+    {k:'todosnew', label:'To-Dos Next Week', phase:'CONCLUDE'},
+    {k:'vision', label:'Vision Alignment', phase:'CONCLUDE'},
+    {k:'nextrocks', label:'Next Quarter Rocks', phase:'CONCLUDE'},
+    {k:'conclude', label:'Conclude', phase:'CONCLUDE'},
+    {k:'rating', label:'Quarter Rating', phase:'CONCLUDE'}
   ];
 
   // Issue list management for Q Review (operates on whole quarter)
@@ -5574,7 +5670,8 @@ function QReview({data, upd, qKey, qData}) {
       ensureQ(d, qKey);
       d.quarters[qKey].idsIssues.push({
         id: uid(), sourceId:null, sourceName:'',
-        explanation:'', action:'', weekAdded: lastWk
+        explanation:'', action:'', weekAdded: lastWk,
+        sessionKey: 'qreview'
       });
     });
   };
@@ -5601,8 +5698,19 @@ function QReview({data, upd, qKey, qData}) {
 
   return (
     <div>
-      {AGENDA.map(seg => (
-        <div key={seg.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
+      {AGENDA.map((seg, si) => (
+        <React.Fragment key={seg.k}>
+        {(si === 0 || seg.phase !== AGENDA[si-1].phase) && (
+          <div style={{display:'flex', alignItems:'center', gap:10,
+                       marginTop: si === 0 ? 4 : 22, marginBottom:8}}>
+            <div style={{flex:'0 0 auto', fontSize:11, fontWeight:800, color:'var(--muted)',
+                         letterSpacing:1.2, textTransform:'uppercase'}}>
+              Phase {seg.phase === 'REVIEW' ? '1' : seg.phase === 'SOLVE (IDS)' ? '2' : '3'} · {seg.phase}
+            </div>
+            <div style={{flex:'1 1 auto', height:1, background:'var(--border)'}}/>
+          </div>
+        )}
+        <div style={{...S.card, padding:0, overflow:'hidden', marginBottom:8}}>
           <div style={{padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
             <H3 style={{marginBottom:0}}>{seg.label}</H3>
             {(seg.k === 'scorecard' || seg.k === 'rocks' || seg.k === 'issues') && (
@@ -5619,7 +5727,7 @@ function QReview({data, upd, qKey, qData}) {
                 <ScorecardSummary scorecard={sc} qw={qw} bare={true}
                   renderMetricExtra={editable('scorecard') ? (m => (
                     <IssueBtn idsIssues={idsIssues} sourceId={m.id} sourceName={'Metric: ' + m.metric}
-                      weekNum={lastWk} upd={upd} qKey={qKey}/>
+                      weekNum={lastWk} upd={upd} qKey={qKey} sessionKey='qreview'/>
                   )) : undefined}/>
               )}
               {seg.k === 'rocks' && (
@@ -5630,7 +5738,7 @@ function QReview({data, upd, qKey, qData}) {
                       rightGutterWidth={editable('rocks') ? 70 : 0}
                       renderRockGutter={editable('rocks') ? (r => (
                         <IssueBtn idsIssues={idsIssues} sourceId={r.id} sourceName={'Rock: ' + r.title}
-                          weekNum={lastWk} upd={upd} qKey={qKey}/>
+                          weekNum={lastWk} upd={upd} qKey={qKey} sessionKey='qreview'/>
                       )) : undefined}/>
                   )
               )}
@@ -5822,6 +5930,7 @@ function QReview({data, upd, qKey, qData}) {
             </div>
           )}
         </div>
+        </React.Fragment>
       ))}
     </div>
   );
