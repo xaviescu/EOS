@@ -502,12 +502,18 @@ const metricIsScore = m => m && m.type === 'score';
 // Weekly count of 'ok' ticks for tick metrics.
 const weekTickCnt = (m, wn) => DAYS.reduce((acc, _, di) =>
   (m.dayData && m.dayData[dayStr(wn, di)] === 'ok' ? acc + 1 : acc), 0);
-// Weekly average of numeric scores (0-100). Returns null if no entries.
+// Weekly average of numeric scores. Returns null if no entries.
 const weekScoreAvg = (m, wn) => {
   const vals = DAYS.map((_, di) => m.dayData && m.dayData[dayStr(wn, di)])
     .filter(v => typeof v === 'number' && !isNaN(v));
   if (!vals.length) return null;
-  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+};
+// Format a score / average with the metric's configured decimals (default 0).
+const fmtScore = (v, m) => {
+  if (v == null || isNaN(v)) return '—';
+  const d = m && typeof m.decimals === 'number' ? m.decimals : 0;
+  return Number(v).toFixed(d);
 };
 const stepEndWk = s => s.endWeek || s.weekNum || s.startWeek || 1;
 // A step is DONE if its end-week cell is marked OR any week AFTER end-week is
@@ -3609,7 +3615,7 @@ function ScorecardTab({data, upd}) {
   const [selQ, setSelQ] = useState(getCurQ());
   const [selWn, setSelWn] = useState(curWn);
   const [showF, setShowF] = useState(false);
-  const [form, setForm] = useState({metric:'', goal:'', type:'tick'});
+  const [form, setForm] = useState({metric:'', goal:'', type:'tick', decimals:0});
   const [showCopyQ, setShowCopyQ] = useState(false);
   const [view, setView] = useState('daily'); // 'daily' | 'summary'
   const [editMode, setEditMode] = useState(false);
@@ -3641,9 +3647,10 @@ function ScorecardTab({data, upd}) {
       ensureQ(d, selQ);
       const m = {id: uid(), metric: form.metric, type: form.type || 'tick', dayData:{}};
       if (m.type === 'tick') m.goal = form.goal;
+      if (m.type === 'score') m.decimals = parseInt(form.decimals) || 0;
       d.quarters[selQ].scorecard.push(m);
     });
-    setForm({metric:'', goal:'', type:'tick'}); setShowF(false);
+    setForm({metric:'', goal:'', type:'tick', decimals:0}); setShowF(false);
   };
   const copyToQ = tqk => {
     upd(d => {
@@ -3708,6 +3715,21 @@ function ScorecardTab({data, upd}) {
           {form.type === 'tick' && (
             <Fld label="Goal (# ticks/week)" value={form.goal} onChange={v => setForm(f => ({...f, goal:v}))} placeholder="e.g. 5"/>
           )}
+          {form.type === 'score' && (
+            <div style={{marginBottom:11}}>
+              <label style={S.lbl}>Decimals</label>
+              <div style={{display:'flex', gap:6}}>
+                {[0,1,2].map(d => (
+                  <button key={d} onClick={() => setForm(f => ({...f, decimals:d}))}
+                    style={{flex:'1 1 0', padding:'8px 10px', fontSize:12, fontWeight:700,
+                            borderRadius:'var(--r-sm)', cursor:'pointer',
+                            border:'1px solid ' + (form.decimals === d ? 'var(--brand)' : 'var(--border)'),
+                            background: form.decimals === d ? 'var(--brand)' : 'white',
+                            color: form.decimals === d ? 'white' : 'var(--text-2)'}}>{d}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{display:'flex', gap:8}}>
             <Btn onClick={addM}>Save</Btn>
             <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
@@ -3770,7 +3792,7 @@ function ScorecardTab({data, upd}) {
                           const avg = weekScoreAvg(m, selWn);
                           return (
                             <div style={{color:'var(--brand)', fontWeight:700, fontSize:13}}
-                              title="Weekly average">{avg == null ? '—' : avg}</div>
+                              title="Weekly average">{fmtScore(avg, m)}</div>
                           );
                         })() : (() => {
                           const cnt = weekTickCnt(m, selWn);
@@ -3794,15 +3816,15 @@ function ScorecardTab({data, upd}) {
                           const val = typeof st === 'number' ? st : '';
                           return (
                             <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
-                              <input type="number" min="0" max="100"
+                              <input type="number" step={m.decimals ? (m.decimals === 1 ? '0.1' : '0.01') : '1'}
                                 className="score-cell"
                                 value={val}
                                 onChange={e => {
                                   const v = e.target.value;
                                   if (v === '') { setScore(date, null); return; }
-                                  const n = parseInt(v);
+                                  const n = m.decimals ? parseFloat(v) : parseInt(v);
                                   if (isNaN(n)) return;
-                                  setScore(date, Math.max(0, Math.min(100, n)));
+                                  setScore(date, n);
                                 }}
                                 style={{width:'100%', minWidth:0, height: isMobile ? 30 : 24, borderRadius:0,
                                         border:'none', background:'transparent',
@@ -3904,7 +3926,7 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
                   if (isScore) {
                     const avg = weekScoreAvg(m, wn);
                     col = avg == null ? 'var(--muted-soft)' : 'var(--brand)';
-                    content = avg == null ? '·' : avg;
+                    content = avg == null ? '·' : fmtScore(avg, m);
                   } else {
                     const cnt = weekTickCnt(m, wn);
                     const goal = parseInt(m.goal || 0);
@@ -4759,7 +4781,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     </td>
                     <td style={{padding:'4px 4px', textAlign:'center'}}>
                       {isScore ? (
-                        <div style={{color:'var(--brand)', fontWeight:700, fontSize:13}} title="Weekly average">{avg == null ? '—' : avg}</div>
+                        <div style={{color:'var(--brand)', fontWeight:700, fontSize:13}} title="Weekly average">{fmtScore(avg, m)}</div>
                       ) : (
                         <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize:13}}>
                           <span style={{width:14, textAlign:'right', display:'inline-block'}}>{cnt}</span>
@@ -4775,15 +4797,15 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                         const val = typeof st === 'number' ? st : '';
                         return (
                           <td key={di} style={{padding:2, textAlign:'center'}}>
-                            <input type="number" min="0" max="100"
+                            <input type="number" step={m.decimals ? (m.decimals === 1 ? '0.1' : '0.01') : '1'}
                               className="score-cell"
                               value={val}
                               onChange={e => {
                                 const v = e.target.value;
                                 if (v === '') { setScore(date, null); return; }
-                                const n = parseInt(v);
+                                const n = m.decimals ? parseFloat(v) : parseInt(v);
                                 if (isNaN(n)) return;
-                                setScore(date, Math.max(0, Math.min(100, n)));
+                                setScore(date, n);
                               }}
                               style={{width:'100%', minWidth:0, height: isMobile ? 22 : 24, borderRadius:0,
                                       border:'none', background:'transparent',
@@ -5052,7 +5074,7 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
               <td style={{padding:'4px 2px', textAlign:'center'}}>
                 {isScore ? (
                   <div style={{color:'var(--brand)', fontWeight:700, fontSize: isMobile ? 12 : 13}} title="Weekly average">
-                    {avg == null ? '—' : avg}
+                    {fmtScore(avg, m)}
                   </div>
                 ) : (
                   <div style={{display:'inline-flex', alignItems:'center', justifyContent:'center', gap:3, color:'var(--brand)', fontWeight:600, fontSize: isMobile ? 12 : 13}}>
@@ -5069,15 +5091,15 @@ function L10Scorecard({scorecard, upd, qKey, weekNum, idsIssues, editMode}) {
                   const val = typeof st === 'number' ? st : '';
                   return (
                     <td key={di} style={{padding: isMobile ? '2px 0' : 2, textAlign:'center'}}>
-                      <input type="number" min="0" max="100"
+                      <input type="number" step={m.decimals ? (m.decimals === 1 ? '0.1' : '0.01') : '1'}
                         className="score-cell"
                         value={val}
                         onChange={e => {
                           const v = e.target.value;
                           if (v === '') { setScore(date, null); return; }
-                          const n = parseInt(v);
+                          const n = m.decimals ? parseFloat(v) : parseInt(v);
                           if (isNaN(n)) return;
-                          setScore(date, Math.max(0, Math.min(100, n)));
+                          setScore(date, n);
                         }}
                         style={{width:'100%', minWidth:0, height: isMobile ? 28 : 24, borderRadius:0,
                                 border:'none', background:'transparent',
@@ -6170,7 +6192,7 @@ function PrintView({data, onBack}) {
                                 <td key={wn} style={{...SH.td, textAlign:'center', fontWeight:700,
                                                      color: avg == null ? 'var(--border-strong)' : 'var(--brand)',
                                                      background: avg == null ? 'transparent' : 'var(--info-bg)'}}>
-                                  {avg == null ? '·' : avg}
+                                  {avg == null ? '·' : fmtScore(avg, m)}
                                 </td>
                               );
                             }
