@@ -4895,11 +4895,11 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
   const editable = k => !!blockEdit[k];
   const AGENDA = [
     {k:'scorecard', label:'Scorecard'},
-    {k:'todosreview', label:'To-Dos'},
-    {k:'rocks', label:'Rocks'},
-    {k:'projects', label:'Projects'},
+    {k:'todosreview', label:'To-Dos Review'},
+    {k:'rocks', label:'Rocks Review'},
+    {k:'projects', label:'Projects Review'},
     {k:'ids', label:'IDS'},
-    {k:'todosnew', label:'To-Dos'},
+    {k:'todosnew', label:'To-Dos Next Week'},
     {k:'conclude', label:'Conclude'},
     {k:'rating', label:'Week Rating'}
   ];
@@ -4938,11 +4938,11 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'ids' && <L10Issues data={data} upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum} editMode={editable('ids')}/>}
               {seg.k === 'conclude' && (() => {
                 const qFields = [
+                  {k:'headlines', label:'Headlines', ph:'What stands out this week?'},
                   {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this week?'},
                   {k:'priorities', label:'Priorities', ph:'Review planner / assess priorities. Happy with how you spent time? If not, steps?'},
                   {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this week?'},
-                  {k:'improvements', label:'Improvements', ph:'3 things to improve next week. What concrete actions can you take?'},
-                  {k:'headlines', label:'Headlines', ph:'What stands out this week?'}
+                  {k:'improvements', label:'Improvements', ph:'3 things to improve next week. What concrete actions can you take?'}
                 ];
                 return (
                   <div>
@@ -5549,9 +5549,9 @@ function QReview({data, upd, qKey, qData}) {
   const lastWk = qw[qw.length - 1]; // Last week of the quarter (used as the "review week" anchor)
   const AGENDA = [
     {k:'scorecard', label:'Scorecard'},
-    {k:'rocks', label:'Rocks'},
+    {k:'rocks', label:'Rocks Review'},
     {k:'issues', label:'IDS'},
-    {k:'todosnew', label:'To-Dos'},
+    {k:'todosnew', label:'To-Dos Next Week'},
     {k:'vision', label:'Vision Alignment'},
     {k:'nextrocks', label:'Next Quarter Rocks'},
     {k:'conclude', label:'Conclude'},
@@ -5756,11 +5756,11 @@ function QReview({data, upd, qKey, qData}) {
               )}
               {seg.k === 'conclude' && (() => {
                 const qFields = [
+                  {k:'headlines', label:'Headlines', ph:'What stands out this quarter?'},
                   {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this quarter?'},
                   {k:'priorities', label:'Priorities', ph:'Review planner / assess priorities. Happy with how you spent time? If not, steps?'},
                   {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this quarter?'},
-                  {k:'improvements', label:'Improvements', ph:'3 things to improve next quarter. What concrete actions can you take?'},
-                  {k:'headlines', label:'Headlines', ph:'What stands out this quarter?'}
+                  {k:'improvements', label:'Improvements', ph:'3 things to improve next quarter. What concrete actions can you take?'}
                 ];
                 return (
                   <div>
@@ -5853,11 +5853,11 @@ function PrintView({data, onBack}) {
 
   const areaList = ((data.vision && data.vision.areasList) || LIFE_AREAS);
   const wkQFields = [
+    {k:'headlines', label:'Headlines'},
     {k:'lessons', label:'Lessons'},
     {k:'priorities', label:'Priorities'},
     {k:'gratitude', label:'Gratitude'},
-    {k:'improvements', label:'Improvements'},
-    {k:'headlines', label:'Headlines'}
+    {k:'improvements', label:'Improvements'}
   ];
   const qQFields = wkQFields; // Same shape for Q Review
   const SectionHead = ({title}) => (
