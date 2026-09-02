@@ -4674,7 +4674,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                 return <div style={{padding:'0 18px 14px'}}><EmptyState icon="check" message="No rock steps this week." compact/></div>;
               }
               return (
-                <div style={{padding:'6px 12px 14px'}}>
+                <div style={{padding:'6px 18px 14px'}}>
                   {items.map(({rock, step, sw, ew, overdue}) => {
                     const chk = stepDone(step);
                     const late = chk && !!step.completedLate;
@@ -4706,12 +4706,12 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     return (
                       <div key={rock.id + '-' + step.id}
                         style={{display:'flex', alignItems:'center', gap:9,
-                                padding:'8px 6px', borderBottom:'1px solid var(--surface-alt)',
+                                padding:'6px 0', borderBottom:'1px solid var(--surface-alt)',
                                 opacity: chk ? 0.55 : 1}}>
                         <button onClick={toggleStep}
                           title={overdue ? 'Overdue — click to mark done (late)' : chk ? 'Uncheck' : 'Mark done'}
                           style={{width:16, height:16, borderRadius:3, flexShrink:0, padding:0,
-                                  border:'1.5px solid ' + (chk ? 'var(--muted)' : 'var(--border-strong)'),
+                                  border:'1.5px solid ' + (chk ? 'var(--muted)' : 'var(--text-2)'),
                                   background:'white', cursor:'pointer',
                                   display:'inline-flex', alignItems:'center', justifyContent:'center'}}>
                           {chk && (
