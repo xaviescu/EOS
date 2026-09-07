@@ -6206,7 +6206,7 @@ function PrintView({data, onBack}) {
         const seen = {};
         yrFlat.forEach(x => {
           const key = nk(x.areaLabel);
-          if (!seen[key]) {
+          if (!(key in seen)) {
             seen[key] = groups.length;
             groups.push({areaLabel: x.areaLabel, areaKey: x.areaKey, items: []});
           }
@@ -6220,9 +6220,6 @@ function PrintView({data, onBack}) {
         return (
           <section id="sec-year-rocks" className="print-page-break">
             <SectionHead title={'Rocks ' + YEAR}/>
-            <div style={{fontSize:10, color:'red', marginBottom:8, fontFamily:'monospace'}}>
-              DEBUG: groups.length={groups.length} | flat.length={yrFlat.length} | selfm_group_items={(groups.find(g => g.areaKey === 'selfm') || {items:[]}).items.length}
-            </div>
             {groups.map((g, gi) => (
               <div key={g.areaKey + '_' + gi} className="print-section" style={{marginBottom:14}}>
                 <div style={{fontSize:12, fontWeight:800, color:'var(--brand)',
