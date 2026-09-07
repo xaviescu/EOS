@@ -458,26 +458,33 @@ const sWks = s => {
 const QS_ORDER = ['Q1','Q2','Q3','Q4'];
 // Flat list of yearRocks in area+position order, each tagged with num (R1, R2...).
 // Dedupes area buckets by NORMALIZED label so duplicate/legacy keys collapse
-// into a single visual group (case + numeric-prefix insensitive).
+// into a single visual group (case + numeric/punct-prefix insensitive).
+// Very aggressive normalization: strip everything that isn't a letter+number,
+// so "1. SelfM", "1) SelfM", "SelfM ", "self-m" all collapse to "selfm".
+const _nkArea = s => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
 const getYearRocksFlat = (data) => {
   const yr = (data.yearRocks && data.yearRocks[String(YEAR)]) || {};
   const areasList = (data.vision && data.vision.areasList) || [];
-  const nk = s => (s || '').toString().trim().toLowerCase().replace(/^\d+\.\s*/, '');
   const flat = [];
   const seen = {}; // normalized label -> canonical {k, label}
   areasList.forEach(la => {
-    const key = nk(la.label);
+    const key = _nkArea(la.label);
     const canonical = seen[key] || la;
     if (!seen[key]) seen[key] = la;
     (yr[la.k] || []).forEach(rock => flat.push({areaKey: canonical.k, areaLabel: canonical.label, rock}));
   });
   Object.keys(yr).forEach(ak => {
     if (areasList.some(la => la.k === ak)) return;
-    const key = nk(ak);
+    const key = _nkArea(ak);
     const canonical = seen[key] || {k: ak, label: ak};
     if (!seen[key]) seen[key] = canonical;
     (yr[ak] || []).forEach(rock => flat.push({areaKey: canonical.k, areaLabel: canonical.label, rock}));
   });
+  if (typeof window !== 'undefined' && window.__eosDebugRocks) {
+    console.log('[getYearRocksFlat] areasList=', JSON.parse(JSON.stringify(areasList)),
+                'yrKeys=', Object.keys(yr),
+                'flat=', flat.map(x => ({k: x.areaKey, label: x.areaLabel, id: x.rock.id, title: x.rock.title})));
+  }
   return flat.map((r, i) => ({...r, num: i + 1}));
 };
 const getRockNumById = (data, rockId) => {
@@ -6173,10 +6180,10 @@ function PrintView({data, onBack}) {
       {(() => {
         const yrFlat = getYearRocksFlat(data);
         if (yrFlat.length === 0) return null;
-        // Group flat list by NORMALIZED label (case+numeric-prefix-insensitive),
-        // preserving order. Defends against any residual duplicate areaKeys
-        // whose migration hasn't collapsed them.
-        const nk = s => (s || '').toString().trim().toLowerCase().replace(/^\d+\.\s*/, '');
+        // Group flat list by aggressively-normalized label — strip everything
+        // that isn't a letter+number so "1. SelfM", "SelfM ", "self-m" all
+        // collapse together. Second defense on top of getYearRocksFlat's dedup.
+        const nk = s => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
         const groups = [];
         const seen = {};
         yrFlat.forEach(x => {
@@ -6187,6 +6194,11 @@ function PrintView({data, onBack}) {
           }
           groups[seen[key]].items.push(x);
         });
+        if (typeof window !== 'undefined' && window.__eosDebugRocks) {
+          console.log('[PrintView Rocks groups]',
+                      groups.map(g => ({label: g.label || g.areaLabel, count: g.items.length,
+                                       items: g.items.map(i => i.rock.title)})));
+        }
         return (
           <section id="sec-year-rocks" className="print-page-break">
             <SectionHead title={'Rocks ' + YEAR}/>
