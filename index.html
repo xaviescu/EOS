@@ -2473,6 +2473,24 @@ function App({bundle, onLogout}) {
                   [theme === 'dark' ? 'Switch to Light' : 'Switch to Dark', () => { setTheme(theme === 'dark' ? 'light' : 'dark'); setMoreOpen(false); }],
                   ['Exportar backup', () => { exportJSON(); setMoreOpen(false); }],
                   ['Importar backup', () => { importRef.current && importRef.current.click(); setMoreOpen(false); }],
+                  ['Debug: dump areas', () => {
+                    setMoreOpen(false);
+                    const areasList = ((d.vision && d.vision.areasList) || []).map(a => ({k: a.k, label: a.label}));
+                    const yr2026 = (d.yearRocks && d.yearRocks['2026']) || {};
+                    const buckets = {};
+                    Object.keys(yr2026).forEach(ak => {
+                      buckets[ak] = (yr2026[ak] || []).map(r => ({id: r.id, title: r.title, quarters: Object.keys(r.quarters || {})}));
+                    });
+                    const dump = JSON.stringify({areasList, yearRocks2026: buckets}, null, 2);
+                    // Copy to clipboard AND show in a modal-like textarea for easy copy
+                    try { navigator.clipboard.writeText(dump); } catch(e) {}
+                    const w = window.open('', '_blank', 'width=700,height=600');
+                    if (w) {
+                      w.document.write('<html><body style="margin:0;padding:14px;font-family:monospace"><h3>Debug — copiado al portapapeles</h3><textarea style="width:100%;height:90%;font-family:monospace;font-size:12px">' + dump.replace(/</g, '&lt;') + '</textarea></body></html>');
+                    } else {
+                      alert(dump);
+                    }
+                  }],
                   ['Lock (logout)', () => { setMoreOpen(false); onLogout(); }]
                 ].map(([label, fn]) => (
                   <button key={label} onClick={fn}
