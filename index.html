@@ -1627,12 +1627,14 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
     });
     setForm(null);
   };
+  const weekDatesLabel = dayShort(selWn, 0) + ' – ' + dayShort(selWn, 6);
   return (
-    <div>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:8, flexWrap:'wrap'}}>
-        <div style={{fontSize:13, color:'var(--muted)'}}>Week {selWn} - {wDates(selWn)}</div>
+    <div style={{borderRadius:'var(--r-md)', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap',
+                   background:'var(--surface-alt)', padding:'12px 16px'}}>
+        <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>Week {selWn} {'—'} {weekDatesLabel}</div>
         <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
-          style={{fontSize:11, padding:'5px 12px'}}>+ Event</Btn>
+          style={{fontSize:12, padding:'6px 14px'}}>+ Event</Btn>
       </div>
       {/* View toggle — mobile only, desktop stays on Week */}
       {isMobile && (
@@ -1833,14 +1835,21 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                 const sw = step.startWeek || step.weekNum || fw;
                 const ew = step.endWeek || step.weekNum || fw;
                 // Empty "missed" markers appear for every week past ew and up to
-                // curWnNow that hasn't been clicked. If the user clicks a late
-                // week, no more empty markers appear AFTER that click (latest
-                // late-click becomes the boundary). Prior missed markers stay.
+                // curWnNow that hasn't been clicked. Rules:
+                //  - If user clicks a late week, no more empty markers appear
+                //    AFTER that click (latest late-click becomes the boundary);
+                //    prior missed markers stay.
+                //  - If the step is already done ON TIME (end-week cell checked
+                //    and no late clicks), no missed markers at all — the step
+                //    closed on schedule.
                 const lateDoneWeeks = Object.keys(step.weeklyDone || {})
                   .map(w => parseInt(w))
                   .filter(w => w > ew && step.weeklyDone[w]);
                 const latestLateClick = lateDoneWeeks.length ? Math.max(...lateDoneWeeks) : null;
-                const missedLimit = latestLateClick != null ? (latestLateClick - 1) : curWnNow;
+                const doneOnTime = latestLateClick == null && stepDone(step);
+                const missedLimit = latestLateClick != null
+                  ? (latestLateClick - 1)
+                  : (doneOnTime ? ew : curWnNow);
                 return (
                   <tr key={'s' + step.id} style={{borderTop:'1px solid var(--border)'}}>
                     <td style={{padding: '6px ' + labelPadX + 'px 6px ' + stepIndent + 'px', fontSize: isMobile ? 10 : 12, color:'var(--text-2)',
