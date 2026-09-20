@@ -4600,6 +4600,24 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
                   color:'var(--text)', fontFamily:'inherit', lineHeight:1.5}}/>
       </div>
+      {/* Improvements This Week — read-only, from prev week's L10 Conclude improvements */}
+      {(() => {
+        let prevImprovements = '';
+        Object.keys(data.quarters || {}).forEach(qk => {
+          const w = (data.quarters[qk].weeks || {})[dispWn - 1];
+          if (w && w.improvements) prevImprovements = w.improvements;
+        });
+        return (
+          <div className="card-hover" style={S.card}>
+            <H3 style={{marginBottom:8}}>Improvements This Week</H3>
+            <div style={{fontSize:13, lineHeight:1.5, whiteSpace:'pre-wrap',
+                         color: prevImprovements ? 'var(--text)' : 'var(--muted-soft)',
+                         fontStyle: prevImprovements ? 'normal' : 'italic'}}>
+              {prevImprovements || 'No improvements from last week.'}
+            </div>
+          </div>
+        );
+      })()}
       {/* Meetings */}
       <div className="card-hover" style={S.card}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
@@ -5163,15 +5181,30 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'projects' && <L10Projects data={data} upd={upd} qKey={qKey} weekNum={weekNum} idsIssues={idsIssues} editMode={editable('projects')}/>}
               {seg.k === 'ids' && <L10Issues data={data} upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum} editMode={editable('ids')}/>}
               {seg.k === 'conclude' && (() => {
+                // Read prev week's improvements (from any quarter) — shown READ-ONLY
+                // as "Improvements This Week" at the top.
+                let prevImprovements = '';
+                Object.keys(data.quarters || {}).forEach(qk => {
+                  const w = (data.quarters[qk].weeks || {})[weekNum - 1];
+                  if (w && w.improvements) prevImprovements = w.improvements;
+                });
                 const qFields = [
                   {k:'headlines', label:'Headlines', ph:'What stands out this week?'},
-                  {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this week?'},
-                  {k:'priorities', label:'Priorities', ph:'Review planner / assess priorities. Happy with how you spent time? If not, steps?'},
                   {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this week?'},
-                  {k:'improvements', label:'Improvements', ph:'3 things to improve next week. What concrete actions can you take?'}
+                  {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this week?'},
+                  {k:'improvements', label:'Improvements Next Week', ph:'3 things to improve next week. What concrete actions can you take?'}
                 ];
                 return (
                   <div>
+                    <div style={{marginBottom:16}}>
+                      <label style={S.lbl}>Improvements This Week</label>
+                      <div style={{fontSize:13, color: prevImprovements ? 'var(--text)' : 'var(--muted-soft)',
+                                   padding:'4px 0', lineHeight:1.5, whiteSpace:'pre-wrap',
+                                   borderBottom:'1px solid var(--surface-alt)',
+                                   fontStyle: prevImprovements ? 'normal' : 'italic'}}>
+                        {prevImprovements || 'No improvements written last week.'}
+                      </div>
+                    </div>
                     {qFields.map(f => (
                       <div key={f.k} style={{marginBottom:16}}>
                         <label style={S.lbl}>{f.label}</label>
