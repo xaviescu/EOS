@@ -1439,7 +1439,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         {SLOTS.map((slot, si) => (
           <div key={'l-'+si}
             style={{gridRow: si+2, gridColumn: 1,
-                    background:'var(--surface-alt)', textAlign:'right',
+                    background:'var(--bg)', textAlign:'right',
                     padding: compact ? (si === 0 ? '6px 4px 0' : '0 4px') : (si === 0 ? '8px 6px 0' : '1px 6px'),
                     fontSize: compact ? 8 : 9,
                     color:'var(--muted-soft)', fontWeight:500, whiteSpace:'nowrap',
@@ -1629,9 +1629,9 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
   };
   const weekDatesLabel = dayShort(selWn, 0) + ' – ' + dayShort(selWn, 6);
   return (
-    <div style={{borderRadius:'var(--r-md)', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+    <div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap',
-                   background:'var(--bg)', padding:'12px 16px'}}>
+                   background:'var(--bg)', padding:'12px 4px 12px 4px'}}>
         <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>Week {selWn} {'—'} {weekDatesLabel}</div>
         <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:12, padding:'6px 14px'}}>+ Event</Btn>
