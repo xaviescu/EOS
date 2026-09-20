@@ -1409,7 +1409,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         width:'100%', minWidth: minW, position:'relative'
       }}>
         {/* Header — hour (empty, column implied) */}
-        <div style={{gridRow:1, gridColumn:1, background:'var(--brand-soft)',
+        <div style={{gridRow:1, gridColumn:1, background:'var(--surface)',
                      borderBottom:'2px solid var(--brand)'}}/>
         {/* Header — days */}
         {focusColOrder.map(di => {
@@ -1421,7 +1421,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                 if (isFocus && mini) { setFocusDay && setFocusDay(di); return; }
                 if (dayLabels && dayLabels[di] && dayLabels[di].onClick) dayLabels[di].onClick();
               }}
-              style={{gridRow:1, gridColumn: dayToCol[di], background:'var(--brand-soft)',
+              style={{gridRow:1, gridColumn: dayToCol[di], background:'var(--surface)',
                       borderBottom:'2px solid var(--brand)',
                       padding: mini ? '6px 0' : (compact ? '6px 1px' : '6px 4px'), color:'var(--brand)',
                       fontSize:11, fontWeight:700, textAlign:'center',
@@ -1439,7 +1439,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         {SLOTS.map((slot, si) => (
           <div key={'l-'+si}
             style={{gridRow: si+2, gridColumn: 1,
-                    background:'transparent', textAlign:'right',
+                    background:'var(--surface-alt)', textAlign:'right',
                     padding: compact ? (si === 0 ? '6px 4px 0' : '0 4px') : (si === 0 ? '8px 6px 0' : '1px 6px'),
                     fontSize: compact ? 8 : 9,
                     color:'var(--muted-soft)', fontWeight:500, whiteSpace:'nowrap',
@@ -1832,7 +1832,15 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
               const stepRows = steps.map(step => {
                 const sw = step.startWeek || step.weekNum || fw;
                 const ew = step.endWeek || step.weekNum || fw;
-                const overdue = isStepOverdue(step, curWnNow);
+                // Empty "missed" markers appear for every week past ew and up to
+                // curWnNow that hasn't been clicked. If the user clicks a late
+                // week, no more empty markers appear AFTER that click (latest
+                // late-click becomes the boundary). Prior missed markers stay.
+                const lateDoneWeeks = Object.keys(step.weeklyDone || {})
+                  .map(w => parseInt(w))
+                  .filter(w => w > ew && step.weeklyDone[w]);
+                const latestLateClick = lateDoneWeeks.length ? Math.max(...lateDoneWeeks) : null;
+                const missedLimit = latestLateClick != null ? (latestLateClick - 1) : curWnNow;
                 return (
                   <tr key={'s' + step.id} style={{borderTop:'1px solid var(--border)'}}>
                     <td style={{padding: '6px ' + labelPadX + 'px 6px ' + stepIndent + 'px', fontSize: isMobile ? 10 : 12, color:'var(--text-2)',
@@ -1840,29 +1848,30 @@ function GanttChart({rocks, wr, qw, upd, qKey, highlightWn, rightGutterWidth, re
                         title={step.text}>{step.text}</td>
                     {qw.map(wn => {
                       const inR = wn >= sw && wn <= ew;
-                      const chk = isWkDone(step, wn) || step.done;
+                      const cellClicked = isWkDone(step, wn);
+                      const chk = cellClicked || step.done;
                       const isCur = highlightWn && wn === highlightWn;
-                      const isLateMarker = chk && wn > ew;                                // clicked late historically
-                      const isOverdueSlot = overdue && wn === curWnNow && wn > ew;        // active overdue slot NOW
-                      const clickable = inR || isOverdueSlot || isLateMarker;
-                      // Overdue not done = transparent bar with dotted orange border.
+                      const isLateMarker = cellClicked && wn > ew;                     // clicked late
+                      const isMissedWeek = wn > ew && wn <= missedLimit && !cellClicked; // past-due empty
+                      const clickable = inR || isMissedWeek || isLateMarker;
+                      // Missed = transparent bar with dashed orange border.
                       // Done late = solid orange fill.
                       const barBg = isLateMarker
                         ? 'var(--warn-line)'
-                        : isOverdueSlot
+                        : isMissedWeek
                           ? 'transparent'
                           : (chk ? 'var(--ok-line)' : 'var(--brand)');
                       return (
                         <td key={wn} style={{padding:'5px 1px',
                                              background: isCur ? 'rgba(94,106,210,0.08)' : 'transparent'}}>
-                          {(inR || isLateMarker || isOverdueSlot) && (
+                          {(inR || isLateMarker || isMissedWeek) && (
                             <div onClick={() => clickable && toggle(rock.id, step.id, wn)}
-                              title={isOverdueSlot ? 'Overdue — click to mark done (late)' : isLateMarker ? 'Marked done late' : undefined}
+                              title={isMissedWeek ? 'Missed — click to mark done (late)' : isLateMarker ? 'Marked done late' : undefined}
                               style={{height:11, background: barBg,
                                       borderRadius:2, margin:'0 1px',
-                                      opacity: (chk || isLateMarker || isOverdueSlot) ? 1 : 0.5,
+                                      opacity: (chk || isLateMarker || isMissedWeek) ? 1 : 0.5,
                                       cursor: clickable ? 'pointer' : 'default',
-                                      border: isOverdueSlot ? '2px dashed var(--warn-line)' : 'none',
+                                      border: isMissedWeek ? '2px dashed var(--warn-line)' : 'none',
                                       boxSizing:'border-box',
                                       transition:'background .15s'}}/>
                           )}
@@ -4517,11 +4526,19 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       <PageTitle icon="diario">Daily Summary</PageTitle>
       {/* Toolbar: date picker + Today + week nav + week label */}
       <div style={{display:'flex', alignItems:'center', gap: isMobile ? 6 : 10, marginBottom: 12, flexWrap:'wrap'}}>
-        <DatePicker value={selDay}
-          onChange={ds => { if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
-          style={{width: isMobile ? 130 : 140}}/>
-        <Btn onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }} v="sec"
-          style={isMobile ? {padding:'6px 10px', fontSize:13} : {padding:'6px 12px', fontSize:13}}>Today</Btn>
+        <input type="date" value={selDay || ''}
+          onChange={e => { const ds = e.target.value; if (ds) { setSelDay(ds); setDispWn(dateToWn(ds)); } }}
+          style={{height:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
+                  border:'1px solid var(--border-strong)', background:'var(--surface)',
+                  cursor:'pointer', fontSize:13, fontWeight:500, color:'var(--text)',
+                  padding:'0 10px', fontFamily:'inherit',
+                  width: isMobile ? 140 : 160, outline:'none'}}/>
+        <button onClick={() => { const t = todayStr(); setSelDay(t); setDispWn(dateToWn(t)); }}
+          style={{height:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
+                  border:'1px solid var(--border-strong)', background:'var(--surface)',
+                  cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text)',
+                  padding: isMobile ? '0 10px' : '0 14px', display:'flex',
+                  alignItems:'center', justifyContent:'center', fontFamily:'inherit'}}>Today</button>
         <div style={{display:'flex', gap:4, alignItems:'center'}}>
           <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
             style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
@@ -4532,9 +4549,9 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             style={{height:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid ' + (showCal ? 'var(--brand)' : 'var(--border-strong)'),
                     background: showCal ? 'var(--brand)' : 'var(--surface)',
-                    cursor:'pointer', fontSize:12, fontWeight:600,
-                    color: showCal ? 'white' : 'var(--text-2)',
-                    padding:'0 12px', display:'flex',
+                    cursor:'pointer', fontSize:13, fontWeight:600,
+                    color: showCal ? 'white' : 'var(--text)',
+                    padding:'0 14px', display:'flex',
                     alignItems:'center', justifyContent:'center'}}>Calendar</button>
           <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
             style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
