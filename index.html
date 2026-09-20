@@ -1306,7 +1306,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
   focusDay = focusDay != null ? focusDay : 0;
   const HOUR_W = compact ? 30 : 44;
   const SLOT_H = compact ? 18 : 22;
-  const HEADER_H = compact ? 38 : 50;
+  const HEADER_H = compact ? 52 : 58;
   const slotIdx = (h, m) => (h - 6) * 2 + (m >= 30 ? 1 : 0);
 
   // LIST view — linear list grouped by day. Return early.
@@ -1429,9 +1429,9 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
                       display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
                       cursor: (isFocus && mini) || (dayLabels && dayLabels[di] && dayLabels[di].onClick) ? 'pointer' : 'default',
                       overflow:'hidden'}}>
-              <div style={{fontSize: mini ? 9 : undefined}}>{compact || mini ? day[0] : day.slice(0, 3)}</div>
+              <div style={{fontSize: mini ? 9 : (compact ? 11 : undefined)}}>{mini ? day[0] : day.slice(0, 3)}</div>
               {!mini && dayLabels && dayLabels[di] && dayLabels[di].sub &&
-                <div style={{fontSize: compact ? 9 : 10, color:'var(--brand)', fontWeight:600, marginTop:2, opacity:0.85}}>{dayLabels[di].sub}</div>}
+                <div style={{fontSize: compact ? 10 : 11, color:'var(--muted)', fontWeight:500, marginTop:3, letterSpacing:0, textTransform:'none'}}>{dayLabels[di].sub}</div>}
             </div>
           );
         })}
@@ -1631,7 +1631,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
   return (
     <div style={{borderRadius:'var(--r-md)', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap',
-                   background:'var(--surface-alt)', padding:'12px 16px'}}>
+                   background:'var(--bg)', padding:'12px 16px'}}>
         <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>Week {selWn} {'—'} {weekDatesLabel}</div>
         <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
           style={{fontSize:12, padding:'6px 14px'}}>+ Event</Btn>
