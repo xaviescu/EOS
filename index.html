@@ -1333,7 +1333,7 @@ function IssueBtn({idsIssues, sourceId, sourceName, weekNum, upd, qKey, sessionK
 // =====================================================================
 // Calendar
 // =====================================================================
-function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabels, compact, calView, focusDay, setFocusDay}) {
+function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabels, compact, calView, focusDay, setFocusDay, showActions}) {
   compact = compact || false;
   calView = calView || 'week';
   focusDay = focusDay != null ? focusDay : 0;
@@ -1401,6 +1401,9 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
   const focusColOrder = dayCols;
 
   // Column assignment per day (interval graph coloring) — permite overlaps.
+  // IMPORTANT: columns are computed per overlap CLUSTER, not per whole day —
+  // otherwise one overlapping pair anywhere in the day would force every
+  // other (non-overlapping) event that day to also shrink to a narrow column.
   const dayLayouts = {};
   for (let di = 0; di < 7; di++) {
     const dayEvts = events
@@ -1411,15 +1414,36 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
         return {ev: e, start, end};
       })
       .sort((a, b) => a.start - b.start || a.end - b.end);
-    const colEnds = [];
-    const colMap = new Map();
-    dayEvts.forEach(({ev, start, end}) => {
-      let col = 0;
-      while (col < colEnds.length && colEnds[col] > start) col++;
-      colEnds[col] = end;
-      colMap.set(ev.id, col);
+    // Group into connected overlap clusters.
+    const clusters = [];
+    let current = [];
+    let curEnd = -Infinity;
+    dayEvts.forEach(item => {
+      if (current.length === 0 || item.start < curEnd) {
+        current.push(item);
+        curEnd = Math.max(curEnd, item.end);
+      } else {
+        clusters.push(current);
+        current = [item];
+        curEnd = item.end;
+      }
     });
-    dayLayouts[di] = {cols: Math.max(1, colEnds.length), colMap};
+    if (current.length) clusters.push(current);
+    // Assign columns independently within each cluster.
+    const colMap = new Map();
+    const colsMap = new Map();
+    clusters.forEach(cluster => {
+      const colEnds = [];
+      cluster.forEach(({ev, start, end}) => {
+        let col = 0;
+        while (col < colEnds.length && colEnds[col] > start) col++;
+        colEnds[col] = end;
+        colMap.set(ev.id, col);
+      });
+      const clusterCols = Math.max(1, colEnds.length);
+      cluster.forEach(({ev}) => colsMap.set(ev.id, clusterCols));
+    });
+    dayLayouts[di] = {colMap, colsMap};
   }
 
   // Map real day → grid position (visual column, 1-based starting at 2 after HOUR_W).
@@ -1430,7 +1454,8 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
   const enableScroll = calView === 'week' || !compact;
   const minW = calView === 'week' ? (compact ? 700 : 680) : 0;
   // isCompact = mobile without scroll and without color/x buttons per event (more space for title).
-  const showEvActions = !isCompact;
+  // showActions (if explicitly passed) additionally gates the delete/color controls behind an Edit toggle.
+  const showEvActions = !isCompact && (showActions !== false);
   return (
     <div style={{overflowX: enableScroll ? 'auto' : 'hidden'}}>
       <div style={{
@@ -1501,7 +1526,7 @@ function CalTable({events, onCellClick, onDelete, onCycleColor, onEdit, dayLabel
           const layout = dayLayouts[ev.day];
           if (!layout) return null;
           const col = layout.colMap.get(ev.id) || 0;
-          const cols = layout.cols;
+          const cols = layout.colsMap.get(ev.id) || 1;
           const st = eventStyle(ev);
           const end = eventEndTime(ev);
           const emptyTitle = !ev.title || !ev.title.trim();
@@ -1637,6 +1662,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
   compact = compact || false;
   const isMobile = useIsMobile();
   const [form, setForm] = useState(null);
+  const [editMode, setEditMode] = useState(false);
   const [calView, setCalView] = useState(isMobile ? 'compact' : 'week');
   const [focusDay, setFocusDay] = useState(focusDayIdx != null ? focusDayIdx : 0);
   React.useEffect(() => { if (focusDayIdx != null) setFocusDay(focusDayIdx); }, [focusDayIdx]);
@@ -1666,8 +1692,12 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap',
                    background:'var(--bg)', padding:'12px 4px 12px 4px'}}>
         <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>Week {selWn} {'—'} {weekDatesLabel}</div>
-        <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
-          style={{fontSize:12, padding:'6px 14px'}}>+ Event</Btn>
+        <div style={{display:'flex', gap:6}}>
+          <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
+            style={{fontSize:12, padding:'6px 14px'}}>+ Event</Btn>
+          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
+            style={{fontSize:12, padding:'6px 14px'}}>{editMode ? 'Done' : 'Edit'}</Btn>
+        </div>
       </div>
       {/* View toggle — mobile only, desktop stays on Week */}
       {isMobile && (
@@ -1682,6 +1712,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
         </div>
       )}
       <CalTable events={events} calView={isMobile ? calView : 'week'} focusDay={focusDay} setFocusDay={setFocusDay}
+        showActions={editMode}
         onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
         onEdit={ev => setForm({...ev})}
         onDelete={id => upd(d => {
@@ -1702,21 +1733,28 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
   );
 }
 
-function StdWeekCalendar({data, upd}) {
+function StdWeekCalendar({data, upd, fieldKey, copyTag}) {
+  // fieldKey: which data[] array stores this standard week's events (lets
+  // several independent standard-week calendars coexist — e.g. one per person).
+  // copyTag: tags events copied into a real week with their source, so
+  // "Copy to Week" only replaces previously-copied events from THIS same
+  // standard calendar, instead of wiping out other people's copied events.
+  fieldKey = fieldKey || 'stdWeeklyEvents';
+  copyTag = copyTag || 'main';
   const [form, setForm] = useState(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyQ, setCopyQ] = useState(getCurQ());
   const [copyWn, setCopyWn] = useState(getCurWn());
-  const events = data.stdWeeklyEvents || [];
+  const events = data[fieldKey] || [];
   const save = () => {
     if (!form || !form.title) return;
     upd(d => {
-      if (!d.stdWeeklyEvents) d.stdWeeklyEvents = [];
+      if (!d[fieldKey]) d[fieldKey] = [];
       if (form.id) {
-        const idx = d.stdWeeklyEvents.findIndex(x => x.id === form.id);
-        if (idx >= 0) d.stdWeeklyEvents[idx] = {...form};
+        const idx = d[fieldKey].findIndex(x => x.id === form.id);
+        if (idx >= 0) d[fieldKey][idx] = {...form};
       } else {
-        d.stdWeeklyEvents.push({id: uid(), ...form});
+        d[fieldKey].push({id: uid(), ...form});
       }
     });
     setForm(null);
@@ -1727,8 +1765,8 @@ function StdWeekCalendar({data, upd}) {
     upd(d => {
       if (!d.weeklyCalendar) d.weeklyCalendar = {};
       if (!d.weeklyCalendar[wk2]) d.weeklyCalendar[wk2] = [];
-      d.weeklyCalendar[wk2] = d.weeklyCalendar[wk2].filter(e => !e.isStdWeek);
-      events.forEach(e => { d.weeklyCalendar[wk2].push({...e, id: uid(), isStdWeek:true}); });
+      d.weeklyCalendar[wk2] = d.weeklyCalendar[wk2].filter(e => !(e.isStdWeek && (e.stdSource || 'main') === copyTag));
+      events.forEach(e => { d.weeklyCalendar[wk2].push({...e, id: uid(), isStdWeek:true, stdSource:copyTag}); });
     });
     setCopyOpen(false);
   };
@@ -1761,17 +1799,17 @@ function StdWeekCalendar({data, upd}) {
         onCellClick={(di, h, m) => setForm({day:di, h, m, duration:1, title:'', notes:''})}
         onEdit={ev => setForm({...ev})}
         onDelete={id => upd(d => {
-          const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
-          if (idx >= 0) d.stdWeeklyEvents.splice(idx, 1);
+          const idx = (d[fieldKey] || []).findIndex(x => x.id === id);
+          if (idx >= 0) d[fieldKey].splice(idx, 1);
         })}
         onCycleColor={id => upd(d => {
-          const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
-          if (idx >= 0) d.stdWeeklyEvents[idx].color = cycleEventColor(d.stdWeeklyEvents[idx]);
+          const idx = (d[fieldKey] || []).findIndex(x => x.id === id);
+          if (idx >= 0) d[fieldKey][idx].color = cycleEventColor(d[fieldKey][idx]);
         })}/>
       {form && <EventModal form={form} setForm={setForm} onSave={save} onClose={() => setForm(null)}
         onDelete={id => upd(d => {
-          const idx = (d.stdWeeklyEvents || []).findIndex(x => x.id === id);
-          if (idx >= 0) d.stdWeeklyEvents.splice(idx, 1);
+          const idx = (d[fieldKey] || []).findIndex(x => x.id === id);
+          if (idx >= 0) d[fieldKey].splice(idx, 1);
         })}/>}
     </div>
   );
@@ -4274,19 +4312,20 @@ function TodosTab({data, upd}) {
     upd(d => { d.todos.push({id: uid(), ...form, done:false, completedDate:null}); });
     setForm({task:'', startDate: todayStr()}); setShowF(false);
   };
-  // Sort by start date, most recent first. Items with no start date sink to the bottom.
-  const byStartDateDesc = (a, b) => {
+  // Sort by start date, oldest first — the one with the (most recent / latest)
+  // start date sinks to the bottom. Items with no start date sink to the bottom too.
+  const byStartDateAsc = (a, b) => {
     if (!a.startDate && !b.startDate) return 0;
     if (!a.startDate) return 1;
     if (!b.startDate) return -1;
-    return b.startDate < a.startDate ? -1 : b.startDate > a.startDate ? 1 : 0;
+    return a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0;
   };
-  const pending = data.todos.filter(t => !t.done).sort(byStartDateDesc);
+  const pending = data.todos.filter(t => !t.done).sort(byStartDateAsc);
   // Completed: only those completed during the CURRENT week
   const done = data.todos.filter(t => {
     if (!t.done || !t.completedDate) return false;
     return dateToWn(t.completedDate) === curWn;
-  }).sort(byStartDateDesc);
+  }).sort(byStartDateAsc);
   const renderRow = (t, isLast, list, idx) => {
     const ri = data.todos.indexOf(t);
     const isEd = editingId === t.id;
@@ -4391,6 +4430,12 @@ function ProcessesTab({data, upd}) {
       <div className="tabbar">
         <button className={'tab-underline' + (procTab === 'stdweek' ? ' active' : '')}
           onClick={() => setProcTab('stdweek')}>Std Week</button>
+        <button className={'tab-underline' + (procTab === 'neus' ? ' active' : '')}
+          onClick={() => setProcTab('neus')}>Neus</button>
+        <button className={'tab-underline' + (procTab === 'julia' ? ' active' : '')}
+          onClick={() => setProcTab('julia')}>Júlia</button>
+        <button className={'tab-underline' + (procTab === 'claudia' ? ' active' : '')}
+          onClick={() => setProcTab('claudia')}>Clàudia</button>
         <button className={'tab-underline' + (procTab === 'processes' ? ' active' : '')}
           onClick={() => setProcTab('processes')}>Processes</button>
       </div>
@@ -4455,7 +4500,16 @@ function ProcessesTab({data, upd}) {
         </div>
       )}
       {procTab === 'stdweek' && (
-        <StdWeekCalendar data={data} upd={upd}/>
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEvents" copyTag="main"/>
+      )}
+      {procTab === 'neus' && (
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsNeus" copyTag="neus"/>
+      )}
+      {procTab === 'julia' && (
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsJulia" copyTag="julia"/>
+      )}
+      {procTab === 'claudia' && (
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsClaudia" copyTag="claudia"/>
       )}
     </div>
   );
