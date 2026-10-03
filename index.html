@@ -806,7 +806,19 @@ async function deriveKey(pin) {
   );
 }
 
-const buf2b64 = b => btoa(String.fromCharCode(...new Uint8Array(b)));
+const buf2b64 = b => {
+  // Convert in chunks — spreading the whole Uint8Array into String.fromCharCode
+  // (or Function.apply) blows WebKit's (Safari/iOS) call-stack/argument limit
+  // once the encrypted payload gets large, even though V8 (Chrome/desktop)
+  // tolerates much bigger arrays. Chunking keeps this safe on every engine.
+  const bytes = new Uint8Array(b);
+  let binary = '';
+  const CHUNK = 0x8000; // 32768
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+};
 const b642buf = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 
 async function encryptJSON(obj, key) {
