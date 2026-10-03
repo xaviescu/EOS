@@ -2249,6 +2249,7 @@ function App({bundle, onLogout}) {
   // Auto-open nav on desktop, keep closed on mobile
   useEffect(() => { setNavOpen(!isMobile); }, [isMobile]);
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [lastSyncError, setLastSyncError] = useState('');
   const importRef = useRef();
   const saveTimer = useRef(null);
   const skipNextSave = useRef(false);
@@ -2270,8 +2271,12 @@ function App({bundle, onLogout}) {
         if (error) throw error;
         lastSavedSerial.current = serial;
         setSyncStatus('idle');
+        setLastSyncError('');
       } catch (e) {
         console.error('Save failed', e);
+        const msg = (e && (e.message || e.error_description || e.details || e.hint))
+          || (typeof e === 'string' ? e : JSON.stringify(e));
+        setLastSyncError(msg + (e && e.code ? ' (code: ' + e.code + ')' : ''));
         setSyncStatus('error');
       }
     }, 800);
@@ -2410,7 +2415,9 @@ function App({bundle, onLogout}) {
               </div>
               <div style={{display:'flex', alignItems:'center', gap:2, flexShrink:0}}>
                 <span title={syncLabel}
-                  style={{width:7, height:7, borderRadius:'50%', background:syncColor, marginRight:4}}/>
+                  onClick={() => { if (syncStatus === 'error') alert('Sync error:\n\n' + (lastSyncError || '(sin detalle)')); }}
+                  style={{width:7, height:7, borderRadius:'50%', background:syncColor, marginRight:4,
+                          cursor: syncStatus === 'error' ? 'pointer' : 'default'}}/>
                 <button onClick={() => setSearchOpen(true)} className="side-btn"
                   title={isMobile ? 'Search' : 'Search (⌘K)'}
                   style={{background:'transparent', border:'none', padding:4, width:24, height:24,
@@ -2441,8 +2448,10 @@ function App({bundle, onLogout}) {
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
               <span title={syncLabel}
+                onClick={(e) => { if (syncStatus === 'error') { e.stopPropagation(); alert('Sync error:\n\n' + (lastSyncError || '(sin detalle)')); } }}
                 style={{position:'absolute', top:2, right:2, width:6, height:6,
-                        borderRadius:'50%', background:syncColor}}/>
+                        borderRadius:'50%', background:syncColor,
+                        cursor: syncStatus === 'error' ? 'pointer' : 'default'}}/>
             </button>
           )}
         </div>
