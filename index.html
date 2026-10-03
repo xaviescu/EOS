@@ -448,6 +448,11 @@ const getCurWn = () =>
   Math.max(1, Math.floor((Date.now() - FIRST_MON.getTime()) / 864e5 / 7) + 1);
 const wKey = wn => YEAR + '-' + wn;
 const todayStr = () => new Date().toISOString().slice(0, 10);
+const fmtDMY = ds => {
+  if (!ds) return '';
+  const p = ds.split('-');
+  return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : ds;
+};
 const dateToWn = ds =>
   Math.max(1, Math.floor((new Date(ds + 'T00:00:00Z').getTime() - FIRST_MON.getTime()) / 864e5 / 7) + 1);
 const sWks = s => {
@@ -4269,26 +4274,19 @@ function TodosTab({data, upd}) {
     upd(d => { d.todos.push({id: uid(), ...form, done:false, completedDate:null}); });
     setForm({task:'', startDate: todayStr()}); setShowF(false);
   };
-  // Keep data.todos order — user controls sorting manually via ↑/↓.
-  const pending = data.todos.filter(t => !t.done);
+  // Sort by start date, most recent first. Items with no start date sink to the bottom.
+  const byStartDateDesc = (a, b) => {
+    if (!a.startDate && !b.startDate) return 0;
+    if (!a.startDate) return 1;
+    if (!b.startDate) return -1;
+    return b.startDate < a.startDate ? -1 : b.startDate > a.startDate ? 1 : 0;
+  };
+  const pending = data.todos.filter(t => !t.done).sort(byStartDateDesc);
   // Completed: only those completed during the CURRENT week
   const done = data.todos.filter(t => {
     if (!t.done || !t.completedDate) return false;
     return dateToWn(t.completedDate) === curWn;
-  });
-  // Move an item up/down in the visible list by swapping with its
-  // adjacent neighbor in data.todos.
-  const moveVisible = (list, idx, dir) => {
-    const j = idx + dir;
-    if (j < 0 || j >= list.length) return;
-    const aId = list[idx].id, bId = list[j].id;
-    upd(d => {
-      const ia = d.todos.findIndex(x => x.id === aId);
-      const ib = d.todos.findIndex(x => x.id === bId);
-      if (ia < 0 || ib < 0) return;
-      const tmp = d.todos[ia]; d.todos[ia] = d.todos[ib]; d.todos[ib] = tmp;
-    });
-  };
+  }).sort(byStartDateDesc);
   const renderRow = (t, isLast, list, idx) => {
     const ri = data.todos.indexOf(t);
     const isEd = editingId === t.id;
@@ -4317,23 +4315,15 @@ function TodosTab({data, upd}) {
         {t.done && t.completedDate && !editMode && (
           <span style={{fontSize:11, color:'var(--ok-line)', fontWeight:600, flexShrink:0}}>{t.completedDate}</span>
         )}
-        {editMode && (
-          <span style={{fontSize:11, color:'var(--muted-soft)', flexShrink:0}}>
-            Start: {t.startDate || '—'}
-          </span>
-        )}
+        <span style={{fontSize:11, color:'var(--muted-soft)', flexShrink:0}}>
+          Start: {t.startDate ? fmtDMY(t.startDate) : '—'}
+        </span>
         {editMode && (
           <button onClick={() => setEditingId(isEd ? null : t.id)}
             style={{border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
                     color:'var(--muted)', fontSize:11, padding:'2px 8px', borderRadius:'var(--r-xs)', flexShrink:0}}>
             {isEd ? 'Close' : 'Edit'}
           </button>
-        )}
-        {editMode && (
-          <MoveBtns
-            disabledUp={idx <= 0} disabledDown={idx >= list.length - 1}
-            onUp={() => moveVisible(list, idx, -1)}
-            onDown={() => moveVisible(list, idx, +1)}/>
         )}
         {editMode && (
           <XBtn size={16} onClick={() => upd(d => { d.todos.splice(ri, 1); })}/>
