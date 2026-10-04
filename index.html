@@ -2170,7 +2170,7 @@ function SearchPalette({data, onClose, onNavigate}) {
       const qLbl = qKey.split('-')[1];
       getQuarterRocks(data, qKey).forEach(r => {
         out.push({type:'Rock', text: 'R' + r.num + ' · ' + r.title, ctx: qLbl, tab:'rocks_all'});
-        (qData.weeklyRocks?.[r.id] || []).forEach(s => {
+        ((qData.weeklyRocks && qData.weeklyRocks[r.id]) || []).forEach(s => {
           out.push({type:'Step', text: s.text, ctx: qLbl + ' · R' + r.num + ' ' + r.title, tab:'rocks_all'});
         });
       });
@@ -2179,10 +2179,11 @@ function SearchPalette({data, onClose, onNavigate}) {
         const txt = iss.sourceName + (iss.action ? ' → ' + iss.action : '');
         out.push({type:'Issue', text: txt, ctx: qLbl, tab:'l10_main'});
       });
-      if (qData.qReview?.headlines) out.push({type:'Q Headlines', text: qData.qReview.headlines, ctx: qLbl, tab:'qreview_main'});
-      if (qData.qReview?.notes) out.push({type:'Q Notes', text: qData.qReview.notes, ctx: qLbl, tab:'qreview_main'});
-      if (qData.qReview?.vision) out.push({type:'Q Vision', text: qData.qReview.vision, ctx: qLbl, tab:'qreview_main'});
-      if (qData.qReview?.nextrocks) out.push({type:'Next Rocks', text: qData.qReview.nextrocks, ctx: qLbl, tab:'qreview_main'});
+      const qRev = qData.qReview || {};
+      if (qRev.headlines) out.push({type:'Q Headlines', text: qRev.headlines, ctx: qLbl, tab:'qreview_main'});
+      if (qRev.notes) out.push({type:'Q Notes', text: qRev.notes, ctx: qLbl, tab:'qreview_main'});
+      if (qRev.vision) out.push({type:'Q Vision', text: qRev.vision, ctx: qLbl, tab:'qreview_main'});
+      if (qRev.nextrocks) out.push({type:'Next Rocks', text: qRev.nextrocks, ctx: qLbl, tab:'qreview_main'});
       Object.entries(qData.weeks || {}).forEach(([wn, wData]) => {
         if (wData.headlines) out.push({type:'W Headlines', text: wData.headlines, ctx: qLbl + ' · W' + wn, tab:'l10_main'});
         if (wData.conclusionNotes) out.push({type:'W Notes', text: wData.conclusionNotes, ctx: qLbl + ' · W' + wn, tab:'l10_main'});
