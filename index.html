@@ -2664,7 +2664,7 @@ function App({bundle, onLogout}) {
           {tab === 'diario' && <DailyTab data={d} upd={upd} selDay={selDay} setSelDay={setSelDay} goToDay={goToDay}/>}
           {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
           {tab === 'month' && <MonthTab data={d} upd={upd} goToDay={goToDay}/>}
-          {tab === 'hockey' && <HockeyMatches data={d} upd={upd}/>}
+          {tab === 'hockey' && <HockeyMatches data={d} upd={upd} client={client}/>}
           {tab === 'rocks_all' && <RocksTab data={d} upd={upd}/>}
           {tab === 'projects' && <ProjectsTab data={d} upd={upd}/>}
           {tab === 'scorecard' && <ScorecardTab data={d} upd={upd}/>}
@@ -4491,11 +4491,34 @@ const HOCKEY_MATCHES = [
   {id:'DHA22', div:'DHA', date:'2027-05-23', time:'12:00', home:'Atlètic Terrassa HC', away:'Club Egara', hs:null, as:null},
 ];
 
-function HockeyMatches({data, upd}) {
+// ---- Sincronización con la web de la federación (vía Edge Function hockey-sync) ----
+const HOCKEY_SOURCES_DEFAULT = {
+  DHA: 'https://resultadoshockey.isquad.es/competicion.php?id_superficie=1&seleccion=0&id_categoria=8&id_temp=2627&id_ambito=0&id_territorial=9999',
+  DHB: 'https://resultadoshockey.isquad.es/calendario.php?seleccion=0&id=9363&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0'
+};
+const HK_STOP = {REAL:1, DE:1, DEL:1, LA:1, LAS:1, LOS:1, EL:1, CD:1, RC:1, UD:1, RS:1, FC:1, CH:1, CHM:1,
+                 GRUPO:1, CULTURA:1, MADRID:1, CAMPO:1, VILLA:1};
+// Normaliza un nombre de equipo: sin acentos, mayúsculas, sin palabras genéricas (HC, HOCKEY, CLUB, S.A.D.)
+const hkNorm = s => (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+  .replace(/[^A-Z0-9]+/g, ' ').trim().split(' ')
+  .filter(w => w && w !== 'HC' && w !== 'HOCKEY' && w !== 'CLUB' && w !== 'S' && w !== 'A' && w !== 'D')
+  .join(' ');
+const hkTokens = s => hkNorm(s).split(' ').filter(w => w.length >= 4 && !HK_STOP[w]);
+const hkSimilar = (a, b) => {
+  if (hkNorm(a) === hkNorm(b)) return true;
+  const tb = hkTokens(b);
+  return hkTokens(a).some(w => tb.indexOf(w) >= 0);
+};
+const hkTitle = s => (s || '').toLowerCase().replace(/(^|[\s-])([a-zà-ÿ])/g, (m, a, b) => a + b.toUpperCase())
+  .replace(/\b(Fc|Hc|Cd|Rc|Rs|Ud|Ch|Chm|Sad)\b/g, w => w.toUpperCase());
+
+function HockeyMatches({data, upd, client}) {
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState('all');
   const [editMode, setEditMode] = useState(false);
   const [showF, setShowF] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [form, setForm] = useState({div:'DHA', date:todayStr(), time:'12:00', rival:'', home:true});
   const today = todayStr();
   const WD = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -4542,6 +4565,79 @@ function HockeyMatches({data, upd}) {
     setForm(f => ({...f, rival:''}));
     setShowF(false);
   };
+  const sources = data.hockeySources || HOCKEY_SOURCES_DEFAULT;
+  const setSource = (dv, url) => upd(d => {
+    if (!d.hockeySources) d.hockeySources = {...HOCKEY_SOURCES_DEFAULT};
+    d.hockeySources[dv] = url;
+  });
+  const runSync = async () => {
+    if (!client || syncing) return;
+    setSyncing(true); setPreview(null);
+    try {
+      const body = {sources: ['DHA', 'DHB'].filter(dv => sources[dv]).map(dv => ({div:dv, url:sources[dv]}))};
+      const {data: res, error} = await client.functions.invoke('hockey-sync', {body});
+      if (error) throw error;
+      const items = [], errs = (res && res.errors) || [];
+      let unmatched = 0;
+      ((res && res.results) || []).forEach(r => {
+        const dv = r.div, ourKey = hkNorm(HOCKEY_OUR[dv]);
+        const web = (r.matches || []).map(w => ({...w, ourHome: hkNorm(w.home) === ourKey, ourAway: hkNorm(w.away) === ourKey}))
+          .filter(w => w.ourHome || w.ourAway);
+        const cur = matches.filter(m => m.div === dv);
+        const pairs = [];
+        web.forEach((w, wi) => cur.forEach((m, mi) => {
+          if (isOurHome(m) !== w.ourHome) return;
+          const opp = w.ourHome ? w.away : w.home, mopp = isOurHome(m) ? m.away : m.home;
+          const dd = Math.abs((new Date(w.date) - new Date(m.date)) / 864e5);
+          const sim = hkSimilar(opp, mopp);
+          if (sim ? dd > 100 : dd > 3) return;
+          pairs.push({wi, mi, score: dd + (sim ? 0 : 1000)});
+        }));
+        pairs.sort((a, b) => a.score - b.score);
+        const usedW = {}, usedM = {};
+        pairs.forEach(pr => {
+          if (usedW[pr.wi] || usedM[pr.mi]) return;
+          usedW[pr.wi] = true; usedM[pr.mi] = true;
+          const w = web[pr.wi], m = cur[pr.mi], lines = [], patch = {};
+          if (w.date !== m.date) { lines.push('Fecha: ' + fmtDMY(m.date) + ' → ' + fmtDMY(w.date)); patch.date = w.date; }
+          if (w.time && w.time !== m.time) { lines.push('Hora: ' + (m.time || '–') + ' → ' + w.time); patch.time = w.time; }
+          if (w.hs != null && w.as != null && (m.hs !== w.hs || m.as !== w.as)) {
+            lines.push('Resultado: ' + (m.hs == null ? '–' : m.hs) + '-' + (m.as == null ? '–' : m.as) + ' → ' + w.hs + '-' + w.as);
+            patch.hs = w.hs; patch.as = w.as;
+          }
+          if (lines.length) items.push({key:'e' + m.id, kind:'edit', matchId:m.id, label:dv + ' · ' + m.home + ' – ' + m.away, lines, patch, selected:true});
+        });
+        cur.forEach((m, mi) => { if (!usedM[mi]) unmatched++; });
+        web.forEach((w, wi) => {
+          if (usedW[wi]) return;
+          const our = HOCKEY_OUR[dv];
+          const home = w.ourHome ? our : hkTitle(w.home), away = w.ourHome ? hkTitle(w.away) : our;
+          const lines = ['Partido nuevo: ' + fmtDMY(w.date) + (w.time ? ' ' + w.time : '') +
+                         (w.hs != null && w.as != null ? ' · ' + w.hs + '-' + w.as : '')];
+          items.push({key:'n' + dv + wi, kind:'new', label:dv + ' · ' + home + ' – ' + away, lines, selected:true,
+                      newMatch:{div:dv, date:w.date, time:w.time || '', home, away, ourHome:w.ourHome,
+                                hs:w.hs, as:w.as, goals:null}});
+        });
+      });
+      setPreview({items, errors:errs, unmatched});
+    } catch (e) {
+      setPreview({items:[], errors:[{error:String((e && e.message) || e)}], unmatched:0});
+    }
+    setSyncing(false);
+  };
+  const applyPreview = () => {
+    const sel = preview.items.filter(i => i.selected);
+    mutate(arr => {
+      sel.forEach(i => {
+        if (i.kind === 'new') arr.push({id:'w' + uid(), ...i.newMatch});
+        else { const m = arr.find(x => x.id === i.matchId); if (m) Object.assign(m, i.patch); }
+      });
+    });
+    upd(d => { d.hockeyLastSync = new Date().toISOString(); });
+    setPreview(null);
+  };
+  const lastSync = data.hockeyLastSync
+    ? new Date(data.hockeyLastSync).toLocaleString('es-ES', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '';
   const list = matches
     .filter(m => filter === 'all' || m.div === filter)
     .slice()
@@ -4586,9 +4682,62 @@ function HockeyMatches({data, upd}) {
                       color: filter === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
           ))}
         </div>
-        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
-          style={{fontSize:13, marginLeft:'auto'}}>{editMode ? 'Done' : 'Edit'}</Btn>
+        <div style={{display:'flex', alignItems:'center', gap:8, marginLeft:'auto'}}>
+          {lastSync && !isMobile && <span style={{fontSize:11, color:'var(--muted-soft)'}}>Actualizado {lastSync}</span>}
+          <Btn v="sec" onClick={runSync} disabled={syncing} style={{fontSize:13}}>{syncing ? 'Actualizando…' : 'Actualizar'}</Btn>
+          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
+            style={{fontSize:13}}>{editMode ? 'Done' : 'Edit'}</Btn>
+        </div>
       </div>
+      {editMode && (
+        <div style={{...S.card, marginBottom:14}}>
+          <H3>Fuentes de actualización</H3>
+          {['DHA', 'DHB'].map(dv => (
+            <div key={dv} style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+              <span style={pill(dv)}>{dv}</span>
+              <input value={sources[dv] || ''} onChange={e => setSource(dv, e.target.value)}
+                placeholder="URL de la competición (calendario o resultados)"
+                style={{...S.inp, flex:1, minWidth:0, padding:'6px 8px', fontSize:12}}/>
+            </div>
+          ))}
+          <div style={{fontSize:11, color:'var(--muted)'}}>Solo webs de resultadoshockey.isquad.es. Si cambia la fase de la competición, pega aquí la nueva URL.</div>
+        </div>
+      )}
+      {preview && (
+        <div style={{...S.card, marginBottom:14, borderLeft:'3px solid var(--brand)'}}>
+          <H3>Actualización desde la web</H3>
+          {preview.errors.map((er, i) => (
+            <div key={i} style={{fontSize:12, color:'var(--err-fg)', background:'var(--err-bg)', padding:'6px 8px', borderRadius:'var(--r-xs)', marginBottom:6}}>
+              {er.div ? er.div + ': ' : ''}{er.error}
+            </div>
+          ))}
+          {preview.items.length === 0 && preview.errors.length === 0 && (
+            <div style={{fontSize:13, color:'var(--text)'}}>Todo al día: no hay cambios nuevos.</div>
+          )}
+          {preview.items.map((it, i) => (
+            <label key={it.key} style={{display:'flex', gap:10, alignItems:'flex-start', padding:'7px 0',
+                                         borderBottom: i === preview.items.length - 1 ? 'none' : '1px solid var(--surface-alt)', cursor:'pointer'}}>
+              <input type="checkbox" checked={it.selected} style={{marginTop:3, accentColor:'var(--brand)'}}
+                onChange={() => setPreview(p => ({...p, items: p.items.map(x => x.key === it.key ? {...x, selected: !x.selected} : x)}))}/>
+              <div>
+                <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{it.label}</div>
+                {it.lines.map((ln, j) => <div key={j} style={{fontSize:12, color:'var(--muted)'}}>{ln}</div>)}
+              </div>
+            </label>
+          ))}
+          {preview.unmatched > 0 && (
+            <div style={{fontSize:11, color:'var(--muted-soft)', marginTop:6}}>
+              {preview.unmatched} partido{preview.unmatched === 1 ? '' : 's'} tuyo{preview.unmatched === 1 ? '' : 's'} sin equivalente en la web (no se tocan).
+            </div>
+          )}
+          <div style={{display:'flex', gap:7, marginTop:10}}>
+            {preview.items.length > 0 && (
+              <Btn onClick={applyPreview}>Aplicar ({preview.items.filter(i => i.selected).length})</Btn>
+            )}
+            <Btn v="sec" onClick={() => setPreview(null)}>{preview.items.length > 0 ? 'Cancelar' : 'Cerrar'}</Btn>
+          </div>
+        </div>
+      )}
       {showF && (
         <InlineForm marginTop={0}>
           <div style={{display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end', marginBottom:10}}>
