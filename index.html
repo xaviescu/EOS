@@ -4496,6 +4496,7 @@ const HOCKEY_SOURCES_DEFAULT = {
   DHA: 'https://resultadoshockey.isquad.es/competicion.php?id_superficie=1&seleccion=0&id_categoria=8&id_temp=2627&id_ambito=0&id_territorial=9999',
   DHB: 'https://resultadoshockey.isquad.es/calendario.php?seleccion=0&id=9363&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0'
 };
+const HOCKEY_FEED_URL = 'https://lhtkjjgpkdwqzivqvqcc.supabase.co/functions/v1/hockey-ics';
 const HK_STOP = {REAL:1, DE:1, DEL:1, LA:1, LAS:1, LOS:1, EL:1, CD:1, RC:1, UD:1, RS:1, FC:1, CH:1, CHM:1,
                  GRUPO:1, CULTURA:1, MADRID:1, CAMPO:1, VILLA:1};
 // Normaliza un nombre de equipo: sin acentos, mayúsculas, sin palabras genéricas (HC, HOCKEY, CLUB, S.A.D.)
@@ -4564,6 +4565,37 @@ function HockeyMatches({data, upd, client}) {
     });
     setForm(f => ({...f, rival:''}));
     setShowF(false);
+  };
+  // ---- Calendario suscrito para Outlook (función hockey-ics): publica los partidos sin cifrar bajo un token secreto ----
+  const icsToken = data.hockeyIcsToken || '';
+  const icsUrl = icsToken ? HOCKEY_FEED_URL + '?t=' + icsToken : '';
+  const [pubState, setPubState] = useState('');
+  const feedMatches = () => matches.map(m => ({id:m.id, div:m.div, date:m.date, time:m.time || '', home:m.home, away:m.away,
+                                               hs:m.hs == null ? null : m.hs, as:m.as == null ? null : m.as}));
+  const pubSig = icsToken ? JSON.stringify(feedMatches()) : '';
+  useEffect(() => {
+    if (!icsToken || !client) return;
+    const t = setTimeout(async () => {
+      try {
+        const {error} = await client.functions.invoke('hockey-ics', {body:{token:icsToken, matches:feedMatches()}});
+        if (error) throw error;
+        setPubState('ok:' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}));
+      } catch (e) { setPubState('err:' + String((e && e.message) || e)); }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [pubSig]);
+  const enableIcs = () => {
+    const a = new Uint8Array(16); crypto.getRandomValues(a);
+    const tok = Array.prototype.map.call(a, b => (b < 16 ? '0' : '') + b.toString(16)).join('');
+    upd(d => { d.hockeyIcsToken = tok; });
+  };
+  const disableIcs = () => {
+    if (!confirm('¿Desactivar el calendario de Outlook? Dejará de actualizarse (la suscripción actual se quedará con los datos antiguos).')) return;
+    upd(d => { d.hockeyIcsToken = ''; }); setPubState('');
+  };
+  const copyIcs = () => {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(icsUrl).then(() => setPubState('copied'), () => prompt('Copia la URL:', icsUrl));
+    else prompt('Copia la URL:', icsUrl);
   };
   const sources = data.hockeySources || HOCKEY_SOURCES_DEFAULT;
   const setSource = (dv, url) => upd(d => {
@@ -4700,6 +4732,31 @@ function HockeyMatches({data, upd, client}) {
             </div>
           ))}
           <div style={{fontSize:11, color:'var(--muted)'}}>Solo webs de resultadoshockey.isquad.es. Si cambia la fase de la competición, pega aquí la nueva URL.</div>
+        </div>
+      )}
+      {editMode && (
+        <div style={{...S.card, marginBottom:14}}>
+          <H3>Calendario de Outlook</H3>
+          {!icsToken ? (
+            <div>
+              <div style={{fontSize:12, color:'var(--muted)', marginBottom:8}}>Publica los partidos (equipos, fecha, hora y resultado; sin goles) como un calendario al que te suscribes una vez en Outlook y se mantiene al día solo.</div>
+              <Btn onClick={enableIcs} style={{fontSize:13}}>Activar calendario</Btn>
+            </div>
+          ) : (
+            <div>
+              <div style={{display:'flex', gap:8, alignItems:'center', marginBottom:6}}>
+                <input readOnly value={icsUrl} onFocus={e => e.target.select()}
+                  style={{...S.inp, flex:1, minWidth:0, padding:'6px 8px', fontSize:12}}/>
+                <Btn v="sec" onClick={copyIcs} style={{fontSize:13}}>{pubState === 'copied' ? 'Copiada' : 'Copiar'}</Btn>
+              </div>
+              <div style={{fontSize:11, color: pubState.indexOf('err:') === 0 ? 'var(--err-fg)' : 'var(--muted)', marginBottom:6}}>
+                {pubState.indexOf('err:') === 0 ? 'Error al publicar: ' + pubState.slice(4)
+                  : pubState.indexOf('ok:') === 0 ? 'Publicado a las ' + pubState.slice(3) + ' · se actualiza solo al cambiar partidos' : 'Se publica al cambiar partidos'}
+              </div>
+              <div style={{fontSize:11, color:'var(--muted)', marginBottom:8}}>En Outlook: Calendario → Agregar calendario → Suscribirse desde la web → pega la URL. Trátala como un secreto: quien la tenga puede ver los partidos.</div>
+              <Btn v="sec" onClick={disableIcs} style={{fontSize:12}}>Desactivar</Btn>
+            </div>
+          )}
         </div>
       )}
       {preview && (
