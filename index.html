@@ -1206,6 +1206,8 @@ function Icon({name, size}) {
     vision: <g><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g>,
     // Month — calendario
     month: <g><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g>,
+    // Hockey — stick + bola
+    hockey: <g><path d="M5 3l5 14a3 3 0 003 2h5"/><circle cx="18" cy="6" r="2"/></g>,
     // Rocks — mountain
     rocks_all: <g><path d="M3 20l6-11 4 6 3-4 5 9z"/><path d="M13 15l-4 5"/></g>,
     // Projects — capas
@@ -2453,7 +2455,8 @@ function App({bundle, onLogout}) {
       ['projects','Projects'],
       ['todos','To-Dos'],
       ['scorecard','Scorecard'],
-      ['month','Month']
+      ['month','Month'],
+      ['hockey','Hockey']
     ]},
     {label:'Review', items: [
       ['l10_main','L10 Meetings'],
@@ -2661,6 +2664,7 @@ function App({bundle, onLogout}) {
           {tab === 'diario' && <DailyTab data={d} upd={upd} selDay={selDay} setSelDay={setSelDay} goToDay={goToDay}/>}
           {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
           {tab === 'month' && <MonthTab data={d} upd={upd} goToDay={goToDay}/>}
+          {tab === 'hockey' && <HockeyMatches data={d} upd={upd}/>}
           {tab === 'rocks_all' && <RocksTab data={d} upd={upd}/>}
           {tab === 'projects' && <ProjectsTab data={d} upd={upd}/>}
           {tab === 'scorecard' && <ScorecardTab data={d} upd={upd}/>}
@@ -4489,49 +4493,70 @@ const HOCKEY_MATCHES = [
 
 function HockeyMatches({data, upd}) {
   const [filter, setFilter] = useState('all');
-  const res = data.hockeyResults || {};
+  const [showF, setShowF] = useState(false);
+  const [form, setForm] = useState({div:'DHA', date:todayStr(), time:'12:00', rival:'', home:true});
   const today = todayStr();
   const WD = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const eff = m => {
-    const o = res[m.id] || {};
-    return {hs: o.hs !== undefined ? o.hs : m.hs,
-            as: o.as !== undefined ? o.as : m.as,
-            goals: o.goals};
-  };
-  const setField = (id, field, val) => upd(d => {
-    if (!d.hockeyResults) d.hockeyResults = {};
-    if (!d.hockeyResults[id]) d.hockeyResults[id] = {};
-    const n = parseInt(val, 10);
-    d.hockeyResults[id][field] = (val === '' || isNaN(n)) ? null : Math.max(0, n);
+  // Fuente de verdad: data.hockeyMatches (se siembra con la base del Excel la 1ª vez que se edita).
+  const seedMatches = d => HOCKEY_MATCHES.map(m => {
+    const o = (d.hockeyResults && d.hockeyResults[m.id]) || {};
+    return {...m,
+      hs: o.hs !== undefined ? o.hs : m.hs,
+      as: o.as !== undefined ? o.as : m.as,
+      goals: o.goals != null ? o.goals : null};
   });
-  const list = HOCKEY_MATCHES
+  const matches = data.hockeyMatches || seedMatches(data);
+  const mutate = fn => upd(d => {
+    if (!d.hockeyMatches) d.hockeyMatches = seedMatches(d);
+    fn(d.hockeyMatches);
+  });
+  const setField = (id, field, val) => mutate(arr => {
+    const m = arr.find(x => x.id === id);
+    if (!m) return;
+    const n = parseInt(val, 10);
+    m[field] = (val === '' || isNaN(n)) ? null : Math.max(0, n);
+  });
+  const delMatch = m => {
+    if (!confirm('¿Eliminar el partido ' + m.home + ' – ' + m.away + '?')) return;
+    mutate(arr => { const i = arr.findIndex(x => x.id === m.id); if (i >= 0) arr.splice(i, 1); });
+  };
+  const addMatch = () => {
+    if (!form.rival.trim() || !form.date) return;
+    const our = HOCKEY_OUR[form.div];
+    mutate(arr => {
+      arr.push({id:'c' + uid(), div:form.div, date:form.date, time:form.time || '00:00',
+                home: form.home ? our : form.rival.trim(),
+                away: form.home ? form.rival.trim() : our,
+                hs:null, as:null, goals:null});
+    });
+    setForm(f => ({...f, rival:''}));
+    setShowF(false);
+  };
+  const list = matches
     .filter(m => filter === 'all' || m.div === filter)
     .slice()
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
-  const nextId = (list.find(m => {
-    const e = eff(m);
-    return m.date >= today && (e.hs == null || e.as == null);
-  }) || {}).id;
+  const nextId = (list.find(m => m.date >= today && (m.hs == null || m.as == null)) || {}).id;
 
   // Resumen por división
   const sum = {};
   ['DHA', 'DHB'].forEach(dv => {
     const s = {pj:0, g:0, e:0, p:0, gf:0, gc:0, goals:0};
-    HOCKEY_MATCHES.filter(m => m.div === dv).forEach(m => {
-      const e = eff(m);
-      if (e.goals != null) s.goals += e.goals;
-      if (e.hs == null || e.as == null) return;
+    matches.filter(m => m.div === dv).forEach(m => {
+      if (m.goals != null) s.goals += m.goals;
+      if (m.hs == null || m.as == null) return;
       const ourHome = m.home === HOCKEY_OUR[dv];
-      const gf = ourHome ? e.hs : e.as, gc = ourHome ? e.as : e.hs;
+      const gf = ourHome ? m.hs : m.as, gc = ourHome ? m.as : m.hs;
       s.pj++; s.gf += gf; s.gc += gc;
       if (gf > gc) s.g++; else if (gf === gc) s.e++; else s.p++;
     });
     sum[dv] = s;
   });
 
-  const numInp = {width:38, textAlign:'center', border:'1px solid var(--border-strong)',
-                  borderRadius:'var(--r-xs)', background:'var(--surface)', color:'var(--text)',
-                  fontSize:13, fontWeight:600, padding:'4px 0', fontFamily:'inherit', outline:'none'};
+  // Inputs numéricos: sin flechas (type text + inputMode), sin recuadro, en indigo.
+  const numInp = {width:26, textAlign:'center', border:'none', outline:'none', background:'transparent',
+                  color:'var(--brand)', fontSize:14, fontWeight:700, padding:'2px 0', fontFamily:'inherit'};
+  const digits = v => v.replace(/[^0-9]/g, '').slice(0, 3);
   const pill = dv => ({fontSize:10, fontWeight:800, padding:'2px 0', width:34, textAlign:'center',
                        borderRadius:'var(--r-xs)', flexShrink:0, display:'inline-block',
                        color: dv === 'DHA' ? 'var(--brand)' : 'var(--info-fg)',
@@ -4539,7 +4564,9 @@ function HockeyMatches({data, upd}) {
 
   return (
     <div>
+      <PageTitle icon="hockey">Hockey</PageTitle>
       <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
+        <Btn onClick={() => setShowF(o => !o)} style={{fontSize:13}}>+ Partido</Btn>
         <div style={{display:'flex', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
           {[['all','Todos'], ['DHA','DHA'], ['DHB','DHB']].map(([k, lbl]) => (
             <button key={k} onClick={() => setFilter(k)}
@@ -4550,6 +4577,41 @@ function HockeyMatches({data, upd}) {
           ))}
         </div>
       </div>
+      {showF && (
+        <InlineForm marginTop={0}>
+          <div style={{display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end', marginBottom:10}}>
+            <div>
+              <label style={S.lbl}>División</label>
+              <select value={form.div} onChange={e => setForm(f => ({...f, div:e.target.value}))} style={{...S.inp, width:90}}>
+                <option value="DHA">DHA</option><option value="DHB">DHB</option>
+              </select>
+            </div>
+            <div style={{width:150}}>
+              <label style={S.lbl}>Fecha</label>
+              <DatePicker value={form.date} onChange={v => setForm(f => ({...f, date:v}))}/>
+            </div>
+            <div>
+              <label style={S.lbl}>Hora</label>
+              <input type="time" value={form.time} onChange={e => setForm(f => ({...f, time:e.target.value}))} style={{...S.inp, width:110}}/>
+            </div>
+            <div>
+              <label style={S.lbl}>Juega</label>
+              <select value={form.home ? 'h' : 'a'} onChange={e => setForm(f => ({...f, home:e.target.value === 'h'}))} style={{...S.inp, width:110}}>
+                <option value="h">En casa</option><option value="a">Fuera</option>
+              </select>
+            </div>
+            <div style={{flex:'1 1 180px'}}>
+              <label style={S.lbl}>Rival</label>
+              <input value={form.rival} onChange={e => setForm(f => ({...f, rival:e.target.value}))}
+                placeholder="Equipo rival" style={S.inp}/>
+            </div>
+          </div>
+          <div style={{display:'flex', gap:7}}>
+            <Btn onClick={addMatch}>Save</Btn>
+            <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
+          </div>
+        </InlineForm>
+      )}
       <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14}}>
         {['DHA', 'DHB'].filter(dv => filter === 'all' || filter === dv).map(dv => {
           const s = sum[dv];
@@ -4562,23 +4624,23 @@ function HockeyMatches({data, upd}) {
               <div style={{fontSize:13, color:'var(--text)', fontWeight:500}}>
                 PJ {s.pj} · G {s.g} · E {s.e} · P {s.p} · GF {s.gf} – GC {s.gc}
               </div>
-              <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>Goles marcados (hija): <b style={{color:'var(--text)'}}>{s.goals}</b></div>
+              <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>Goles marcados: <b style={{color:'var(--brand)'}}>{s.goals}</b></div>
             </div>
           );
         })}
       </div>
       <div style={{...S.card}}>
+        {list.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No hay partidos.</div>}
         {list.map((m, i) => {
-          const e = eff(m);
           const ourName = HOCKEY_OUR[m.div];
           const ourHome = m.home === ourName;
-          const played = e.hs != null && e.as != null;
+          const played = m.hs != null && m.as != null;
           let badge = null;
           if (played) {
-            const gf = ourHome ? e.hs : e.as, gc = ourHome ? e.as : e.hs;
+            const gf = ourHome ? m.hs : m.as, gc = ourHome ? m.as : m.hs;
             const k = gf > gc ? ['G','var(--ok-bg)','var(--ok-fg)'] : gf === gc ? ['E','var(--warn-bg)','var(--warn-fg)'] : ['P','var(--err-bg)','var(--err-fg)'];
             badge = <span style={{fontSize:11, fontWeight:800, width:22, textAlign:'center', padding:'2px 0',
-                                  borderRadius:'var(--r-xs)', background:k[1], color:k[2], flexShrink:0}}>{k[0]}</span>;
+                                  borderRadius:'var(--r-xs)', background:k[1], color:k[2], flexShrink:0, display:'inline-block'}}>{k[0]}</span>;
           }
           const dt = new Date(m.date + 'T12:00:00');
           const isNext = m.id === nextId;
@@ -4594,21 +4656,22 @@ function HockeyMatches({data, upd}) {
               </div>
               <div style={{flex:'1 1 120px', minWidth:110, fontSize:13, textAlign:'right',
                            fontWeight: ourHome ? 700 : 500, color: ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.home}</div>
-              <div style={{display:'flex', alignItems:'center', gap:4, flexShrink:0}}>
-                <input type="number" min="0" value={e.hs == null ? '' : e.hs} style={numInp}
-                  onChange={ev => setField(m.id, 'hs', ev.target.value)}/>
+              <div style={{display:'flex', alignItems:'center', gap:2, flexShrink:0}}>
+                <input type="text" inputMode="numeric" value={m.hs == null ? '' : m.hs} placeholder="–" style={numInp}
+                  onChange={ev => setField(m.id, 'hs', digits(ev.target.value))}/>
                 <span style={{color:'var(--muted)'}}>–</span>
-                <input type="number" min="0" value={e.as == null ? '' : e.as} style={numInp}
-                  onChange={ev => setField(m.id, 'as', ev.target.value)}/>
+                <input type="text" inputMode="numeric" value={m.as == null ? '' : m.as} placeholder="–" style={numInp}
+                  onChange={ev => setField(m.id, 'as', digits(ev.target.value))}/>
               </div>
               <div style={{flex:'1 1 120px', minWidth:110, fontSize:13,
                            fontWeight: !ourHome ? 700 : 500, color: !ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.away}</div>
-              <div style={{display:'flex', alignItems:'center', gap:6, flexShrink:0}}>
+              <div style={{display:'flex', alignItems:'center', gap:4, flexShrink:0}}>
                 <span style={{fontSize:11, color:'var(--muted)'}}>Goles</span>
-                <input type="number" min="0" value={e.goals == null ? '' : e.goals} style={numInp}
-                  onChange={ev => setField(m.id, 'goals', ev.target.value)}/>
+                <input type="text" inputMode="numeric" value={m.goals == null ? '' : m.goals} placeholder="–" style={numInp}
+                  onChange={ev => setField(m.id, 'goals', digits(ev.target.value))}/>
               </div>
               <div style={{width:22, flexShrink:0}}>{badge}</div>
+              <XBtn size={16} onClick={() => delMatch(m)}/>
             </div>
           );
         })}
@@ -4639,8 +4702,6 @@ function ProcessesTab({data, upd}) {
           onClick={() => setProcTab('julia')}>Júlia</button>
         <button className={'tab-underline' + (procTab === 'claudia' ? ' active' : '')}
           onClick={() => setProcTab('claudia')}>Clàudia</button>
-        <button className={'tab-underline' + (procTab === 'hockey' ? ' active' : '')}
-          onClick={() => setProcTab('hockey')}>Hockey</button>
         <button className={'tab-underline' + (procTab === 'processes' ? ' active' : '')}
           onClick={() => setProcTab('processes')}>Processes</button>
       </div>
@@ -4712,9 +4773,6 @@ function ProcessesTab({data, upd}) {
       )}
       {procTab === 'julia' && (
         <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsJulia" copyTag="julia"/>
-      )}
-      {procTab === 'hockey' && (
-        <HockeyMatches data={data} upd={upd}/>
       )}
       {procTab === 'claudia' && (
         <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsClaudia" copyTag="claudia"/>
