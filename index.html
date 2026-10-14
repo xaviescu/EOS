@@ -4494,6 +4494,7 @@ const HOCKEY_MATCHES = [
 function HockeyMatches({data, upd}) {
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState('all');
+  const [editMode, setEditMode] = useState(false);
   const [showF, setShowF] = useState(false);
   const [form, setForm] = useState({div:'DHA', date:todayStr(), time:'12:00', rival:'', home:true});
   const today = todayStr();
@@ -4517,6 +4518,14 @@ function HockeyMatches({data, upd}) {
     const n = parseInt(val, 10);
     m[field] = (val === '' || isNaN(n)) ? null : Math.max(0, n);
   });
+  const isOurHome = m => m.ourHome !== undefined ? m.ourHome : (m.home === HOCKEY_OUR[m.div]);
+  const setText = (id, field, val) => mutate(arr => {
+    const m = arr.find(x => x.id === id);
+    if (!m) return;
+    // Al renombrar equipos, fijar de qué lado juega "nuestro" equipo para no perderlo.
+    if ((field === 'home' || field === 'away') && m.ourHome === undefined) m.ourHome = (m.home === HOCKEY_OUR[m.div]);
+    m[field] = val;
+  });
   const delMatch = m => {
     if (!confirm('¿Eliminar el partido ' + m.home + ' – ' + m.away + '?')) return;
     mutate(arr => { const i = arr.findIndex(x => x.id === m.id); if (i >= 0) arr.splice(i, 1); });
@@ -4528,7 +4537,7 @@ function HockeyMatches({data, upd}) {
       arr.push({id:'c' + uid(), div:form.div, date:form.date, time:form.time || '00:00',
                 home: form.home ? our : form.rival.trim(),
                 away: form.home ? form.rival.trim() : our,
-                hs:null, as:null, goals:null});
+                ourHome: form.home, hs:null, as:null, goals:null});
     });
     setForm(f => ({...f, rival:''}));
     setShowF(false);
@@ -4546,7 +4555,7 @@ function HockeyMatches({data, upd}) {
     matches.filter(m => m.div === dv).forEach(m => {
       if (m.goals != null) s.goals += m.goals;
       if (m.hs == null || m.as == null) return;
-      const ourHome = m.home === HOCKEY_OUR[dv];
+      const ourHome = isOurHome(m);
       const gf = ourHome ? m.hs : m.as, gc = ourHome ? m.as : m.hs;
       s.pj++; s.gf += gf; s.gc += gc;
       if (gf > gc) s.g++; else if (gf === gc) s.e++; else s.p++;
@@ -4577,6 +4586,8 @@ function HockeyMatches({data, upd}) {
                       color: filter === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
           ))}
         </div>
+        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
+          style={{fontSize:13, marginLeft:'auto'}}>{editMode ? 'Done' : 'Edit'}</Btn>
       </div>
       {showF && (
         <InlineForm marginTop={0}>
@@ -4633,16 +4644,7 @@ function HockeyMatches({data, upd}) {
       <div style={{...S.card}}>
         {list.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No hay partidos.</div>}
         {list.map((m, i) => {
-          const ourName = HOCKEY_OUR[m.div];
-          const ourHome = m.home === ourName;
-          const played = m.hs != null && m.as != null;
-          let badge = null;
-          if (played) {
-            const gf = ourHome ? m.hs : m.as, gc = ourHome ? m.as : m.hs;
-            const k = gf > gc ? ['G','var(--ok-bg)','var(--ok-fg)'] : gf === gc ? ['E','var(--warn-bg)','var(--warn-fg)'] : ['P','var(--err-bg)','var(--err-fg)'];
-            badge = <span style={{fontSize:11, fontWeight:800, width:22, textAlign:'center', padding:'2px 0',
-                                  borderRadius:'var(--r-xs)', background:k[1], color:k[2], flexShrink:0, display:'inline-block'}}>{k[0]}</span>;
-          }
+          const ourHome = isOurHome(m);
           const dt = new Date(m.date + 'T12:00:00');
           const isNext = m.id === nextId;
           return (
@@ -4651,15 +4653,38 @@ function HockeyMatches({data, upd}) {
                                     background: isNext ? 'var(--brand-soft)' : 'transparent',
                                     borderRadius: isNext ? 'var(--r-sm)' : 0}}>
               <span style={{...pill(m.div), order:1}}>{m.div}</span>
-              <div style={{width:92, flexShrink:0, lineHeight:1.25, order:2}}>
-                <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)}</div>
-                <div style={{fontSize:11, color:'var(--muted)'}}>{m.time}{isNext ? ' · Próximo' : ''}</div>
-              </div>
+              {editMode ? (
+                <div style={{display:'flex', alignItems:'center', gap:6, order:2, flexShrink:0}}>
+                  <div style={{width:128}}>
+                    <DatePicker value={m.date} onChange={v => { if (v) setText(m.id, 'date', v); }}
+                      style={{width:128, inputStyle:{height:30, padding:'0 28px 0 8px', fontSize:12, fontWeight:600,
+                                                      borderRadius:'var(--r-xs)', border:'1px solid var(--border-strong)'}}}/>
+                  </div>
+                  <input type="time" value={m.time} onChange={e => setText(m.id, 'time', e.target.value)}
+                    style={{...S.inp, width:92, height:30, padding:'0 6px', fontSize:12, fontWeight:600}}/>
+                </div>
+              ) : (
+                <div style={{flexShrink:0, lineHeight:1.25, order:2, width: isMobile ? 'auto' : 92}}>
+                  {isMobile ? (
+                    <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
+                      {WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)}
+                      <span style={{fontSize:12, fontWeight:500, color:'var(--muted)', marginLeft:8}}>{m.time}{isNext ? ' · Próximo' : ''}</span>
+                    </div>
+                  ) : (
+                    <React.Fragment>
+                      <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)}</div>
+                      <div style={{fontSize:11, color:'var(--muted)'}}>{m.time}{isNext ? ' · Próximo' : ''}</div>
+                    </React.Fragment>
+                  )}
+                </div>
+              )}
               {/* Equipos + resultado: SIEMPRE en una misma línea */}
               <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'nowrap',
                            order: isMobile ? 4 : 3, flex: isMobile ? '1 1 100%' : '1 1 340px', minWidth:0}}>
                 <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'right', lineHeight:1.2,
-                             fontWeight: ourHome ? 700 : 500, color: ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.home}</div>
+                             fontWeight: ourHome ? 700 : 500, color: ourHome ? 'var(--text)' : 'var(--text-2)'}}>
+                  {editMode ? <input value={m.home} onChange={e => setText(m.id, 'home', e.target.value)} style={{...S.inp, padding:'4px 6px', fontSize:13, fontWeight:600, height:30, minWidth:0, width:'100%', textAlign:'right'}}/> : m.home}
+                </div>
                 <div style={{display:'flex', alignItems:'center', gap:2, flexShrink:0}}>
                   <input type="text" inputMode="numeric" value={m.hs == null ? '' : m.hs} placeholder="–" style={numInp}
                     onChange={ev => setField(m.id, 'hs', digits(ev.target.value))}/>
@@ -4668,15 +4693,16 @@ function HockeyMatches({data, upd}) {
                     onChange={ev => setField(m.id, 'as', digits(ev.target.value))}/>
                 </div>
                 <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'left', lineHeight:1.2,
-                             fontWeight: !ourHome ? 700 : 500, color: !ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.away}</div>
+                             fontWeight: !ourHome ? 700 : 500, color: !ourHome ? 'var(--text)' : 'var(--text-2)'}}>
+                  {editMode ? <input value={m.away} onChange={e => setText(m.id, 'away', e.target.value)} style={{...S.inp, padding:'4px 6px', fontSize:13, fontWeight:600, height:30, minWidth:0, width:'100%'}}/> : m.away}
+                </div>
               </div>
               <div style={{display:'flex', alignItems:'center', gap:8, flexShrink:0, order: isMobile ? 3 : 4,
                            marginLeft: isMobile ? 'auto' : 0}}>
                 <span style={{fontSize:11, color:'var(--muted)'}}>Goles</span>
                 <input type="text" inputMode="numeric" value={m.goals == null ? '' : m.goals} placeholder="–" style={numInp}
                   onChange={ev => setField(m.id, 'goals', digits(ev.target.value))}/>
-                <div style={{width:22, flexShrink:0}}>{badge}</div>
-                <XBtn size={16} onClick={() => delMatch(m)}/>
+                {editMode && <XBtn size={16} onClick={() => delMatch(m)}/>}
               </div>
             </div>
           );
