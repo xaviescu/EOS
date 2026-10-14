@@ -2664,7 +2664,7 @@ function App({bundle, onLogout}) {
           {tab === 'diario' && <DailyTab data={d} upd={upd} selDay={selDay} setSelDay={setSelDay} goToDay={goToDay}/>}
           {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
           {tab === 'month' && <MonthTab data={d} upd={upd} goToDay={goToDay}/>}
-          {tab === 'hockey' && <HockeyMatches data={d} upd={upd} client={client}/>}
+          {tab === 'hockey' && <HockeyTab data={d} upd={upd} client={client}/>}
           {tab === 'rocks_all' && <RocksTab data={d} upd={upd}/>}
           {tab === 'projects' && <ProjectsTab data={d} upd={upd}/>}
           {tab === 'scorecard' && <ScorecardTab data={d} upd={upd}/>}
@@ -4670,7 +4670,6 @@ function HockeyMatches({data, upd, client}) {
 
   return (
     <div>
-      <PageTitle icon="hockey">Hockey</PageTitle>
       <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
         <Btn onClick={() => setShowF(o => !o)} style={{fontSize:13}}>+ Partido</Btn>
         <div style={{display:'flex', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
@@ -4857,6 +4856,135 @@ function HockeyMatches({data, upd, client}) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ---- Clasificaciones DHA / DHB (misma Edge Function, kind:'standings') ----
+const HOCKEY_STAND_DEFAULT = {
+  DHA: 'https://resultadoshockey.isquad.es/clasificacion.php?seleccion=0&id=9356&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0',
+  DHB: 'https://resultadoshockey.isquad.es/clasificacion.php?seleccion=0&id=9363&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0'
+};
+const hkTeamName = s => hkTitle(s).replace(/\b(De|Del|La|Las|Los)\b/g, w => w.toLowerCase())
+  .replace(/S\.a\.d\./i, 'S.A.D.');
+
+function HockeyStandings({data, upd, client, div}) {
+  const isMobile = useIsMobile();
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [editMode, setEditMode] = useState(false);
+  const srcs = data.hockeyStandSources || HOCKEY_STAND_DEFAULT;
+  const st = data.hockeyStandings && data.hockeyStandings[div];
+  const ourKey = hkNorm(HOCKEY_OUR[div]);
+  const setSrc = url => upd(d => {
+    if (!d.hockeyStandSources) d.hockeyStandSources = {...HOCKEY_STAND_DEFAULT};
+    d.hockeyStandSources[div] = url;
+  });
+  const refresh = async () => {
+    if (!client || loading || !srcs[div]) return;
+    setLoading(true); setErr('');
+    try {
+      const {data: res, error} = await client.functions.invoke('hockey-sync', {body:{kind:'standings', sources:[{div, url:srcs[div]}]}});
+      if (error) throw error;
+      const r = res && res.results && res.results[0];
+      const e0 = res && res.errors && res.errors[0];
+      if (!r || !r.rows || !r.rows.length) throw new Error(e0 ? e0.error : 'No se encontró la clasificación en la web');
+      upd(d => {
+        if (!d.hockeyStandings) d.hockeyStandings = {};
+        d.hockeyStandings[div] = {rows:r.rows, jornada:r.jornada, date:r.date, stage:r.stage, fetched:new Date().toISOString()};
+      });
+    } catch (e) { setErr(String((e && e.message) || e)); }
+    setLoading(false);
+  };
+  const fetched = st && st.fetched
+    ? new Date(st.fetched).toLocaleString('es-ES', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '';
+  const th = {fontSize:10, fontWeight:700, color:'var(--muted)', textAlign:'center', padding:'6px 3px', textTransform:'uppercase'};
+  const td = {fontSize:13, textAlign:'center', padding:'8px 3px', color:'var(--text)'};
+  const formColor = {G:'#15803d', E:'var(--muted)', P:'var(--err-fg)'};
+  return (
+    <div>
+      <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
+        <div style={{fontSize:13, color:'var(--muted)'}}>
+          {st ? <span><b style={{color:'var(--text)'}}>{st.stage || ('Clasificación ' + div)}</b>{st.jornada ? ' · Jornada ' + st.jornada : ''}{st.date ? ' (' + fmtDMY(st.date) + ')' : ''}</span>
+              : 'Aún no hay clasificación guardada. Pulsa Actualizar.'}
+        </div>
+        <div style={{display:'flex', alignItems:'center', gap:8, marginLeft:'auto'}}>
+          {fetched && !isMobile && <span style={{fontSize:11, color:'var(--muted-soft)'}}>Actualizado {fetched}</span>}
+          <Btn v="sec" onClick={refresh} disabled={loading} style={{fontSize:13}}>{loading ? 'Actualizando…' : 'Actualizar'}</Btn>
+          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>{editMode ? 'Done' : 'Edit'}</Btn>
+        </div>
+      </div>
+      {editMode && (
+        <div style={{...S.card, marginBottom:14}}>
+          <H3>Fuente de la clasificación</H3>
+          <input value={srcs[div] || ''} onChange={e => setSrc(e.target.value)}
+            placeholder="URL de clasificacion.php"
+            style={{...S.inp, width:'100%', padding:'6px 8px', fontSize:12, marginBottom:6}}/>
+          <div style={{fontSize:11, color:'var(--muted)'}}>Solo webs de resultadoshockey.isquad.es. Si cambia la fase de la competición, pega aquí la nueva URL.</div>
+        </div>
+      )}
+      {err && <div style={{fontSize:12, color:'var(--err-fg)', background:'var(--err-bg)', padding:'6px 8px', borderRadius:'var(--r-xs)', marginBottom:10}}>{err}</div>}
+      {st && (
+        <div style={{...S.card, padding:isMobile ? '6px 8px' : '8px 14px', overflowX:'auto'}}>
+          <table style={{width:'100%', borderCollapse:'collapse'}}>
+            <thead>
+              <tr style={{borderBottom:'1px solid var(--border)'}}>
+                <th style={{...th, width:24}}>#</th>
+                <th style={{...th, textAlign:'left'}}>Equipo</th>
+                {!isMobile && <th style={th}>Últ. 5</th>}
+                <th style={th}>PT</th><th style={th}>PJ</th><th style={th}>G</th><th style={th}>E</th><th style={th}>P</th>
+                {!isMobile && <th style={th}>GF</th>}{!isMobile && <th style={th}>GC</th>}
+                <th style={th}>DIF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {st.rows.map((r, i) => {
+                const ours = hkNorm(r.team) === ourKey;
+                return (
+                  <tr key={i} style={{borderBottom: i === st.rows.length - 1 ? 'none' : '1px solid var(--surface-alt)',
+                                      background: ours ? 'var(--brand-soft)' : 'transparent'}}>
+                    <td style={{...td, color:'var(--muted)', fontWeight:600}}>{r.pos}</td>
+                    <td style={{...td, textAlign:'left', fontWeight: ours ? 700 : 500, lineHeight:1.2}}>
+                      {hkTeamName(r.team)}
+                      {r.mov ? <span style={{fontSize:10, marginLeft:5, fontWeight:700, color: r.mov > 0 ? '#15803d' : 'var(--err-fg)'}}>{r.mov > 0 ? '▲' : '▼'}{Math.abs(r.mov)}</span> : null}
+                    </td>
+                    {!isMobile && (
+                      <td style={td}>
+                        {(r.form || '').split('').map((c, j) => (
+                          <span key={j} style={{display:'inline-block', width:14, fontSize:11, fontWeight:700, color: formColor[c] || 'var(--muted-soft)'}}>{c}</span>
+                        ))}
+                      </td>
+                    )}
+                    <td style={{...td, fontWeight:800, color:'var(--brand)'}}>{r.pt}</td>
+                    <td style={td}>{r.pj}</td><td style={td}>{r.pg}</td><td style={td}>{r.pe}</td><td style={td}>{r.pp}</td>
+                    {!isMobile && <td style={td}>{r.gf}</td>}{!isMobile && <td style={td}>{r.gc}</td>}
+                    <td style={{...td, color: r.dif < 0 ? 'var(--err-fg)' : 'var(--text)'}}>{r.dif > 0 ? '+' + r.dif : r.dif}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HockeyTab({data, upd, client}) {
+  const isMobile = useIsMobile();
+  const [sub, setSub] = useState('matches');
+  const tabs = [['matches', 'Partidos'], ['DHA', isMobile ? 'Clasif. DHA' : 'Clasificación DHA'], ['DHB', isMobile ? 'Clasif. DHB' : 'Clasificación DHB']];
+  return (
+    <div>
+      <PageTitle icon="hockey">Hockey</PageTitle>
+      <div className="tabbar">
+        {tabs.map(([k, lbl]) => (
+          <button key={k} className={'tab-underline' + (sub === k ? ' active' : '')} onClick={() => setSub(k)}>{lbl}</button>
+        ))}
+      </div>
+      {sub === 'matches' && <HockeyMatches data={data} upd={upd} client={client}/>}
+      {sub === 'DHA' && <HockeyStandings data={data} upd={upd} client={client} div="DHA"/>}
+      {sub === 'DHB' && <HockeyStandings data={data} upd={upd} client={client} div="DHB"/>}
     </div>
   );
 }
