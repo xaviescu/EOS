@@ -4784,7 +4784,7 @@ function HockeyMatches({data, upd, client}) {
               <div style={{fontSize:13, color:'var(--text)', fontWeight:500}}>
                 PJ {s.pj} · G {s.g} · E {s.e} · P {s.p} · GF {s.gf} – GC {s.gc}
               </div>
-              <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>Goles marcados: <b style={{color:'var(--brand)'}}>{s.goals}</b></div>
+              {editMode && <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>Goles marcados: <b style={{color:'var(--brand)'}}>{s.goals}</b></div>}
             </div>
           );
         })}
@@ -4845,13 +4845,15 @@ function HockeyMatches({data, upd, client}) {
                   {editMode ? <input value={m.away} onChange={e => setText(m.id, 'away', e.target.value)} style={{...S.inp, padding:'4px 6px', fontSize:13, fontWeight:600, height:30, minWidth:0, width:'100%'}}/> : m.away}
                 </div>
               </div>
-              <div style={{display:'flex', alignItems:'center', gap:8, flexShrink:0, order: isMobile ? 3 : 4,
-                           marginLeft: isMobile ? 'auto' : 0}}>
-                <span style={{fontSize:11, color:'var(--muted)'}}>Goles</span>
-                <input type="text" inputMode="numeric" value={m.goals == null ? '' : m.goals} placeholder="–" style={numInp}
-                  onChange={ev => setField(m.id, 'goals', digits(ev.target.value))}/>
-                {editMode && <XBtn size={16} onClick={() => delMatch(m)}/>}
-              </div>
+              {editMode && (
+                <div style={{display:'flex', alignItems:'center', gap:8, flexShrink:0, order: isMobile ? 3 : 4,
+                             marginLeft: isMobile ? 'auto' : 0}}>
+                  <span style={{fontSize:11, color:'var(--muted)'}}>Goles</span>
+                  <input type="text" inputMode="numeric" value={m.goals == null ? '' : m.goals} placeholder="–" style={numInp}
+                    onChange={ev => setField(m.id, 'goals', digits(ev.target.value))}/>
+                  <XBtn size={16} onClick={() => delMatch(m)}/>
+                </div>
+              )}
             </div>
           );
         })}
