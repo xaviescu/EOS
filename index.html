@@ -4442,6 +4442,181 @@ function TodosTab({data, upd}) {
   );
 }
 
+// =====================================================================
+// Hockey — calendario de partidos (DHA + DHB Femenina 2026-27)
+// Base de partidos fija (del Excel); resultados y goles editables se guardan
+// en data.hockeyResults[id] = {hs, as, goals} y tienen prioridad sobre la base.
+// =====================================================================
+const HOCKEY_OUR = {DHA:'Atlètic Terrassa HC', DHB:'Vallès Esportiu'};
+const HOCKEY_MATCHES = [
+  {id:'DHB1', div:'DHB', date:'2026-09-12', time:'15:00', home:'Hocquet', away:'Vallès Esportiu', hs:1, as:3},
+  {id:'DHA1', div:'DHA', date:'2026-09-19', time:'15:00', home:'Atlètic Terrassa HC', away:'CD Terrassa', hs:3, as:2},
+  {id:'DHB2', div:'DHB', date:'2026-09-20', time:'13:00', home:'Vallès Esportiu', away:'CHM Las Rozas', hs:2, as:2},
+  {id:'DHA2', div:'DHA', date:'2026-09-27', time:'11:00', home:'Sardinero HC', away:'Atlètic Terrassa HC', hs:1, as:2},
+  {id:'DHB3', div:'DHB', date:'2026-09-27', time:'11:00', home:'RGC Covadonga', away:'Vallès Esportiu', hs:0, as:3},
+  {id:'DHA3', div:'DHA', date:'2026-10-04', time:'12:00', home:'Atlètic Terrassa HC', away:'Junior FC', hs:null, as:null},
+  {id:'DHB4', div:'DHB', date:'2026-10-04', time:'15:30', home:'Real Club de Campo Villa de Madrid', away:'Vallès Esportiu', hs:1, as:4},
+  {id:'DHB5', div:'DHB', date:'2026-10-10', time:'15:00', home:'Vallès Esportiu', away:'HC Sant Cugat', hs:1, as:1},
+  {id:'DHB6', div:'DHB', date:'2026-10-11', time:'10:30', home:'Vallès Esportiu', away:'CD Giner de los Ríos', hs:1, as:1},
+  {id:'DHA4', div:'DHA', date:'2026-10-11', time:'12:30', home:'Atlètic Terrassa HC', away:'RS Tenis', hs:1, as:0},
+  {id:'DHB7', div:'DHB', date:'2026-10-17', time:'17:00', home:'Club Egara', away:'Vallès Esportiu', hs:null, as:null},
+  {id:'DHA5', div:'DHA', date:'2026-10-18', time:'11:00', home:'Real Sociedad, S.A.D.', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHA6', div:'DHA', date:'2026-10-24', time:'15:00', home:'Atlètic Terrassa HC', away:'RC Polo', hs:null, as:null},
+  {id:'DHB8', div:'DHB', date:'2026-10-24', time:'15:00', home:'Vallès Esportiu', away:'Hocquet', hs:null, as:null},
+  {id:'DHA7', div:'DHA', date:'2026-10-25', time:'13:00', home:'Atlètic Terrassa HC', away:'Valencia CH', hs:null, as:null},
+  {id:'DHA8', div:'DHA', date:'2026-11-08', time:'12:30', home:'Real Club de Campo Villa de Madrid', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHB9', div:'DHB', date:'2026-11-08', time:'14:45', home:'CHM Las Rozas', away:'Vallès Esportiu', hs:null, as:null},
+  {id:'DHB10', div:'DHB', date:'2026-11-14', time:'15:00', home:'Vallès Esportiu', away:'RGC Covadonga', hs:null, as:null},
+  {id:'DHB11', div:'DHB', date:'2026-11-15', time:'10:00', home:'Vallès Esportiu', away:'Real Club de Campo Villa de Madrid', hs:null, as:null},
+  {id:'DHA9', div:'DHA', date:'2026-11-15', time:'12:30', home:'Sanse Complutense', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHB12', div:'DHB', date:'2026-11-21', time:'17:00', home:'HC Sant Cugat', away:'Vallès Esportiu', hs:null, as:null},
+  {id:'DHA10', div:'DHA', date:'2026-11-22', time:'11:00', home:'Atlètic Terrassa HC', away:'Unión Deportiva Taburiente', hs:null, as:null},
+  {id:'DHB13', div:'DHB', date:'2026-11-28', time:'15:00', home:'CD Giner de los Ríos', away:'Vallès Esportiu', hs:null, as:null},
+  {id:'DHA11', div:'DHA', date:'2026-11-29', time:'11:00', home:'Club Egara', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHB14', div:'DHB', date:'2026-12-13', time:'12:00', home:'Vallès Esportiu', away:'Club Egara', hs:null, as:null},
+  {id:'DHA12', div:'DHA', date:'2027-03-06', time:'17:00', home:'CD Terrassa', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHA13', div:'DHA', date:'2027-03-14', time:'11:00', home:'Atlètic Terrassa HC', away:'Sardinero HC', hs:null, as:null},
+  {id:'DHA14', div:'DHA', date:'2027-03-21', time:'15:00', home:'Junior FC', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHA15', div:'DHA', date:'2027-04-04', time:'11:00', home:'RS Tenis', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHA16', div:'DHA', date:'2027-04-11', time:'12:30', home:'Atlètic Terrassa HC', away:'Real Sociedad, S.A.D.', hs:null, as:null},
+  {id:'DHA17', div:'DHA', date:'2027-04-17', time:'14:00', home:'RC Polo', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHA18', div:'DHA', date:'2027-05-02', time:'12:00', home:'Valencia CH', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHA19', div:'DHA', date:'2027-05-08', time:'15:00', home:'Atlètic Terrassa HC', away:'Real Club de Campo Villa de Madrid', hs:null, as:null},
+  {id:'DHA20', div:'DHA', date:'2027-05-09', time:'12:00', home:'Atlètic Terrassa HC', away:'Sanse Complutense', hs:null, as:null},
+  {id:'DHA21', div:'DHA', date:'2027-05-16', time:'10:00', home:'Unión Deportiva Taburiente', away:'Atlètic Terrassa HC', hs:null, as:null},
+  {id:'DHA22', div:'DHA', date:'2027-05-23', time:'12:00', home:'Atlètic Terrassa HC', away:'Club Egara', hs:null, as:null},
+];
+
+function HockeyMatches({data, upd}) {
+  const [filter, setFilter] = useState('all');
+  const res = data.hockeyResults || {};
+  const today = todayStr();
+  const WD = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const eff = m => {
+    const o = res[m.id] || {};
+    return {hs: o.hs !== undefined ? o.hs : m.hs,
+            as: o.as !== undefined ? o.as : m.as,
+            goals: o.goals};
+  };
+  const setField = (id, field, val) => upd(d => {
+    if (!d.hockeyResults) d.hockeyResults = {};
+    if (!d.hockeyResults[id]) d.hockeyResults[id] = {};
+    const n = parseInt(val, 10);
+    d.hockeyResults[id][field] = (val === '' || isNaN(n)) ? null : Math.max(0, n);
+  });
+  const list = HOCKEY_MATCHES
+    .filter(m => filter === 'all' || m.div === filter)
+    .slice()
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  const nextId = (list.find(m => {
+    const e = eff(m);
+    return m.date >= today && (e.hs == null || e.as == null);
+  }) || {}).id;
+
+  // Resumen por división
+  const sum = {};
+  ['DHA', 'DHB'].forEach(dv => {
+    const s = {pj:0, g:0, e:0, p:0, gf:0, gc:0, goals:0};
+    HOCKEY_MATCHES.filter(m => m.div === dv).forEach(m => {
+      const e = eff(m);
+      if (e.goals != null) s.goals += e.goals;
+      if (e.hs == null || e.as == null) return;
+      const ourHome = m.home === HOCKEY_OUR[dv];
+      const gf = ourHome ? e.hs : e.as, gc = ourHome ? e.as : e.hs;
+      s.pj++; s.gf += gf; s.gc += gc;
+      if (gf > gc) s.g++; else if (gf === gc) s.e++; else s.p++;
+    });
+    sum[dv] = s;
+  });
+
+  const numInp = {width:38, textAlign:'center', border:'1px solid var(--border-strong)',
+                  borderRadius:'var(--r-xs)', background:'var(--surface)', color:'var(--text)',
+                  fontSize:13, fontWeight:600, padding:'4px 0', fontFamily:'inherit', outline:'none'};
+  const pill = dv => ({fontSize:10, fontWeight:800, padding:'2px 0', width:34, textAlign:'center',
+                       borderRadius:'var(--r-xs)', flexShrink:0, display:'inline-block',
+                       color: dv === 'DHA' ? 'var(--brand)' : 'var(--info-fg)',
+                       background: dv === 'DHA' ? 'var(--brand-soft)' : 'var(--info-bg)'});
+
+  return (
+    <div>
+      <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
+        <div style={{display:'flex', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
+          {[['all','Todos'], ['DHA','DHA'], ['DHB','DHB']].map(([k, lbl]) => (
+            <button key={k} onClick={() => setFilter(k)}
+              style={{padding:'6px 14px', border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
+                      fontFamily:'inherit',
+                      background: filter === k ? 'var(--brand)' : 'transparent',
+                      color: filter === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14}}>
+        {['DHA', 'DHB'].filter(dv => filter === 'all' || filter === dv).map(dv => {
+          const s = sum[dv];
+          return (
+            <div key={dv} style={{...S.card, margin:0, padding:'10px 14px', flex:'1 1 220px'}}>
+              <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
+                <span style={pill(dv)}>{dv}</span>
+                <span style={{fontSize:12, color:'var(--muted)'}}>{HOCKEY_OUR[dv]}</span>
+              </div>
+              <div style={{fontSize:13, color:'var(--text)', fontWeight:500}}>
+                PJ {s.pj} · G {s.g} · E {s.e} · P {s.p} · GF {s.gf} – GC {s.gc}
+              </div>
+              <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>Goles marcados (hija): <b style={{color:'var(--text)'}}>{s.goals}</b></div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{...S.card}}>
+        {list.map((m, i) => {
+          const e = eff(m);
+          const ourName = HOCKEY_OUR[m.div];
+          const ourHome = m.home === ourName;
+          const played = e.hs != null && e.as != null;
+          let badge = null;
+          if (played) {
+            const gf = ourHome ? e.hs : e.as, gc = ourHome ? e.as : e.hs;
+            const k = gf > gc ? ['G','var(--ok-bg)','var(--ok-fg)'] : gf === gc ? ['E','var(--warn-bg)','var(--warn-fg)'] : ['P','var(--err-bg)','var(--err-fg)'];
+            badge = <span style={{fontSize:11, fontWeight:800, width:22, textAlign:'center', padding:'2px 0',
+                                  borderRadius:'var(--r-xs)', background:k[1], color:k[2], flexShrink:0}}>{k[0]}</span>;
+          }
+          const dt = new Date(m.date + 'T12:00:00');
+          const isNext = m.id === nextId;
+          return (
+            <div key={m.id} style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+                                    padding:'8px 6px', borderBottom: i === list.length - 1 ? 'none' : '1px solid var(--surface-alt)',
+                                    background: isNext ? 'var(--brand-soft)' : 'transparent',
+                                    borderRadius: isNext ? 'var(--r-sm)' : 0}}>
+              <span style={pill(m.div)}>{m.div}</span>
+              <div style={{width:92, flexShrink:0, lineHeight:1.25}}>
+                <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)}</div>
+                <div style={{fontSize:11, color:'var(--muted)'}}>{m.time}{isNext ? ' · Próximo' : ''}</div>
+              </div>
+              <div style={{flex:'1 1 120px', minWidth:110, fontSize:13, textAlign:'right',
+                           fontWeight: ourHome ? 700 : 500, color: ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.home}</div>
+              <div style={{display:'flex', alignItems:'center', gap:4, flexShrink:0}}>
+                <input type="number" min="0" value={e.hs == null ? '' : e.hs} style={numInp}
+                  onChange={ev => setField(m.id, 'hs', ev.target.value)}/>
+                <span style={{color:'var(--muted)'}}>–</span>
+                <input type="number" min="0" value={e.as == null ? '' : e.as} style={numInp}
+                  onChange={ev => setField(m.id, 'as', ev.target.value)}/>
+              </div>
+              <div style={{flex:'1 1 120px', minWidth:110, fontSize:13,
+                           fontWeight: !ourHome ? 700 : 500, color: !ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.away}</div>
+              <div style={{display:'flex', alignItems:'center', gap:6, flexShrink:0}}>
+                <span style={{fontSize:11, color:'var(--muted)'}}>Goles</span>
+                <input type="number" min="0" value={e.goals == null ? '' : e.goals} style={numInp}
+                  onChange={ev => setField(m.id, 'goals', ev.target.value)}/>
+              </div>
+              <div style={{width:22, flexShrink:0}}>{badge}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ProcessesTab({data, upd}) {
   const [exp, setExp] = useState(null);
   const [procTab, setProcTab] = useState('stdweek');
@@ -4464,6 +4639,8 @@ function ProcessesTab({data, upd}) {
           onClick={() => setProcTab('julia')}>Júlia</button>
         <button className={'tab-underline' + (procTab === 'claudia' ? ' active' : '')}
           onClick={() => setProcTab('claudia')}>Clàudia</button>
+        <button className={'tab-underline' + (procTab === 'hockey' ? ' active' : '')}
+          onClick={() => setProcTab('hockey')}>Hockey</button>
         <button className={'tab-underline' + (procTab === 'processes' ? ' active' : '')}
           onClick={() => setProcTab('processes')}>Processes</button>
       </div>
@@ -4535,6 +4712,9 @@ function ProcessesTab({data, upd}) {
       )}
       {procTab === 'julia' && (
         <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsJulia" copyTag="julia"/>
+      )}
+      {procTab === 'hockey' && (
+        <HockeyMatches data={data} upd={upd}/>
       )}
       {procTab === 'claudia' && (
         <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsClaudia" copyTag="claudia"/>
