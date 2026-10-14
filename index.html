@@ -4492,6 +4492,7 @@ const HOCKEY_MATCHES = [
 ];
 
 function HockeyMatches({data, upd}) {
+  const isMobile = useIsMobile();
   const [filter, setFilter] = useState('all');
   const [showF, setShowF] = useState(false);
   const [form, setForm] = useState({div:'DHA', date:todayStr(), time:'12:00', rival:'', home:true});
@@ -4645,33 +4646,38 @@ function HockeyMatches({data, upd}) {
           const dt = new Date(m.date + 'T12:00:00');
           const isNext = m.id === nextId;
           return (
-            <div key={m.id} style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+            <div key={m.id} style={{display:'flex', alignItems:'center', gap: isMobile ? 8 : 10, flexWrap:'wrap',
                                     padding:'8px 6px', borderBottom: i === list.length - 1 ? 'none' : '1px solid var(--surface-alt)',
                                     background: isNext ? 'var(--brand-soft)' : 'transparent',
                                     borderRadius: isNext ? 'var(--r-sm)' : 0}}>
-              <span style={pill(m.div)}>{m.div}</span>
-              <div style={{width:92, flexShrink:0, lineHeight:1.25}}>
+              <span style={{...pill(m.div), order:1}}>{m.div}</span>
+              <div style={{width:92, flexShrink:0, lineHeight:1.25, order:2}}>
                 <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)}</div>
                 <div style={{fontSize:11, color:'var(--muted)'}}>{m.time}{isNext ? ' · Próximo' : ''}</div>
               </div>
-              <div style={{flex:'1 1 120px', minWidth:110, fontSize:13, textAlign:'right',
-                           fontWeight: ourHome ? 700 : 500, color: ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.home}</div>
-              <div style={{display:'flex', alignItems:'center', gap:2, flexShrink:0}}>
-                <input type="text" inputMode="numeric" value={m.hs == null ? '' : m.hs} placeholder="–" style={numInp}
-                  onChange={ev => setField(m.id, 'hs', digits(ev.target.value))}/>
-                <span style={{color:'var(--muted)'}}>–</span>
-                <input type="text" inputMode="numeric" value={m.as == null ? '' : m.as} placeholder="–" style={numInp}
-                  onChange={ev => setField(m.id, 'as', digits(ev.target.value))}/>
+              {/* Equipos + resultado: SIEMPRE en una misma línea */}
+              <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'nowrap',
+                           order: isMobile ? 4 : 3, flex: isMobile ? '1 1 100%' : '1 1 340px', minWidth:0}}>
+                <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'right', lineHeight:1.2,
+                             fontWeight: ourHome ? 700 : 500, color: ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.home}</div>
+                <div style={{display:'flex', alignItems:'center', gap:2, flexShrink:0}}>
+                  <input type="text" inputMode="numeric" value={m.hs == null ? '' : m.hs} placeholder="–" style={numInp}
+                    onChange={ev => setField(m.id, 'hs', digits(ev.target.value))}/>
+                  <span style={{color:'var(--muted)'}}>–</span>
+                  <input type="text" inputMode="numeric" value={m.as == null ? '' : m.as} placeholder="–" style={numInp}
+                    onChange={ev => setField(m.id, 'as', digits(ev.target.value))}/>
+                </div>
+                <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'left', lineHeight:1.2,
+                             fontWeight: !ourHome ? 700 : 500, color: !ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.away}</div>
               </div>
-              <div style={{flex:'1 1 120px', minWidth:110, fontSize:13,
-                           fontWeight: !ourHome ? 700 : 500, color: !ourHome ? 'var(--text)' : 'var(--text-2)'}}>{m.away}</div>
-              <div style={{display:'flex', alignItems:'center', gap:4, flexShrink:0}}>
+              <div style={{display:'flex', alignItems:'center', gap:8, flexShrink:0, order: isMobile ? 3 : 4,
+                           marginLeft: isMobile ? 'auto' : 0}}>
                 <span style={{fontSize:11, color:'var(--muted)'}}>Goles</span>
                 <input type="text" inputMode="numeric" value={m.goals == null ? '' : m.goals} placeholder="–" style={numInp}
                   onChange={ev => setField(m.id, 'goals', digits(ev.target.value))}/>
+                <div style={{width:22, flexShrink:0}}>{badge}</div>
+                <XBtn size={16} onClick={() => delMatch(m)}/>
               </div>
-              <div style={{width:22, flexShrink:0}}>{badge}</div>
-              <XBtn size={16} onClick={() => delMatch(m)}/>
             </div>
           );
         })}
