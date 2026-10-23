@@ -1208,6 +1208,8 @@ function Icon({name, size}) {
     month: <g><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g>,
     // Hockey — stick + bola
     hockey: <g><path d="M5 3l5 14a3 3 0 003 2h5"/><circle cx="18" cy="6" r="2"/></g>,
+    // Fútbol — balón
+    futbol: <g><circle cx="12" cy="12" r="9"/><path d="M12 8l3.5 2.5-1.3 4h-4.4l-1.3-4z"/><path d="M12 8V3M15.5 10.5L20 9M14.2 14.5l2.6 4M9.8 14.5l-2.6 4M8.5 10.5L4 9"/></g>,
     // Rocks — mountain
     rocks_all: <g><path d="M3 20l6-11 4 6 3-4 5 9z"/><path d="M13 15l-4 5"/></g>,
     // Projects — capas
@@ -2456,6 +2458,7 @@ function App({bundle, onLogout}) {
       ['todos','To-Dos'],
       ['scorecard','Scorecard'],
       ['hockey','Hockey'],
+      ['futbol','Fútbol'],
       ['month','Month']
     ]},
     {label:'Review', items: [
@@ -2665,6 +2668,7 @@ function App({bundle, onLogout}) {
           {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
           {tab === 'month' && <MonthTab data={d} upd={upd} goToDay={goToDay}/>}
           {tab === 'hockey' && <HockeyTab data={d} upd={upd} client={client}/>}
+          {tab === 'futbol' && <FootballTab client={client}/>}
           {tab === 'rocks_all' && <RocksTab data={d} upd={upd}/>}
           {tab === 'projects' && <ProjectsTab data={d} upd={upd}/>}
           {tab === 'scorecard' && <ScorecardTab data={d} upd={upd}/>}
@@ -5029,10 +5033,101 @@ function HockeyStandings({data, upd, client, div}) {
   );
 }
 
+// ---- Resultados de todas las jornadas de la liga (DHA / DHB), misma función hockey-sync ----
+function HockeyLeague({data, upd, client, div}) {
+  const isMobile = useIsMobile();
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [jsel, setJsel] = useState('all');
+  const sources = data.hockeySources || HOCKEY_SOURCES_DEFAULT;
+  const st = data.hockeyLeague && data.hockeyLeague[div];
+  const ourKey = hkNorm(HOCKEY_OUR[div]);
+  const WD = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const refresh = async () => {
+    if (!client || loading || !sources[div]) return;
+    setLoading(true); setErr('');
+    try {
+      const {data: res, error} = await client.functions.invoke('hockey-sync', {body:{sources:[{div, url:sources[div]}]}});
+      if (error) throw error;
+      const r = res && res.results && res.results[0];
+      const e0 = res && res.errors && res.errors[0];
+      if (!r || !r.matches || !r.matches.length) throw new Error(e0 ? e0.error : 'No se encontraron partidos en la web');
+      const arr = r.matches.map(w => ({j:w.jornada || 0, date:w.date, time:w.time || '', home:w.home, away:w.away,
+                                       hs:w.hs == null ? null : w.hs, as:w.as == null ? null : w.as}));
+      upd(d => {
+        if (!d.hockeyLeague) d.hockeyLeague = {};
+        d.hockeyLeague[div] = {matches:arr, fetched:new Date().toISOString()};
+      });
+    } catch (e) { setErr(String((e && e.message) || e)); }
+    setLoading(false);
+  };
+  useEffect(() => { if (!st) refresh(); }, []);
+  const fetched = st && st.fetched
+    ? new Date(st.fetched).toLocaleString('es-ES', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '';
+  const byJ = {};
+  ((st && st.matches) || []).forEach(m => { (byJ[m.j] = byJ[m.j] || []).push(m); });
+  const jorns = Object.keys(byJ).map(Number).sort((a, b) => a - b);
+  // Jornada actual: la primera con algún partido sin resultado
+  const curJ = jorns.find(j => byJ[j].some(m => m.hs == null || m.as == null));
+  const cmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+  const shown = jsel === 'all' ? jorns : jorns.filter(j => String(j) === jsel);
+  const numStyle = {fontSize:14, fontWeight:800, color:'var(--brand)', minWidth:44, textAlign:'center', flexShrink:0};
+  return (
+    <div>
+      <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
+        <select value={jsel} onChange={e => setJsel(e.target.value)} style={{...S.inp, width:'auto', minWidth:130}}>
+          <option value="all">Todas las jornadas</option>
+          {jorns.map(j => <option key={j} value={String(j)}>{'Jornada ' + j}</option>)}
+        </select>
+        <div style={{display:'flex', alignItems:'center', gap:8, marginLeft:'auto'}}>
+          {fetched && !isMobile && <span style={{fontSize:11, color:'var(--muted-soft)'}}>Actualizado {fetched}</span>}
+          <Btn v="sec" onClick={refresh} disabled={loading} style={{fontSize:13}}>{loading ? 'Actualizando…' : 'Actualizar'}</Btn>
+        </div>
+      </div>
+      {err && <div style={{fontSize:12, color:'var(--err-fg)', background:'var(--err-bg)', padding:'6px 8px', borderRadius:'var(--r-xs)', marginBottom:10}}>{err}</div>}
+      {!st && !loading && !err && <div style={{fontSize:13, color:'var(--muted)'}}>Aún no hay datos. Pulsa Actualizar.</div>}
+      {shown.map(j => {
+        const list = byJ[j].slice().sort(cmp);
+        return (
+          <div key={j} style={{...S.card, marginBottom:12, padding: isMobile ? '8px 10px' : '10px 16px'}}>
+            <div style={{display:'flex', alignItems:'baseline', gap:8, marginBottom:4}}>
+              <span style={{fontSize:13, fontWeight:800, color:'var(--text)'}}>{j ? 'Jornada ' + j : 'Sin jornada'}</span>
+              {j === curJ && <span style={{fontSize:10, fontWeight:700, color:'var(--brand)', background:'var(--brand-soft)', padding:'1px 6px', borderRadius:'var(--r-xs)'}}>Actual</span>}
+              <span style={{fontSize:11, color:'var(--muted-soft)'}}>{fmtDMY(list[0].date).slice(0, 5)}</span>
+            </div>
+            {list.map((m, i) => {
+              const hOur = hkNorm(m.home) === ourKey, aOur = hkNorm(m.away) === ourKey, ours = hOur || aOur;
+              const dt = new Date(m.date + 'T12:00:00');
+              const played = m.hs != null && m.as != null;
+              return (
+                <div key={i} style={{display:'flex', alignItems:'center', gap: isMobile ? 4 : 10, flexWrap:'wrap',
+                                     padding:'6px 4px', borderTop:'1px solid var(--surface-alt)',
+                                     background: ours ? 'var(--brand-soft)' : 'transparent', borderRadius: ours ? 'var(--r-xs)' : 0}}>
+                  <div style={{fontSize:11, color:'var(--muted)', flex: isMobile ? '0 0 100%' : '0 0 96px', lineHeight:1.2}}>
+                    {WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)}{m.time ? ' · ' + m.time : ''}
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:8, flex:'1 1 0', minWidth:0, flexWrap:'nowrap'}}>
+                    <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'right', lineHeight:1.2,
+                                 fontWeight: hOur ? 800 : 500, color: hOur ? 'var(--text)' : 'var(--text-2)'}}>{hkTeamName(m.home)}</div>
+                    <div style={played ? numStyle : {...numStyle, color:'var(--muted-soft)', fontWeight:600}}>{played ? m.hs + ' – ' + m.as : '–'}</div>
+                    <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'left', lineHeight:1.2,
+                                 fontWeight: aOur ? 800 : 500, color: aOur ? 'var(--text)' : 'var(--text-2)'}}>{hkTeamName(m.away)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function HockeyTab({data, upd, client}) {
   const isMobile = useIsMobile();
   const [sub, setSub] = useState('matches');
-  const tabs = [['matches', 'Partidos'], ['DHA', isMobile ? 'Clasif. DHA' : 'Clasificación DHA'], ['DHB', isMobile ? 'Clasif. DHB' : 'Clasificación DHB']];
+  const tabs = [['matches', 'Partidos'], ['DHA', isMobile ? 'Clasif. DHA' : 'Clasificación DHA'], ['DHB', isMobile ? 'Clasif. DHB' : 'Clasificación DHB'],
+                ['resDHA', isMobile ? 'Result. DHA' : 'Resultados DHA'], ['resDHB', isMobile ? 'Result. DHB' : 'Resultados DHB']];
   return (
     <div>
       <PageTitle icon="hockey">Hockey</PageTitle>
@@ -5044,6 +5139,214 @@ function HockeyTab({data, upd, client}) {
       {sub === 'matches' && <HockeyMatches data={data} upd={upd} client={client}/>}
       {sub === 'DHA' && <HockeyStandings data={data} upd={upd} client={client} div="DHA"/>}
       {sub === 'DHB' && <HockeyStandings data={data} upd={upd} client={client} div="DHB"/>}
+      {sub === 'resDHA' && <HockeyLeague data={data} upd={upd} client={client} div="DHA"/>}
+      {sub === 'resDHB' && <HockeyLeague data={data} upd={upd} client={client} div="DHB"/>}
+    </div>
+  );
+}
+
+// =====================================================================
+// Fútbol — LaLiga y Champions League (función football-sync, datos ESPN). Mi equipo: Barça.
+// Los datos NO se guardan en la base cifrada: caché en memoria, se recarga al abrir la pestaña.
+// =====================================================================
+const FOOT_TEAM = '83'; // Barcelona (id ESPN)
+const FOOT_LEAGUES = {liga:'esp.1', ucl:'uefa.champions'};
+const FOOT_PHASE = {'knockout-round-playoffs':'Play-off', 'round-of-16':'Octavos de final', 'quarterfinals':'Cuartos de final',
+                    'semifinals':'Semifinales', 'final':'Final'};
+const FOOT_CACHE = {};
+
+function FootballLeague({client, lg, view}) {
+  const isMobile = useIsMobile();
+  const [, bump] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [jsel, setJsel] = useState('cur');
+  const [mine, setMine] = useState(false);
+  const st = FOOT_CACHE[lg];
+  const WD = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const refresh = async () => {
+    if (!client || loading) return;
+    setLoading(true); setErr('');
+    try {
+      const {data: res, error} = await client.functions.invoke('football-sync', {body:{league:FOOT_LEAGUES[lg]}});
+      if (error) throw error;
+      if (!res || res.error) throw new Error((res && res.error) || 'Respuesta vacía');
+      FOOT_CACHE[lg] = {res, fetched:Date.now()};
+      bump(n => n + 1);
+    } catch (e) { setErr(String((e && e.message) || e)); }
+    setLoading(false);
+  };
+  useEffect(() => { if (!st || Date.now() - st.fetched > 10 * 60 * 1000) refresh(); }, []);
+  const res = st && st.res;
+  const fetched = st ? new Date(st.fetched).toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}) : '';
+  const head = (
+    <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
+      {view === 'res' && res && (
+        <div style={{display:'flex', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
+          {[[false,'Todos'], [true,'Barça']].map(([k, lbl]) => (
+            <button key={lbl} onClick={() => { setMine(k); setJsel('cur'); }}
+              style={{padding:'6px 14px', border:'none', cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'inherit',
+                      background: mine === k ? 'var(--brand)' : 'transparent', color: mine === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
+          ))}
+        </div>
+      )}
+      <div style={{display:'flex', alignItems:'center', gap:8, marginLeft:'auto'}}>
+        {fetched && !isMobile && <span style={{fontSize:11, color:'var(--muted-soft)'}}>Actualizado {fetched}</span>}
+        <Btn v="sec" onClick={refresh} disabled={loading} style={{fontSize:13}}>{loading ? 'Actualizando…' : 'Actualizar'}</Btn>
+      </div>
+    </div>
+  );
+  const errBox = err && <div style={{fontSize:12, color:'var(--err-fg)', background:'var(--err-bg)', padding:'6px 8px', borderRadius:'var(--r-xs)', marginBottom:10}}>{err}</div>;
+  if (!res) return <div>{head}{errBox}{!err && <div style={{fontSize:13, color:'var(--muted)'}}>{loading ? 'Cargando…' : 'Sin datos todavía.'}</div>}</div>;
+
+  const logo = t => t.logo ? <img src={t.logo} alt="" style={{width:18, height:18, objectFit:'contain', flexShrink:0}}/> : null;
+
+  if (view === 'cla') {
+    const rows = res.standings.rows;
+    const th = {fontSize:10, fontWeight:700, color:'var(--muted)', textAlign:'center', padding:'6px 3px', textTransform:'uppercase'};
+    const td = {fontSize:13, textAlign:'center', padding:'7px 3px', color:'var(--text)'};
+    const notes = [];
+    rows.forEach(r => { if (r.note && !notes.some(n => n.note === r.note)) notes.push({note:r.note, color:r.color}); });
+    return (
+      <div>
+        {head}{errBox}
+        <div style={{fontSize:13, color:'var(--muted)', marginBottom:8}}>
+          <b style={{color:'var(--text)'}}>{res.name}</b>{res.standings.name ? ' · ' + res.standings.name : ''}
+        </div>
+        <div style={{...S.card, padding: isMobile ? '6px 8px' : '8px 14px', overflowX:'auto'}}>
+          <table style={{width:'100%', borderCollapse:'collapse'}}>
+            <thead>
+              <tr style={{borderBottom:'1px solid var(--border)'}}>
+                <th style={{...th, width:26}}>#</th><th style={{...th, textAlign:'left'}}>Equipo</th>
+                <th style={th}>PTS</th><th style={th}>PJ</th><th style={th}>G</th><th style={th}>E</th><th style={th}>P</th>
+                {!isMobile && <th style={th}>GF</th>}{!isMobile && <th style={th}>GC</th>}<th style={th}>DIF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const ours = r.id === FOOT_TEAM;
+                return (
+                  <tr key={r.id} style={{borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--surface-alt)',
+                                         background: ours ? 'var(--brand-soft)' : 'transparent'}}>
+                    <td style={{...td, color:'var(--muted)', fontWeight:600, borderLeft:'3px solid ' + (r.color || 'transparent')}}>{r.pos}</td>
+                    <td style={{...td, textAlign:'left', fontWeight: ours ? 800 : 500}}>
+                      <span style={{display:'inline-flex', alignItems:'center', gap:6}}>{logo(r)}{isMobile ? r.short : r.name}</span>
+                    </td>
+                    <td style={{...td, fontWeight:800, color:'var(--brand)'}}>{r.pts}</td>
+                    <td style={td}>{r.pj}</td><td style={td}>{r.g}</td><td style={td}>{r.e}</td><td style={td}>{r.p}</td>
+                    {!isMobile && <td style={td}>{r.gf}</td>}{!isMobile && <td style={td}>{r.gc}</td>}
+                    <td style={{...td, color: r.dif < 0 ? 'var(--err-fg)' : 'var(--text)'}}>{r.dif > 0 ? '+' + r.dif : r.dif}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {notes.length > 0 && (
+          <div style={{display:'flex', flexWrap:'wrap', gap:'4px 14px', marginTop:10}}>
+            {notes.map(n => (
+              <span key={n.note} style={{fontSize:11, color:'var(--muted)', display:'inline-flex', alignItems:'center', gap:5}}>
+                <span style={{width:9, height:9, borderRadius:2, background:n.color || 'var(--border)', display:'inline-block'}}/>{n.note}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---- Resultados por jornada / fase ----
+  const today = todayStr();
+  const all = res.matches.filter(m => !mine || m.home.id === FOOT_TEAM || m.away.id === FOOT_TEAM);
+  const groups = [];
+  const gmap = {};
+  all.forEach(m => {
+    const k = FOOT_PHASE[m.phase] ? m.phase : 'J' + m.round;
+    if (!gmap[k]) {
+      gmap[k] = {key:k, label: FOOT_PHASE[m.phase] || 'Jornada ' + m.round, list:[], first:m.date};
+      groups.push(gmap[k]);
+    }
+    gmap[k].list.push(m);
+    if (m.date < gmap[k].first) gmap[k].first = m.date;
+  });
+  groups.sort((a, b) => a.first < b.first ? -1 : a.first > b.first ? 1 : 0);
+  const nextM = all.find(m => m.state !== 'post' && m.date >= today) || all.find(m => m.state === 'in');
+  const curKey = nextM ? (FOOT_PHASE[nextM.phase] ? nextM.phase : 'J' + nextM.round) : (groups.length ? groups[groups.length - 1].key : '');
+  const selKey = jsel === 'cur' ? curKey : jsel;
+  const shown = selKey === 'all' ? groups : groups.filter(g => g.key === selKey);
+  const gi = groups.findIndex(g => g.key === selKey);
+  const step = d => { const g = groups[gi + d]; if (g) setJsel(g.key); };
+  const cmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+  const navBtn = {border:'1px solid var(--border)', background:'transparent', color:'var(--text)', borderRadius:'var(--r-sm)', width:30, height:30, cursor:'pointer', fontSize:14, fontFamily:'inherit'};
+  const numStyle = {fontSize:14, fontWeight:800, color:'var(--brand)', minWidth:44, textAlign:'center', flexShrink:0};
+  return (
+    <div>
+      {head}{errBox}
+      <div style={{display:'flex', gap:8, alignItems:'center', marginBottom:12}}>
+        <button style={navBtn} disabled={gi <= 0} onClick={() => step(-1)}>‹</button>
+        <select value={jsel === 'cur' ? 'cur' : jsel} onChange={e => setJsel(e.target.value)} style={{...S.inp, width:'auto', minWidth:150}}>
+          <option value="cur">Actual ({(groups.find(g => g.key === curKey) || {label:'–'}).label})</option>
+          <option value="all">Todas</option>
+          {groups.map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+        </select>
+        <button style={navBtn} disabled={gi < 0 || gi >= groups.length - 1} onClick={() => step(1)}>›</button>
+      </div>
+      {shown.length === 0 && <div style={{fontSize:13, color:'var(--muted)'}}>No hay partidos.</div>}
+      {shown.map(g => (
+        <div key={g.key} style={{...S.card, marginBottom:12, padding: isMobile ? '8px 10px' : '10px 16px'}}>
+          <div style={{display:'flex', alignItems:'baseline', gap:8, marginBottom:4}}>
+            <span style={{fontSize:13, fontWeight:800, color:'var(--text)'}}>{g.label}</span>
+            {g.key === curKey && <span style={{fontSize:10, fontWeight:700, color:'var(--brand)', background:'var(--brand-soft)', padding:'1px 6px', borderRadius:'var(--r-xs)'}}>Actual</span>}
+          </div>
+          {g.list.slice().sort(cmp).map(m => {
+            const hOur = m.home.id === FOOT_TEAM, aOur = m.away.id === FOOT_TEAM, ours = hOur || aOur;
+            const dt = new Date(m.date + 'T12:00:00');
+            const shownScore = m.hs != null && m.as != null;
+            return (
+              <div key={m.id} style={{display:'flex', alignItems:'center', gap: isMobile ? 4 : 10, flexWrap:'wrap',
+                                      padding:'6px 4px', borderTop:'1px solid var(--surface-alt)',
+                                      background: ours ? 'var(--brand-soft)' : 'transparent', borderRadius: ours ? 'var(--r-xs)' : 0}}>
+                <div style={{fontSize:11, color:'var(--muted)', flex: isMobile ? '0 0 100%' : '0 0 112px', lineHeight:1.2}}>
+                  {WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)} · {m.time}
+                  {m.state === 'in' && <span style={{color:'var(--err-fg)', fontWeight:700}}>{' · EN VIVO ' + m.detail}</span>}
+                </div>
+                <div style={{display:'flex', alignItems:'center', gap:8, flex:'1 1 0', minWidth:0, flexWrap:'nowrap'}}>
+                  <div style={{flex:'1 1 0', minWidth:0, display:'flex', justifyContent:'flex-end', alignItems:'center', gap:6, fontSize:13, lineHeight:1.2,
+                               fontWeight: hOur ? 800 : 500, color: hOur ? 'var(--text)' : 'var(--text-2)', textAlign:'right'}}>
+                    <span>{isMobile ? m.home.short : m.home.name}</span>{logo(m.home)}
+                  </div>
+                  <div style={shownScore ? numStyle : {...numStyle, color:'var(--muted-soft)', fontWeight:600}}>{shownScore ? m.hs + ' – ' + m.as : '–'}</div>
+                  <div style={{flex:'1 1 0', minWidth:0, display:'flex', justifyContent:'flex-start', alignItems:'center', gap:6, fontSize:13, lineHeight:1.2,
+                               fontWeight: aOur ? 800 : 500, color: aOur ? 'var(--text)' : 'var(--text-2)'}}>
+                    {logo(m.away)}<span>{isMobile ? m.away.short : m.away.name}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      <div style={{fontSize:11, color:'var(--muted-soft)', marginTop:4}}>Las jornadas se calculan a partir del calendario; los partidos aplazados pueden aparecer en otra jornada. Fuente: ESPN.</div>
+    </div>
+  );
+}
+
+function FootballTab({client}) {
+  const isMobile = useIsMobile();
+  const [sub, setSub] = useState('liga-res');
+  const tabs = isMobile
+    ? [['liga-res','Liga'], ['liga-cla','Clasif. Liga'], ['ucl-res','Champions'], ['ucl-cla','Clasif. UCL']]
+    : [['liga-res','Liga · Resultados'], ['liga-cla','Liga · Clasificación'], ['ucl-res','Champions · Resultados'], ['ucl-cla','Champions · Clasificación']];
+  const lg = sub.split('-')[0], view = sub.split('-')[1];
+  return (
+    <div>
+      <PageTitle icon="futbol">Fútbol</PageTitle>
+      <div className="tabbar">
+        {tabs.map(([k, lbl]) => (
+          <button key={k} className={'tab-underline' + (sub === k ? ' active' : '')} onClick={() => setSub(k)}>{lbl}</button>
+        ))}
+      </div>
+      <FootballLeague key={sub} client={client} lg={lg} view={view}/>
     </div>
   );
 }
