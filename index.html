@@ -2457,13 +2457,15 @@ function App({bundle, onLogout}) {
       ['projects','Projects'],
       ['todos','To-Dos'],
       ['scorecard','Scorecard'],
-      ['hockey','Hockey'],
-      ['futbol','Fútbol'],
       ['month','Month']
     ]},
     {label:'Review', items: [
       ['l10_main','L10 Meetings'],
       ['qreview_main','Q Review']
+    ]},
+    {label:'Reference', items: [
+      ['hockey','Hockey'],
+      ['futbol','Fútbol']
     ]}
   ];
   const GNAV_FLAT = GNAV.flatMap(s => s.items);
@@ -4581,7 +4583,9 @@ function HockeyMatches({data, upd, client}) {
     if (!icsToken || !client) return;
     const t = setTimeout(async () => {
       try {
-        const {error} = await client.functions.invoke('hockey-ics', {body:{token:icsToken, matches:feedMatches()}});
+        let extra = [];
+        try { extra = await barcaFeed(client); } catch (e) { extra = []; }
+        const {error} = await client.functions.invoke('hockey-ics', {body:{token:icsToken, matches:feedMatches().concat(extra).filter(m => m.date >= feedCutoff()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).slice(0, 200)}});
         if (error) throw error;
         setPubState('ok:' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}));
       } catch (e) { setPubState('err:' + String((e && e.message) || e)); }
@@ -4707,7 +4711,6 @@ function HockeyMatches({data, upd, client}) {
   return (
     <div>
       <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
-        <Btn onClick={() => setShowF(o => !o)} style={{fontSize:13}}>+ Partido</Btn>
         <div style={{display:'flex', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
           {[['all','Todos'], ['DHA','DHA'], ['DHB','DHB']].map(([k, lbl]) => (
             <button key={k} onClick={() => setFilter(k)}
@@ -4798,41 +4801,6 @@ function HockeyMatches({data, upd, client}) {
           </div>
         </div>
       )}
-      {showF && (
-        <InlineForm marginTop={0}>
-          <div style={{display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end', marginBottom:10}}>
-            <div>
-              <label style={S.lbl}>División</label>
-              <select value={form.div} onChange={e => setForm(f => ({...f, div:e.target.value}))} style={{...S.inp, width:90}}>
-                <option value="DHA">DHA</option><option value="DHB">DHB</option>
-              </select>
-            </div>
-            <div style={{width:150}}>
-              <label style={S.lbl}>Fecha</label>
-              <DatePicker value={form.date} onChange={v => setForm(f => ({...f, date:v}))}/>
-            </div>
-            <div>
-              <label style={S.lbl}>Hora</label>
-              <input type="time" value={form.time} onChange={e => setForm(f => ({...f, time:e.target.value}))} style={{...S.inp, width:110}}/>
-            </div>
-            <div>
-              <label style={S.lbl}>Juega</label>
-              <select value={form.home ? 'h' : 'a'} onChange={e => setForm(f => ({...f, home:e.target.value === 'h'}))} style={{...S.inp, width:110}}>
-                <option value="h">En casa</option><option value="a">Fuera</option>
-              </select>
-            </div>
-            <div style={{flex:'1 1 180px'}}>
-              <label style={S.lbl}>Rival</label>
-              <input value={form.rival} onChange={e => setForm(f => ({...f, rival:e.target.value}))}
-                placeholder="Equipo rival" style={S.inp}/>
-            </div>
-          </div>
-          <div style={{display:'flex', gap:7}}>
-            <Btn onClick={addMatch}>Save</Btn>
-            <Btn v="sec" onClick={() => setShowF(false)}>Cancel</Btn>
-          </div>
-        </InlineForm>
-      )}
       <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14}}>
         {['DHA', 'DHB'].filter(dv => filter === 'all' || filter === dv).map(dv => {
           const s = sum[dv];
@@ -4862,17 +4830,6 @@ function HockeyMatches({data, upd, client}) {
                                     background: isNext ? 'var(--brand-soft)' : 'transparent',
                                     borderRadius: isNext ? 'var(--r-sm)' : 0}}>
               <span style={{...pill(m.div), order:1}}>{m.div}</span>
-              {editMode ? (
-                <div style={{display:'flex', alignItems:'center', gap:6, order:2, flexShrink:0}}>
-                  <div style={{width:128}}>
-                    <DatePicker value={m.date} onChange={v => { if (v) setText(m.id, 'date', v); }}
-                      style={{width:128, inputStyle:{height:30, padding:'0 28px 0 8px', fontSize:12, fontWeight:600,
-                                                      borderRadius:'var(--r-xs)', border:'1px solid var(--border-strong)'}}}/>
-                  </div>
-                  <input type="time" value={m.time} onChange={e => setText(m.id, 'time', e.target.value)}
-                    style={{...S.inp, width:92, height:30, padding:'0 6px', fontSize:12, fontWeight:600}}/>
-                </div>
-              ) : (
                 <div style={{flexShrink:0, lineHeight:1.25, order:2, width: isMobile ? 'auto' : 92}}>
                   {isMobile ? (
                     <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>
@@ -4886,24 +4843,19 @@ function HockeyMatches({data, upd, client}) {
                     </React.Fragment>
                   )}
                 </div>
-              )}
               {/* Equipos + resultado: SIEMPRE en una misma línea */}
               <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'nowrap',
                            order: isMobile ? 4 : 3, flex: isMobile ? '1 1 100%' : '1 1 340px', minWidth:0}}>
                 <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'right', lineHeight:1.2,
                              fontWeight: ourHome ? 700 : 500, color: ourHome ? 'var(--text)' : 'var(--text-2)'}}>
-                  {editMode ? <input value={m.home} onChange={e => setText(m.id, 'home', e.target.value)} style={{...S.inp, padding:'4px 6px', fontSize:13, fontWeight:600, height:30, minWidth:0, width:'100%', textAlign:'right'}}/> : m.home}
+                  {m.home}
                 </div>
-                <div style={{display:'flex', alignItems:'center', gap:2, flexShrink:0}}>
-                  <input type="text" inputMode="numeric" value={m.hs == null ? '' : m.hs} placeholder="–" style={numInp}
-                    onChange={ev => setField(m.id, 'hs', digits(ev.target.value))}/>
-                  <span style={{color:'var(--muted)'}}>–</span>
-                  <input type="text" inputMode="numeric" value={m.as == null ? '' : m.as} placeholder="–" style={numInp}
-                    onChange={ev => setField(m.id, 'as', digits(ev.target.value))}/>
+                <div style={{display:'flex', alignItems:'center', gap:4, flexShrink:0, fontSize:14, fontWeight:700, color:'var(--brand)', minWidth:44, justifyContent:'center'}}>
+                  {m.hs == null || m.as == null ? <span style={{color:'var(--muted-soft)', fontWeight:600}}>–</span> : <span>{m.hs} – {m.as}</span>}
                 </div>
                 <div style={{flex:'1 1 0', minWidth:0, fontSize:13, textAlign:'left', lineHeight:1.2,
                              fontWeight: !ourHome ? 700 : 500, color: !ourHome ? 'var(--text)' : 'var(--text-2)'}}>
-                  {editMode ? <input value={m.away} onChange={e => setText(m.id, 'away', e.target.value)} style={{...S.inp, padding:'4px 6px', fontSize:13, fontWeight:600, height:30, minWidth:0, width:'100%'}}/> : m.away}
+                  {m.away}
                 </div>
               </div>
               {editMode && (
@@ -4912,7 +4864,6 @@ function HockeyMatches({data, upd, client}) {
                   <span style={{fontSize:11, color:'var(--muted)'}}>Goles</span>
                   <input type="text" inputMode="numeric" value={m.goals == null ? '' : m.goals} placeholder="–" style={numInp}
                     onChange={ev => setField(m.id, 'goals', digits(ev.target.value))}/>
-                  <XBtn size={16} onClick={() => delMatch(m)}/>
                 </div>
               )}
             </div>
@@ -5161,7 +5112,7 @@ function FootballLeague({client, lg, view}) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [jsel, setJsel] = useState('cur');
-  const [mine, setMine] = useState(false);
+  const mine = false;
   const st = FOOT_CACHE[lg];
   const WD = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const refresh = async () => {
@@ -5181,15 +5132,6 @@ function FootballLeague({client, lg, view}) {
   const fetched = st ? new Date(st.fetched).toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}) : '';
   const head = (
     <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
-      {view === 'res' && res && (
-        <div style={{display:'flex', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
-          {[[false,'Todos'], [true,'Barça']].map(([k, lbl]) => (
-            <button key={lbl} onClick={() => { setMine(k); setJsel('cur'); }}
-              style={{padding:'6px 14px', border:'none', cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'inherit',
-                      background: mine === k ? 'var(--brand)' : 'transparent', color: mine === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
-          ))}
-        </div>
-      )}
       <div style={{display:'flex', alignItems:'center', gap:8, marginLeft:'auto'}}>
         {fetched && !isMobile && <span style={{fontSize:11, color:'var(--muted-soft)'}}>Actualizado {fetched}</span>}
         <Btn v="sec" onClick={refresh} disabled={loading} style={{fontSize:13}}>{loading ? 'Actualizando…' : 'Actualizar'}</Btn>
@@ -5331,12 +5273,156 @@ function FootballLeague({client, lg, view}) {
   );
 }
 
+async function footLoad(client, lg) {
+  const {data: res, error} = await client.functions.invoke('football-sync', {body:{league:FOOT_LEAGUES[lg]}});
+  if (error) throw error;
+  if (!res || res.error) throw new Error((res && res.error) || 'Respuesta vacía');
+  FOOT_CACHE[lg] = {res, fetched:Date.now()};
+}
+
+// Fecha mínima (hace ~4 meses) para publicar en el calendario de Outlook: evita que crezca sin límite.
+function feedCutoff() {
+  const t = new Date(Date.now() - 120 * 86400000);
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+}
+
+// Partidos del Barça (Liga + Champions) en formato del calendario suscrito de Outlook.
+async function barcaFeed(client) {
+  for (const k of ['liga', 'ucl']) {
+    if (!FOOT_CACHE[k] || Date.now() - FOOT_CACHE[k].fetched > 10 * 60 * 1000) await footLoad(client, k);
+  }
+  const out = [];
+  ['liga', 'ucl'].forEach(k => {
+    ((FOOT_CACHE[k] && FOOT_CACHE[k].res.matches) || []).forEach(m => {
+      if (m.home.id !== FOOT_TEAM && m.away.id !== FOOT_TEAM) return;
+      out.push({id:'fcb-' + k + '-' + m.id, div:'Barça', date:m.date, time:m.time || '', home:m.home.name, away:m.away.name,
+                hs:m.hs == null ? null : m.hs, as:m.as == null ? null : m.as});
+    });
+  });
+  return out;
+}
+
+// Pestaña Barça: todos sus partidos (Liga + Champions) en una sola lista cronológica, sin selector de jornada.
+function FootballBarca({client}) {
+  const isMobile = useIsMobile();
+  const [, bump] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [comp, setComp] = useState('all');
+  const WD = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const refresh = async () => {
+    if (!client || loading) return;
+    setLoading(true); setErr('');
+    try { await Promise.all([footLoad(client, 'liga'), footLoad(client, 'ucl')]); bump(n => n + 1); }
+    catch (e) { setErr(String((e && e.message) || e)); }
+    setLoading(false);
+  };
+  const stale = ['liga', 'ucl'].some(k => !FOOT_CACHE[k] || Date.now() - FOOT_CACHE[k].fetched > 10 * 60 * 1000);
+  useEffect(() => { if (stale) refresh(); }, []);
+  const ready = FOOT_CACHE.liga && FOOT_CACHE.ucl;
+  const today = todayStr();
+  const mineOf = lg => ((FOOT_CACHE[lg] && FOOT_CACHE[lg].res.matches) || [])
+    .filter(m => m.home.id === FOOT_TEAM || m.away.id === FOOT_TEAM).map(m => ({...m, lg}));
+  const all = mineOf('liga').concat(mineOf('ucl')).sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  const list = all.filter(m => comp === 'all' || m.lg === comp);
+  const nextM = list.find(m => m.state === 'in') || list.find(m => m.state !== 'post' && m.date >= today);
+  useEffect(() => {
+    const el = document.getElementById('foot-next');
+    if (el && el.scrollIntoView) el.scrollIntoView({block:'center'});
+  }, [ready, comp]);
+  const pos = lg => {
+    const r = FOOT_CACHE[lg] && FOOT_CACHE[lg].res.standings.rows.find(x => x.id === FOOT_TEAM);
+    return r ? r : null;
+  };
+  const logo = t => t.logo ? <img src={t.logo} alt="" style={{width:18, height:18, objectFit:'contain', flexShrink:0}}/> : null;
+  const fetchedAt = FOOT_CACHE.liga ? new Date(FOOT_CACHE.liga.fetched).toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}) : '';
+  const numStyle = {fontSize:14, fontWeight:800, color:'var(--brand)', minWidth:44, textAlign:'center', flexShrink:0};
+  const pill = lg => ({fontSize:10, fontWeight:800, padding:'2px 0', width:38, textAlign:'center', borderRadius:'var(--r-xs)', flexShrink:0,
+                       display:'inline-block', color: lg === 'liga' ? 'var(--brand)' : 'var(--info-fg)', background: lg === 'liga' ? 'var(--brand-soft)' : 'var(--info-bg)'});
+  return (
+    <div>
+      <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14, alignItems:'center'}}>
+        <div style={{display:'flex', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
+          {[['all','Todos'], ['liga','Liga'], ['ucl','Champions']].map(([k, lbl]) => (
+            <button key={k} onClick={() => setComp(k)}
+              style={{padding:'6px 14px', border:'none', cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'inherit',
+                      background: comp === k ? 'var(--brand)' : 'transparent', color: comp === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
+          ))}
+        </div>
+        <div style={{display:'flex', alignItems:'center', gap:8, marginLeft:'auto'}}>
+          {fetchedAt && !isMobile && <span style={{fontSize:11, color:'var(--muted-soft)'}}>Actualizado {fetchedAt}</span>}
+          <Btn v="sec" onClick={refresh} disabled={loading} style={{fontSize:13}}>{loading ? 'Actualizando…' : 'Actualizar'}</Btn>
+        </div>
+      </div>
+      {err && <div style={{fontSize:12, color:'var(--err-fg)', background:'var(--err-bg)', padding:'6px 8px', borderRadius:'var(--r-xs)', marginBottom:10}}>{err}</div>}
+      {!ready && !err && <div style={{fontSize:13, color:'var(--muted)'}}>{loading ? 'Cargando…' : 'Sin datos todavía.'}</div>}
+      {ready && (
+        <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:14}}>
+          {[['liga', 'LaLiga'], ['ucl', 'Champions']].filter(x => comp === 'all' || comp === x[0]).map(([lg, nm]) => {
+            const r = pos(lg);
+            return (
+              <div key={lg} style={{...S.card, margin:0, padding:'10px 14px', flex:'1 1 200px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
+                  <span style={pill(lg)}>{lg === 'liga' ? 'LIGA' : 'UCL'}</span>
+                  <span style={{fontSize:12, color:'var(--muted)'}}>{nm}</span>
+                </div>
+                {r ? (
+                  <div style={{fontSize:13, color:'var(--text)', fontWeight:500}}>
+                    <b style={{color:'var(--brand)'}}>{r.pos}º</b> · {r.pts} pts · PJ {r.pj} · G {r.g} · E {r.e} · P {r.p} · {r.gf}–{r.gc}
+                  </div>
+                ) : <div style={{fontSize:13, color:'var(--muted)'}}>–</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {ready && (
+        <div style={{...S.card}}>
+          {list.length === 0 && <div style={{fontSize:13, color:'var(--muted-soft)', padding:'6px 0'}}>No hay partidos.</div>}
+          {list.map((m, i) => {
+            const hOur = m.home.id === FOOT_TEAM, aOur = m.away.id === FOOT_TEAM;
+            const dt = new Date(m.date + 'T12:00:00');
+            const isNext = nextM && m.id === nextM.id;
+            const shownScore = m.hs != null && m.as != null;
+            const label = m.lg === 'liga' ? 'J' + m.round : (FOOT_PHASE[m.phase] ? FOOT_PHASE[m.phase] : 'J' + m.round);
+            return (
+              <div key={m.id} id={isNext ? 'foot-next' : undefined}
+                style={{display:'flex', alignItems:'center', gap: isMobile ? 6 : 10, flexWrap:'wrap', padding:'8px 6px',
+                        borderBottom: i === list.length - 1 ? 'none' : '1px solid var(--surface-alt)',
+                        background: isNext ? 'var(--brand-soft)' : 'transparent', borderRadius: isNext ? 'var(--r-sm)' : 0}}>
+                <span style={pill(m.lg)}>{m.lg === 'liga' ? 'LIGA' : 'UCL'}</span>
+                <div style={{fontSize:11, color:'var(--muted)', flex: isMobile ? '1 1 0' : '0 0 150px', lineHeight:1.25}}>
+                  {WD[dt.getDay()]} {fmtDMY(m.date).slice(0, 5)} · {m.time} · {label}
+                  {isNext && <b style={{color:'var(--brand)'}}>{' · Próximo'}</b>}
+                  {m.state === 'in' && <span style={{color:'var(--err-fg)', fontWeight:700}}>{' · EN VIVO ' + m.detail}</span>}
+                </div>
+                <div style={{display:'flex', alignItems:'center', gap:8, flex: isMobile ? '1 1 100%' : '1 1 0', minWidth:0, flexWrap:'nowrap'}}>
+                  <div style={{flex:'1 1 0', minWidth:0, display:'flex', justifyContent:'flex-end', alignItems:'center', gap:6, fontSize:13, lineHeight:1.2,
+                               fontWeight: hOur ? 800 : 500, color: hOur ? 'var(--text)' : 'var(--text-2)', textAlign:'right'}}>
+                    <span>{isMobile ? m.home.short : m.home.name}</span>{logo(m.home)}
+                  </div>
+                  <div style={shownScore ? numStyle : {...numStyle, color:'var(--muted-soft)', fontWeight:600}}>{shownScore ? m.hs + ' – ' + m.as : '–'}</div>
+                  <div style={{flex:'1 1 0', minWidth:0, display:'flex', justifyContent:'flex-start', alignItems:'center', gap:6, fontSize:13, lineHeight:1.2,
+                               fontWeight: aOur ? 800 : 500, color: aOur ? 'var(--text)' : 'var(--text-2)'}}>
+                    {logo(m.away)}<span>{isMobile ? m.away.short : m.away.name}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FootballTab({client}) {
   const isMobile = useIsMobile();
-  const [sub, setSub] = useState('liga-res');
+  const [sub, setSub] = useState('barca');
   const tabs = isMobile
-    ? [['liga-res','Liga'], ['liga-cla','Clasif. Liga'], ['ucl-res','Champions'], ['ucl-cla','Clasif. UCL']]
-    : [['liga-res','Liga · Resultados'], ['liga-cla','Liga · Clasificación'], ['ucl-res','Champions · Resultados'], ['ucl-cla','Champions · Clasificación']];
+    ? [['barca','Barça'], ['liga-res','Liga'], ['liga-cla','Clasif. Liga'], ['ucl-res','Champions'], ['ucl-cla','Clasif. UCL']]
+    : [['barca','Barça'], ['liga-res','Liga · Resultados'], ['liga-cla','Liga · Clasificación'], ['ucl-res','Champions · Resultados'], ['ucl-cla','Champions · Clasificación']];
   const lg = sub.split('-')[0], view = sub.split('-')[1];
   return (
     <div>
@@ -5346,7 +5432,7 @@ function FootballTab({client}) {
           <button key={k} className={'tab-underline' + (sub === k ? ' active' : '')} onClick={() => setSub(k)}>{lbl}</button>
         ))}
       </div>
-      <FootballLeague key={sub} client={client} lg={lg} view={view}/>
+      {sub === 'barca' ? <FootballBarca client={client}/> : <FootballLeague key={sub} client={client} lg={lg} view={view}/>}
     </div>
   );
 }
