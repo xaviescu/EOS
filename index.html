@@ -4160,11 +4160,19 @@ function ScorecardSummary({scorecard, qw, selWn, onSelectWn, renderMetricExtra, 
               <th style={{padding: '8px ' + labelPadX + 'px', textAlign:'left', color:'var(--text)', fontSize: isMobile ? 12 : 13, fontWeight:700}}></th>
               {qw.map((wn, i) => (
                 <th key={wn} onClick={() => onSelectWn && onSelectWn(wn)}
-                  style={{padding:'8px 0', textAlign:'center',
+                  title={wDates(wn)}
+                  style={{padding:'6px 0', textAlign:'center',
                           color: wn === selWn ? 'var(--brand)' : 'var(--text-2)',
                           background: wn === selWn ? 'rgba(94,106,210,0.15)' : 'transparent',
                           fontSize: isMobile ? 10 : 11, cursor: onSelectWn ? 'pointer' : 'default',
-                          fontWeight: wn === selWn ? 800 : 600}}>{i + 1}</th>
+                          fontWeight: wn === selWn ? 800 : 600}}>
+                  <div>{i + 1}</div>
+                  <div style={{fontSize: isMobile ? 7.5 : 10, fontWeight:500, lineHeight:1.15, marginTop:2, color:'var(--muted)', whiteSpace:'nowrap', letterSpacing: isMobile ? '-0.3px' : 0}}>
+                    {isMobile
+                      ? <React.Fragment><div>{dayDate(wn, 0).getUTCDate() + '/' + (dayDate(wn, 0).getUTCMonth() + 1)}</div><div>{dayDate(wn, 6).getUTCDate() + '/' + (dayDate(wn, 6).getUTCMonth() + 1)}</div></React.Fragment>
+                      : <React.Fragment><div>{dayShort(wn, 0)}</div><div>{dayShort(wn, 6)}</div></React.Fragment>}
+                  </div>
+                </th>
               ))}
               {renderMetricExtra && <th/>}
             </tr>
