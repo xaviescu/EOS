@@ -1221,25 +1221,27 @@ function copyYearStructure(d, from, to) {
   });
 }
 const YearCtx = React.createContext({year: 2026, setYear: () => {}, copyYear: () => {}});
-function YearPicker({copy}) {
+function YearSelect({copy, style}) {
   const {year, setYear, copyYear} = React.useContext(YearCtx);
   const isMobile = useIsMobile();
-  const nb = {border:'1px solid var(--border)', background:'transparent', color:'var(--text)', borderRadius:'var(--r-sm)',
-              width:28, height:28, cursor:'pointer', fontSize:14, fontFamily:'inherit', flexShrink:0};
+  const years = [];
+  for (let y = YEAR_MIN; y <= YEAR_MAX; y++) years.push(y);
   return (
-    <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:6, flexShrink:0}}>
+    <div style={{display:'flex', alignItems:'center', gap:6, flexShrink:0, alignSelf:'center', marginRight:8, ...style}}>
+      <select value={year} onChange={e => setYear(parseInt(e.target.value))} title="Año"
+        style={{...S.inp, width:'auto', height:32, padding:'0 8px', fontSize:13, fontWeight:800,
+                color:'var(--brand)', cursor:'pointer', flexShrink:0}}>
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
       {copy && year > YEAR_MIN && (
         <Btn v="sec" style={{fontSize:12, padding:'4px 8px'}} onClick={() => {
           if (confirm('¿Copiar de ' + (year - 1) + ' a ' + year + ' los Rocks anuales y las métricas del Scorecard? Se copian sin marcas ni datos y sin pisar lo que ya exista.')) copyYear(year - 1, year);
         }}>{isMobile ? 'Copiar ' + (year - 1) : 'Copiar de ' + (year - 1)}</Btn>
       )}
-      <button style={nb} disabled={year <= YEAR_MIN} onClick={() => setYear(year - 1)}>‹</button>
-      <span style={{fontSize:14, fontWeight:800, color:'var(--brand)', minWidth:40, textAlign:'center'}}>{year}</span>
-      <button style={nb} disabled={year >= YEAR_MAX} onClick={() => setYear(year + 1)}>›</button>
     </div>
   );
 }
-function PageTitle({icon, children, yearPick, copy}) {
+function PageTitle({icon, children}) {
   return (
     <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:'var(--s-5)'}}>
       {icon && (
@@ -1251,7 +1253,6 @@ function PageTitle({icon, children, yearPick, copy}) {
         </div>
       )}
       <h2 style={{...S.h2, marginBottom:0}}>{children}</h2>
-      {yearPick && <YearPicker copy={copy}/>}
     </div>
   );
 }
@@ -1324,9 +1325,10 @@ function Modal({onClose, children}) {
   );
 }
 
-function QBtns({selQ, onSelect}) {
+function QBtns({selQ, onSelect, withYear, copy}) {
   return (
     <div className="tabbar">
+      {withYear && <YearSelect copy={copy}/>}
       {QS.map(q => {
         const qk = YEAR + '-' + q;
         const isAct = qk === selQ;
@@ -1335,7 +1337,7 @@ function QBtns({selQ, onSelect}) {
           <button key={q} onClick={() => onSelect(qk)}
             className={'tab-underline' + (isAct ? ' active' : '')}
             style={!isAct && isCur ? {color:'var(--brand)'} : {}}>
-            {q} {YEAR}
+            {withYear ? q : q + ' ' + YEAR}
           </button>
         );
       })}
@@ -2765,7 +2767,7 @@ function App({bundle, onLogout}) {
 function VisionTab({data, upd}) {
   return (
     <div>
-      <PageTitle icon="vision" yearPick>Vision</PageTitle>
+      <PageTitle icon="vision">Vision</PageTitle>
       <VisionConsolidated data={data} upd={upd}/>
     </div>
   );
@@ -3032,6 +3034,7 @@ function VisionConsolidated({data, upd}) {
   return (
     <div>
       <div style={{display:'flex', gap:8, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
+        <YearSelect style={{marginRight:4}}/>
         <Btn onClick={addArea} style={{fontSize:13}}>+ Area</Btn>
         <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
           {editMode ? 'Done' : 'Edit'}
@@ -3419,8 +3422,9 @@ function MonthTab({data, upd, goToDay}) {
   const setNote = (ds, val) => upd(d => { if (!d.monthNotes) d.monthNotes = {}; d.monthNotes[ds] = val; });
   return (
     <div>
-      <PageTitle icon="month" yearPick>Month</PageTitle>
+      <PageTitle icon="month">Month</PageTitle>
       <div className="tabbar">
+        <YearSelect/>
         {MONTHS_F.map((m, i) => {
           const isCur = i === new Date().getMonth() && YEAR === new Date().getFullYear();
           return (
@@ -3554,11 +3558,12 @@ function RocksTab({data, upd}) {
   const curWn = getCurWn();
   return (
     <div>
-      <PageTitle icon="rocks_all" yearPick copy>Rocks</PageTitle>
+      <PageTitle icon="rocks_all">Rocks</PageTitle>
       <div className="tabbar">
+        <YearSelect copy/>
         <button onClick={() => setViewMode('year')}
           className={'tab-underline' + (viewMode === 'year' ? ' active' : '')}>
-          {YEAR}
+          YEAR
         </button>
         {QS.map(q => {
           const qk = YEAR + '-' + q;
@@ -3569,7 +3574,7 @@ function RocksTab({data, upd}) {
               onClick={() => { setViewMode('q'); setSelQ(qk); setAddRock(false); }}
               className={'tab-underline' + (isAct ? ' active' : '')}
               style={!isAct && isCur ? {color:'var(--brand)'} : {}}>
-              {q} {YEAR}
+              {q}
             </button>
           );
         })}
@@ -3580,7 +3585,7 @@ function RocksTab({data, upd}) {
         <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
           {editMode ? 'Done' : 'Edit'}
         </Btn>
-        <span style={{fontSize:11, color:'var(--muted-soft)'}}>Rocks are defined in the {YEAR} view.</span>
+        <span style={{fontSize:11, color:'var(--muted-soft)'}}>Rocks are defined in the YEAR view.</span>
       </div>
       <div>
         {rocks.length === 0 &&
@@ -3995,8 +4000,8 @@ function ScorecardTab({data, upd}) {
 
   return (
     <div>
-      <PageTitle icon="scorecard" yearPick copy>Scorecard</PageTitle>
-      <QBtns selQ={selQ} onSelect={handleSetQ}/>
+      <PageTitle icon="scorecard">Scorecard</PageTitle>
+      <QBtns selQ={selQ} onSelect={handleSetQ} withYear copy/>
       <div className="tabbar">
         <button className={'tab-underline' + (view === 'daily' ? ' active' : '')}
           onClick={() => setView('daily')}>Daily</button>
@@ -4325,8 +4330,8 @@ function ProjectsTab({data, upd}) {
   });
   return (
     <div>
-      <PageTitle icon="projects" yearPick>Projects</PageTitle>
-      <QBtns selQ={selQ} onSelect={q => {
+      <PageTitle icon="projects">Projects</PageTitle>
+      <QBtns withYear selQ={selQ} onSelect={q => {
         setSelQ(q);
         const qw2 = qWeeks(parseInt(q.split('-Q')[1]));
         setSelWn(qw2.includes(curWn) ? curWn : qw2[0]);
@@ -6224,8 +6229,8 @@ function L10MainTab({data, upd}) {
   };
   return (
     <div>
-      <PageTitle icon="l10_main" yearPick>L10 Meetings</PageTitle>
-      <QBtns selQ={selQ} onSelect={handleSetQ}/>
+      <PageTitle icon="l10_main">L10 Meetings</PageTitle>
+      <QBtns selQ={selQ} onSelect={handleSetQ} withYear/>
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <WeekL10 data={data} upd={upd} qKey={selQ} weekNum={selWn} embedded={true}/>
     </div>
@@ -6974,8 +6979,8 @@ function QReviewMainTab({data, upd}) {
   const qData = data.quarters[selQ] || {rocks:[], weeks:{}, weeklyRocks:{}, qReview:{}, scorecard:[], idsIssues:[]};
   return (
     <div>
-      <PageTitle icon="qreview_main" yearPick>Q Review</PageTitle>
-      <QBtns selQ={selQ} onSelect={setSelQ}/>
+      <PageTitle icon="qreview_main">Q Review</PageTitle>
+      <QBtns selQ={selQ} onSelect={setSelQ} withYear/>
       <QReview data={data} upd={upd} qKey={selQ} qData={qData}/>
     </div>
   );
