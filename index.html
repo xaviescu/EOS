@@ -621,6 +621,14 @@ const emptyArea = () => ({
   ltGoals:[], threeYearGoals:[], oneYearGoals:[]  // structured goals per horizon
 });
 const INIT_V = {values:[], ltView:'', threeYearView:'', oneYearView:'', areas:{}, areasList:[]};
+// Vision por año: 2026 (YEAR_MIN) usa data.vision (histórico); los años posteriores guardan su contenido en
+// data.visionYears[año]. La lista de áreas (areasList) es común a todos los años.
+const visionForYear = (data, y) => {
+  const base = data.vision || INIT_V;
+  if (y === YEAR_MIN) return base;
+  const yv = (data.visionYears && data.visionYears[y]) || {};
+  return {...JSON.parse(JSON.stringify(INIT_V)), ...yv, areasList: base.areasList || []};
+};
 const INIT = {
   vision: JSON.parse(JSON.stringify(INIT_V)),
   processes: [],
@@ -884,13 +892,28 @@ async function decryptJSON(ciphertextB64, ivB64, key) {
 // =====================================================================
 // Supabase store
 // =====================================================================
-const DEVICE_ID = (() => {
-  try {
-    let id = localStorage.getItem('eos-xe-device-id');
-    if (!id) { id = uid() + uid(); localStorage.setItem('eos-xe-device-id', id); }
-    return id;
-  } catch (e) { return uid() + uid(); }
-})();
+// Un id distinto por pestaña/ventana (antes era uno por navegador y dos pestañas se ignoraban entre sí y se pisaban).
+const DEVICE_ID = uid() + uid() + uid();
+
+// Fusión de 3 vías: aplica sobre 'theirs' (lo que hay en el servidor) solo lo que YO cambié respecto a 'base'.
+function mergeApply(base, mine, theirs) {
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  if (same(base, mine)) return theirs;
+  const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (isObj(mine) && isObj(theirs) && (isObj(base) || base === undefined)) {
+    const b = base || {};
+    const out = {...theirs};
+    const keys = {};
+    Object.keys(b).forEach(k => { keys[k] = 1; });
+    Object.keys(mine).forEach(k => { keys[k] = 1; });
+    Object.keys(keys).forEach(k => {
+      if (!(k in mine)) { delete out[k]; return; }
+      out[k] = mergeApply(b[k], mine[k], theirs[k]);
+    });
+    return out;
+  }
+  return mine;
+}
 
 function getCfg() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); }
@@ -1194,7 +1217,27 @@ function H3({children, style}) {
 
 // Standard page title — square indigo badge with icon + title.
 // Copia la estructura (Rocks anuales y métricas del Scorecard) de un año a otro, sin marcas ni datos y sin pisar lo existente.
-function copyYearStructure(d, from, to) {
+function copyYearStructure(d, from, to, what) {
+  if (what === 'vision') {
+    const rawOf = y => y === YEAR_MIN ? (d.vision || {}) : ((d.visionYears && d.visionYears[y]) || {});
+    const src = rawOf(from);
+    if (!d.visionYears) d.visionYears = {};
+    if (!d.visionYears[to]) d.visionYears[to] = {values:[], ltView:'', threeYearView:'', oneYearView:'', areas:{}};
+    const tgt = d.visionYears[to];
+    ['ltView', 'threeYearView', 'oneYearView'].forEach(f => { if (!tgt[f] && src[f]) tgt[f] = src[f]; });
+    if ((!tgt.values || !tgt.values.length) && src.values && src.values.length) tgt.values = JSON.parse(JSON.stringify(src.values));
+    if (!tgt.areas) tgt.areas = {};
+    const emptyJ = JSON.stringify(emptyArea());
+    Object.keys(src.areas || {}).forEach(k => {
+      if (tgt.areas[k] && JSON.stringify(tgt.areas[k]) !== emptyJ) return;
+      const c = JSON.parse(JSON.stringify(src.areas[k]));
+      ['ltGoals', 'threeYearGoals', 'oneYearGoals'].forEach(f => {
+        if (Array.isArray(c[f])) c[f] = c[f].map(g => ({...g, id: uid(), done: false}));
+      });
+      tgt.areas[k] = c;
+    });
+    return;
+  }
   const fk = String(from), tk = String(to);
   if (!d.yearRocks) d.yearRocks = {};
   const src = d.yearRocks[fk] || {};
@@ -1236,7 +1279,11 @@ function YearSelect({copy, style}) {
       </select>
       {copy && year > YEAR_MIN && (
         <Btn v="sec" style={{fontSize:12, padding:'4px 8px'}} onClick={() => {
-          if (confirm('¿Copiar de ' + (year - 1) + ' a ' + year + ' los Rocks anuales y las métricas del Scorecard? Se copian sin marcas ni datos y sin pisar lo que ya exista.')) copyYear(year - 1, year);
+          const what = copy === 'vision' ? 'vision' : 'rocks';
+          const msg = what === 'vision'
+            ? '¿Copiar de ' + (year - 1) + ' a ' + year + ' el contenido de Vision (valores, visiones y objetivos por área)? Los objetivos se copian sin marcar y no se pisa lo que ya hayas escrito en ' + year + '.'
+            : '¿Copiar de ' + (year - 1) + ' a ' + year + ' los Rocks anuales y las métricas del Scorecard? Se copian sin marcas ni datos y sin pisar lo que ya exista.';
+          if (confirm(msg)) copyYear(year - 1, year, what);
         }}>{isMobile ? 'Copiar ' + (year - 1) : 'Copiar de ' + (year - 1)}</Btn>
       )}
     </div>
@@ -1783,12 +1830,25 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
     setForm(null);
   };
   const weekDatesLabel = dayShort(selWn, 0) + ' – ' + dayShort(selWn, 6);
+  // Copia mi Std Week a la semana mostrada (sustituye solo lo copiado antes desde la misma Std Week)
+  const copyStdWeek = () => {
+    const std = data.stdWeeklyEvents || [];
+    if (!std.length) { alert('La Std Week está vacía.'); return; }
+    if (!confirm('¿Copiar la Std Week (' + std.length + ' evento' + (std.length === 1 ? '' : 's') + ') a la semana ' + selWn + ' (' + weekDatesLabel + ')? Se sustituirán los eventos copiados antes de la Std Week; los demás no se tocan.')) return;
+    upd(d => {
+      if (!d.weeklyCalendar) d.weeklyCalendar = {};
+      if (!d.weeklyCalendar[wk]) d.weeklyCalendar[wk] = [];
+      d.weeklyCalendar[wk] = d.weeklyCalendar[wk].filter(e => !(e.isStdWeek && (e.stdSource || 'main') === 'main'));
+      (d.stdWeeklyEvents || []).forEach(e => { d.weeklyCalendar[wk].push({...e, id: uid(), isStdWeek:true, stdSource:'main'}); });
+    });
+  };
   return (
     <div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap',
                    background:'var(--bg)', padding:'12px 4px 12px 4px'}}>
         <div style={{fontSize:13, color:'var(--muted)', fontWeight:500}}>Week {selWn} {'—'} {weekDatesLabel}</div>
-        <div style={{display:'flex', gap:6}}>
+        <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+          <Btn v="sec" onClick={copyStdWeek} style={{fontSize:12, padding:'6px 14px'}}>Copy Std Week</Btn>
           <Btn onClick={() => setForm({day: focusDay, h:8, m:0, duration:1, title:'', notes:''})}
             style={{fontSize:12, padding:'6px 14px'}}>+ Event</Btn>
           <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)}
@@ -2407,6 +2467,9 @@ function App({bundle, onLogout}) {
   const saveTimer = useRef(null);
   const skipNextSave = useRef(false);
   const lastSavedSerial = useRef(JSON.stringify(initial));
+  const baseRef = useRef(JSON.parse(JSON.stringify(initial)));   // último estado conocido del servidor
+  const dRef = useRef(d);
+  dRef.current = d;
 
   // Save (debounced 800ms)
   useEffect(() => {
@@ -2417,12 +2480,27 @@ function App({bundle, onLogout}) {
     setSyncStatus('saving');
     saveTimer.current = setTimeout(async () => {
       try {
-        const {ciphertext, iv} = await encryptJSON(d, key);
+        // Antes de guardar, mirar si otro dispositivo/pestaña ha cambiado el servidor; si es así, fusionar en vez de pisar.
+        let toSave = d, merged = false;
+        try {
+          const {data: srv} = await client.from('eos_data').select('encrypted_data,iv').eq('id', ROW_ID).maybeSingle();
+          if (srv && srv.encrypted_data) {
+            const theirs = await decryptJSON(srv.encrypted_data, srv.iv, key);
+            if (JSON.stringify(theirs) !== lastSavedSerial.current) {
+              toSave = mergeApply(baseRef.current, d, theirs);
+              merged = true;
+            }
+          }
+        } catch (e) { console.warn('Merge check failed', e); }
+        const sSave = JSON.stringify(toSave);
+        const {ciphertext, iv} = await encryptJSON(toSave, key);
         const {error} = await client.from('eos_data').upsert({
           id: ROW_ID, encrypted_data: ciphertext, iv, device_id: DEVICE_ID
         }, {onConflict:'id'});
         if (error) throw error;
-        lastSavedSerial.current = serial;
+        lastSavedSerial.current = sSave;
+        baseRef.current = JSON.parse(sSave);
+        if (merged) setD(prev => mergeApply(d, prev, toSave));   // trae lo ajeno sin perder lo que se haya tecleado mientras tanto
         setSyncStatus('idle');
         setLastSyncError('');
       } catch (e) {
@@ -2449,8 +2527,19 @@ function App({bundle, onLogout}) {
             const remote = await decryptJSON(row.encrypted_data, row.iv, key);
             const serial = JSON.stringify(remote);
             if (serial === lastSavedSerial.current) return;
+            const cur = dRef.current;
+            const dirty = JSON.stringify(cur) !== lastSavedSerial.current;
+            if (dirty) {
+              // Hay cambios míos sin guardar: se aplican encima de lo remoto (y se guardarán), en vez de descartarlos.
+              const mergedState = mergeApply(baseRef.current, cur, remote);
+              lastSavedSerial.current = serial;
+              baseRef.current = JSON.parse(serial);
+              setD(normalizeData(mergedState));
+              return;
+            }
             skipNextSave.current = true;
             lastSavedSerial.current = serial;
+            baseRef.current = JSON.parse(serial);
             setD(normalizeData(remote));
           } catch (e) {
             console.warn('Remote decrypt failed', e);
@@ -2460,23 +2549,47 @@ function App({bundle, onLogout}) {
     return () => { client.removeChannel(channel); };
   }, [client, key]);
 
-  // Re-fetch on visibility change (tab focus)
+  // Ponerse al día con el servidor al volver a la pestaña/app, al recuperar conexión y cada 30 s mientras está visible
+  // (el móvil en segundo plano pierde la conexión en vivo). Si hay cambios propios sin guardar, se fusionan.
   useEffect(() => {
-    const onVis = async () => {
-      if (document.visibilityState !== 'visible') return;
+    let busy = false;
+    const pull = async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
       try {
-        const {data: row} = await client.from('eos_data').select('*').eq('id', ROW_ID).maybeSingle();
-        if (!row || row.device_id === DEVICE_ID) return;
+        const {data: row} = await client.from('eos_data').select('encrypted_data,iv').eq('id', ROW_ID).maybeSingle();
+        if (!row || !row.encrypted_data) return;
         const remote = await decryptJSON(row.encrypted_data, row.iv, key);
         const serial = JSON.stringify(remote);
         if (serial === lastSavedSerial.current) return;
-        skipNextSave.current = true;
-        lastSavedSerial.current = serial;
-        setD(normalizeData(remote));
+        const cur = dRef.current;
+        const dirty = JSON.stringify(cur) !== lastSavedSerial.current;
+        if (dirty) {
+          const mergedState = mergeApply(baseRef.current, cur, remote);
+          lastSavedSerial.current = serial;
+          baseRef.current = JSON.parse(serial);
+          setD(normalizeData(mergedState));
+        } else {
+          skipNextSave.current = true;
+          lastSavedSerial.current = serial;
+          baseRef.current = JSON.parse(serial);
+          setD(normalizeData(remote));
+        }
       } catch (e) {}
+      finally { busy = false; }
     };
-    document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    document.addEventListener('visibilitychange', pull);
+    window.addEventListener('focus', pull);
+    window.addEventListener('online', pull);
+    window.addEventListener('pageshow', pull);
+    const iv = setInterval(pull, 30000);
+    return () => {
+      document.removeEventListener('visibilitychange', pull);
+      window.removeEventListener('focus', pull);
+      window.removeEventListener('online', pull);
+      window.removeEventListener('pageshow', pull);
+      clearInterval(iv);
+    };
   }, [client, key]);
 
   const upd = fn => setD(prev => {
@@ -2735,7 +2848,7 @@ function App({bundle, onLogout}) {
             </svg>
           </button>
         )}
-        <YearCtx.Provider value={{year, setYear, copyYear: (a, b) => upd(dd => { copyYearStructure(dd, a, b); })}}>
+        <YearCtx.Provider value={{year, setYear, copyYear: (a, b, w) => upd(dd => { copyYearStructure(dd, a, b, w); })}}>
         <div key={tab + ':' + effYear}>
           {tab === 'diario' && <DailyTab data={d} upd={upd} selDay={selDay} setSelDay={setSelDay} goToDay={goToDay}/>}
           {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
@@ -2766,10 +2879,33 @@ function App({bundle, onLogout}) {
 }
 
 function VisionTab({data, upd}) {
+  const y = YEAR;
+  if (y === YEAR_MIN) {
+    return (
+      <div>
+        <PageTitle icon="vision">Vision</PageTitle>
+        <VisionConsolidated data={data} upd={upd}/>
+      </div>
+    );
+  }
+  // Años posteriores: el contenido va a data.visionYears[año]; la lista de áreas sigue siendo común.
+  const vData = {...data, vision: visionForYear(data, y)};
+  const vUpd = fn => upd(d => {
+    if (!d.visionYears) d.visionYears = {};
+    const cur = d.visionYears[y] || {};
+    const proxy = {...d, vision: {...JSON.parse(JSON.stringify(INIT_V)), ...cur, areasList: (d.vision && d.vision.areasList) || []}};
+    fn(proxy);
+    const nv = proxy.vision || {};
+    if (!d.vision) d.vision = JSON.parse(JSON.stringify(INIT_V));
+    d.vision.areasList = nv.areasList || [];
+    const rest = {...nv};
+    delete rest.areasList;
+    d.visionYears[y] = rest;
+  });
   return (
     <div>
       <PageTitle icon="vision">Vision</PageTitle>
-      <VisionConsolidated data={data} upd={upd}/>
+      <VisionConsolidated data={vData} upd={vUpd}/>
     </div>
   );
 }
@@ -3035,23 +3171,25 @@ function VisionConsolidated({data, upd}) {
   return (
     <div>
       <div style={{display:'flex', gap:8, marginBottom:12, flexWrap:'wrap', alignItems:'center'}}>
-        <YearSelect style={{marginRight:4}}/>
-        <Btn onClick={addArea} style={{fontSize:13}}>+ Area</Btn>
-        <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
-          {editMode ? 'Done' : 'Edit'}
-        </Btn>
-        <div style={{display:'flex', gap:0, marginLeft:'auto', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
-          {[['byArea','By area'], ['byPeriod','By period']].map(([k, lbl]) => (
-            <button key={k} onClick={() => setView(k)}
-              style={{padding:'4px 10px', border:'none', cursor:'pointer',
-                      fontSize:11, fontWeight:700,
-                      background: view === k ? 'var(--brand)' : 'transparent',
-                      color: view === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
-          ))}
+        <YearSelect copy="vision" style={{marginRight:4}}/>
+        {editMode && <Btn onClick={addArea} style={{fontSize:13}}>+ Area</Btn>}
+        <div style={{display:'flex', gap:8, marginLeft:'auto', alignItems:'center'}}>
+          <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
+            {editMode ? 'Done' : 'Edit'}
+          </Btn>
+          <div style={{display:'flex', gap:0, border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden'}}>
+            {[['byArea','By area'], ['byPeriod','By period']].map(([k, lbl]) => (
+              <button key={k} onClick={() => setView(k)}
+                style={{padding:'4px 10px', border:'none', cursor:'pointer',
+                        fontSize:11, fontWeight:700,
+                        background: view === k ? 'var(--brand)' : 'transparent',
+                        color: view === k ? 'white' : 'var(--muted)'}}>{lbl}</button>
+            ))}
+          </div>
         </div>
       </div>
       {areasList.length === 0 && (
-        <div style={{color:'var(--muted-soft)', fontSize:13}}>No areas yet. Click "+ Area" to add one.</div>
+        <div style={{color:'var(--muted-soft)', fontSize:13}}>No areas yet. Press Edit, then "+ Area" to add one.</div>
       )}
       {view === 'byArea' && areasList.map((la, i) => {
         const a = areas[la.k] || emptyArea();
@@ -3861,7 +3999,7 @@ function YearRocks({data, upd}) {
       )}
       {AREAS.map((la, ai) => {
         const rocks = yr[la.k] || [];
-        const areaData = ((data.vision && data.vision.areas) || {})[la.k] || {};
+        const areaData = (visionForYear(data, YEAR).areas || {})[la.k] || {};
         return (
           <div key={la.k} style={{...S.card, padding:0, overflow:'hidden', marginBottom:14}}>
             <div style={{padding:'12px 16px', background:'var(--surface-alt)',
@@ -7302,7 +7440,7 @@ function QReview({data, upd, qKey, qData}) {
 // Print view - renders everything formatted for paper / Save as PDF
 // =====================================================================
 function PrintView({data, onBack}) {
-  const v = data.vision || INIT_V;
+  const v = visionForYear(data, YEAR);
   const today = new Date().toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
   const triggerPrint = () => { setTimeout(() => window.print(), 100); };
 
