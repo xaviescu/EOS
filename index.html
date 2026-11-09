@@ -1229,8 +1229,9 @@ function YearSelect({copy, style}) {
   return (
     <div style={{display:'flex', alignItems:'center', gap:6, flexShrink:0, alignSelf:'center', marginRight:8, ...style}}>
       <select value={year} onChange={e => setYear(parseInt(e.target.value))} title="Año"
-        style={{...S.inp, width:'auto', height:32, padding:'0 8px', fontSize:13, fontWeight:800,
-                color:'var(--brand)', cursor:'pointer', flexShrink:0}}>
+        style={{...S.inp, width:'auto', height:32, padding:'0 4px', fontSize:'var(--f-sm)', fontWeight:600,
+                color:'var(--muted)', background:'transparent', border:'none', boxShadow:'none',
+                cursor:'pointer', flexShrink:0, fontFamily:'inherit'}}>
         {years.map(y => <option key={y} value={y}>{y}</option>)}
       </select>
       {copy && year > YEAR_MIN && (
