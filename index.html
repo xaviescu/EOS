@@ -446,10 +446,27 @@ function DayTick({st, size}) {
   if (st === 'nok') return <svg {...props}><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>;
   return <span style={{color:'var(--muted-soft)', fontSize:13, fontWeight:500}}>·</span>;
 }
-const YEAR = 2026;
+// Año activo (cambiable): la semana 1 de cada año empieza el lunes de la semana que contiene el 1 de enero.
+const YEAR_MIN = 2026, YEAR_MAX = 2030;
+function firstMonOf(y) {
+  const dow = (new Date(Date.UTC(y, 0, 1)).getUTCDay() + 6) % 7;
+  return new Date(Date.UTC(y, 0, 1 - dow));
+}
+let YEAR = 2026;
+let FIRST_MON = firstMonOf(2026);
+function setActiveYear(y) { YEAR = y; FIRST_MON = firstMonOf(y); }
+// Año al que pertenece una fecha 'YYYY-MM-DD' según esa regla de semanas
+function yearOfDateStr(ds) {
+  const y = parseInt(String(ds).slice(0, 4));
+  if (isNaN(y)) return YEAR;
+  const nxt = firstMonOf(y + 1).toISOString().slice(0, 10);
+  if (String(ds) >= nxt) return y + 1;
+  const cur = firstMonOf(y).toISOString().slice(0, 10);
+  if (String(ds) < cur) return y - 1;
+  return y;
+}
 const QS = ['Q1','Q2','Q3','Q4'];
 const qWeeks = q => Array.from({length:13}, (_,i) => (q-1)*13 + 1 + i);
-const FIRST_MON = new Date(Date.UTC(2025, 11, 29));
 
 const dayDate = (wn, di) => new Date(FIRST_MON.getTime() + ((wn-1)*7 + di) * 864e5);
 const dayStr = (wn, di) => {
@@ -467,14 +484,12 @@ const nextMondayStr = wn => {
   const ref = wn != null ? wn : getCurWn();
   return dayStr(ref + 1, 0);
 };
-const getCurQ = () => {
-  const n = new Date();
-  return n.getFullYear() + '-Q' + Math.floor(n.getMonth()/3 + 1);
-};
+const getCurQ = () => YEAR + '-Q' + Math.ceil(getCurWn() / 13);
 const getCurWn = () =>
-  Math.max(1, Math.floor((Date.now() - FIRST_MON.getTime()) / 864e5 / 7) + 1);
+  Math.min(52, Math.max(1, Math.floor((Date.now() - FIRST_MON.getTime()) / 864e5 / 7) + 1));
 const wKey = wn => YEAR + '-' + wn;
 const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayYear = () => yearOfDateStr(todayStr());
 const fmtDMY = ds => {
   if (!ds) return '';
   const p = ds.split('-');
@@ -1178,7 +1193,53 @@ function H3({children, style}) {
 }
 
 // Standard page title — square indigo badge with icon + title.
-function PageTitle({icon, children}) {
+// Copia la estructura (Rocks anuales y métricas del Scorecard) de un año a otro, sin marcas ni datos y sin pisar lo existente.
+function copyYearStructure(d, from, to) {
+  const fk = String(from), tk = String(to);
+  if (!d.yearRocks) d.yearRocks = {};
+  const src = d.yearRocks[fk] || {};
+  if (!d.yearRocks[tk]) d.yearRocks[tk] = {};
+  Object.keys(src).forEach(ak => {
+    if (!d.yearRocks[tk][ak]) d.yearRocks[tk][ak] = [];
+    const have = d.yearRocks[tk][ak].map(r => (r.title || '').trim().toLowerCase());
+    (src[ak] || []).forEach(r => {
+      if (have.indexOf((r.title || '').trim().toLowerCase()) >= 0) return;
+      d.yearRocks[tk][ak].push({id: uid(), title: r.title, explanation: r.explanation || '', quarters: {}});
+    });
+  });
+  QS.forEach(q => {
+    const sq = d.quarters && d.quarters[from + '-' + q];
+    if (!sq || !(sq.scorecard || []).length) return;
+    ensureQ(d, to + '-' + q);
+    const tgt = d.quarters[to + '-' + q].scorecard;
+    const have = tgt.map(m => (m.metric || '').trim().toLowerCase());
+    sq.scorecard.forEach(m => {
+      if (have.indexOf((m.metric || '').trim().toLowerCase()) >= 0) return;
+      const c = {...m, id: uid(), dayData: {}};
+      tgt.push(c);
+    });
+  });
+}
+const YearCtx = React.createContext({year: 2026, setYear: () => {}, copyYear: () => {}});
+function YearPicker({copy}) {
+  const {year, setYear, copyYear} = React.useContext(YearCtx);
+  const isMobile = useIsMobile();
+  const nb = {border:'1px solid var(--border)', background:'transparent', color:'var(--text)', borderRadius:'var(--r-sm)',
+              width:28, height:28, cursor:'pointer', fontSize:14, fontFamily:'inherit', flexShrink:0};
+  return (
+    <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:6, flexShrink:0}}>
+      {copy && year > YEAR_MIN && (
+        <Btn v="sec" style={{fontSize:12, padding:'4px 8px'}} onClick={() => {
+          if (confirm('¿Copiar de ' + (year - 1) + ' a ' + year + ' los Rocks anuales y las métricas del Scorecard? Se copian sin marcas ni datos y sin pisar lo que ya exista.')) copyYear(year - 1, year);
+        }}>{isMobile ? 'Copiar ' + (year - 1) : 'Copiar de ' + (year - 1)}</Btn>
+      )}
+      <button style={nb} disabled={year <= YEAR_MIN} onClick={() => setYear(year - 1)}>‹</button>
+      <span style={{fontSize:14, fontWeight:800, color:'var(--brand)', minWidth:40, textAlign:'center'}}>{year}</span>
+      <button style={nb} disabled={year >= YEAR_MAX} onClick={() => setYear(year + 1)}>›</button>
+    </div>
+  );
+}
+function PageTitle({icon, children, yearPick, copy}) {
   return (
     <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:'var(--s-5)'}}>
       {icon && (
@@ -1190,6 +1251,7 @@ function PageTitle({icon, children}) {
         </div>
       )}
       <h2 style={{...S.h2, marginBottom:0}}>{children}</h2>
+      {yearPick && <YearPicker copy={copy}/>}
     </div>
   );
 }
@@ -2294,6 +2356,7 @@ function App({bundle, onLogout}) {
   const [d, setD] = useState(initial);
   const [tab, setTab] = useState('diario');
   const [selDay, setSelDay] = useState(todayStr());
+  const [year, setYear] = useState(todayYear());
   const [navOpen, setNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   // Cmd+K / Ctrl+K → open global search
@@ -2443,6 +2506,10 @@ function App({bundle, onLogout}) {
   };
 
   const goToDay = day => { setSelDay(day); setTab('diario'); if (isMobile) setNavOpen(false); };
+  // Año efectivo: las pestañas con selector usan el año elegido; Daily el de su día; el resto, el de hoy.
+  const YEAR_TABS = ['vision','month','rocks_all','projects','scorecard','l10_main','qreview_main','print'];
+  const effYear = YEAR_TABS.indexOf(tab) >= 0 ? year : (tab === 'diario' ? yearOfDateStr(selDay) : todayYear());
+  setActiveYear(effYear);
 
   const GNAV = [
     {label:null, items: [
@@ -2665,7 +2732,8 @@ function App({bundle, onLogout}) {
             </svg>
           </button>
         )}
-        <div>
+        <YearCtx.Provider value={{year, setYear, copyYear: (a, b) => upd(dd => { copyYearStructure(dd, a, b); })}}>
+        <div key={tab + ':' + effYear}>
           {tab === 'diario' && <DailyTab data={d} upd={upd} selDay={selDay} setSelDay={setSelDay} goToDay={goToDay}/>}
           {tab === 'vision' && <VisionTab data={d} upd={upd}/>}
           {tab === 'month' && <MonthTab data={d} upd={upd} goToDay={goToDay}/>}
@@ -2680,6 +2748,7 @@ function App({bundle, onLogout}) {
           {tab === 'qreview_main' && <QReviewMainTab data={d} upd={upd}/>}
           {tab === 'print' && <PrintView data={d} onBack={() => setTab('diario')}/>}
         </div>
+        </YearCtx.Provider>
       </main>
       {searchOpen && (
         <SearchPalette data={d} onClose={() => setSearchOpen(false)}
@@ -2696,7 +2765,7 @@ function App({bundle, onLogout}) {
 function VisionTab({data, upd}) {
   return (
     <div>
-      <PageTitle icon="vision">Vision {YEAR}</PageTitle>
+      <PageTitle icon="vision" yearPick>Vision</PageTitle>
       <VisionConsolidated data={data} upd={upd}/>
     </div>
   );
@@ -3340,7 +3409,7 @@ function VisionAreas({data, upd}) {
 }
 
 function MonthTab({data, upd, goToDay}) {
-  const [selM, setSelM] = useState(new Date().getMonth());
+  const [selM, setSelM] = useState(YEAR === new Date().getFullYear() ? new Date().getMonth() : (YEAR < new Date().getFullYear() ? 11 : 0));
   const daysInMonth = new Date(YEAR, selM + 1, 0).getDate();
   const days = Array.from({length: daysInMonth}, (_, i) => {
     const n = i + 1;
@@ -3350,10 +3419,10 @@ function MonthTab({data, upd, goToDay}) {
   const setNote = (ds, val) => upd(d => { if (!d.monthNotes) d.monthNotes = {}; d.monthNotes[ds] = val; });
   return (
     <div>
-      <PageTitle icon="month">Month {YEAR}</PageTitle>
+      <PageTitle icon="month" yearPick>Month</PageTitle>
       <div className="tabbar">
         {MONTHS_F.map((m, i) => {
-          const isCur = i === new Date().getMonth();
+          const isCur = i === new Date().getMonth() && YEAR === new Date().getFullYear();
           return (
             <button key={i} onClick={() => setSelM(i)}
               className={'tab-underline' + (i === selM ? ' active' : '')}
@@ -3485,7 +3554,7 @@ function RocksTab({data, upd}) {
   const curWn = getCurWn();
   return (
     <div>
-      <PageTitle icon="rocks_all">Rocks</PageTitle>
+      <PageTitle icon="rocks_all" yearPick copy>Rocks</PageTitle>
       <div className="tabbar">
         <button onClick={() => setViewMode('year')}
           className={'tab-underline' + (viewMode === 'year' ? ' active' : '')}>
@@ -3926,7 +3995,7 @@ function ScorecardTab({data, upd}) {
 
   return (
     <div>
-      <PageTitle icon="scorecard">Scorecard</PageTitle>
+      <PageTitle icon="scorecard" yearPick copy>Scorecard</PageTitle>
       <QBtns selQ={selQ} onSelect={handleSetQ}/>
       <div className="tabbar">
         <button className={'tab-underline' + (view === 'daily' ? ' active' : '')}
@@ -4256,7 +4325,7 @@ function ProjectsTab({data, upd}) {
   });
   return (
     <div>
-      <PageTitle icon="projects">Projects</PageTitle>
+      <PageTitle icon="projects" yearPick>Projects</PageTitle>
       <QBtns selQ={selQ} onSelect={q => {
         setSelQ(q);
         const qw2 = qWeeks(parseInt(q.split('-Q')[1]));
@@ -5694,7 +5763,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       </div>
 
       {/* Day selector como underline tabs */}
-      <div className="tabbar" style={{marginBottom:16}}>
+      {!showCal && <div className="tabbar" style={{marginBottom:16}}>
         {DAYS.map((day, di) => {
           const ds = dayStr(dispWn, di);
           const isActive = ds === selDay;
@@ -5709,7 +5778,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
             </button>
           );
         })}
-      </div>
+      </div>}
       {showCal && <div style={{marginBottom:16}}><CalendarWidget selWn={dispWn} data={data} upd={upd} goToDay={handleDayClick} compact={true} focusDayIdx={dayOfWeek}/></div>}
 
       {/* Note como primera card */}
@@ -5723,7 +5792,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   padding:'2px 0', background:'transparent', resize:'none', overflow:'hidden',
                   color:'var(--text)', fontFamily:'inherit', lineHeight:1.5}}/>
       </div>
-      {/* Improvements This Week — read-only, from prev week's L10 Conclude improvements */}
+      {/* Focus This Week — read-only, from prev week's L10 Conclude "Focus Next Week" */}
       {(() => {
         let prevImprovements = '';
         Object.keys(data.quarters || {}).forEach(qk => {
@@ -5732,11 +5801,11 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
         });
         return (
           <div className="card-hover" style={S.card}>
-            <H3 style={{marginBottom:8}}>Improvements This Week</H3>
+            <H3 style={{marginBottom:8}}>Focus This Week</H3>
             <div style={{fontSize:13, lineHeight:1.5, whiteSpace:'pre-wrap',
                          color: prevImprovements ? 'var(--text)' : 'var(--muted-soft)',
                          fontStyle: prevImprovements ? 'normal' : 'italic'}}>
-              {prevImprovements || 'No improvements from last week.'}
+              {prevImprovements || 'No focus from last week.'}
             </div>
           </div>
         );
@@ -6155,7 +6224,7 @@ function L10MainTab({data, upd}) {
   };
   return (
     <div>
-      <PageTitle icon="l10_main">L10 Meetings</PageTitle>
+      <PageTitle icon="l10_main" yearPick>L10 Meetings</PageTitle>
       <QBtns selQ={selQ} onSelect={handleSetQ}/>
       <WkBtns selQ={selQ} selWn={selWn} onSelect={setSelWn}/>
       <WeekL10 data={data} upd={upd} qKey={selQ} weekNum={selWn} embedded={true}/>
@@ -6306,7 +6375,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'ids' && <L10Issues data={data} upd={upd} qKey={qKey} idsIssues={idsIssues} weekNum={weekNum} editMode={editable('ids')}/>}
               {seg.k === 'conclude' && (() => {
                 // Read prev week's improvements (from any quarter) — shown READ-ONLY
-                // as "Improvements This Week" at the top.
+                // as "Focus This Week" at the top.
                 let prevImprovements = '';
                 Object.keys(data.quarters || {}).forEach(qk => {
                   const w = (data.quarters[qk].weeks || {})[weekNum - 1];
@@ -6316,17 +6385,19 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
                   {k:'headlines', label:'Headlines', ph:'What stands out this week?'},
                   {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this week?'},
                   {k:'lessons', label:'Lessons', ph:'What were the 3 biggest lessons you learned this week?'},
-                  {k:'improvements', label:'Improvements Next Week', ph:'3 things to improve next week. What concrete actions can you take?'}
+                  {k:'toImprove', label:'TO IMPROVE / ACTIONS', ph:'What do you want to improve? Which concrete actions will you take?'},
+                  {k:'weekReview', label:'WEEK REVIEW', ph:'How was the week overall?'},
+                  {k:'improvements', label:'Focus Next Week', ph:'3 things to focus on next week. What concrete actions can you take?'}
                 ];
                 return (
                   <div>
                     <div style={{marginBottom:16}}>
-                      <label style={S.lbl}>Improvements This Week</label>
+                      <label style={S.lbl}>Focus This Week</label>
                       <div style={{fontSize:13, color: prevImprovements ? 'var(--text)' : 'var(--muted-soft)',
                                    padding:'4px 0', lineHeight:1.5, whiteSpace:'pre-wrap',
                                    borderBottom:'1px solid var(--surface-alt)',
                                    fontStyle: prevImprovements ? 'normal' : 'italic'}}>
-                        {prevImprovements || 'No improvements written last week.'}
+                        {prevImprovements || 'No focus written last week.'}
                       </div>
                     </div>
                     {qFields.map(f => (
@@ -6903,7 +6974,7 @@ function QReviewMainTab({data, upd}) {
   const qData = data.quarters[selQ] || {rocks:[], weeks:{}, weeklyRocks:{}, qReview:{}, scorecard:[], idsIssues:[]};
   return (
     <div>
-      <PageTitle icon="qreview_main">Q Review</PageTitle>
+      <PageTitle icon="qreview_main" yearPick>Q Review</PageTitle>
       <QBtns selQ={selQ} onSelect={setSelQ}/>
       <QReview data={data} upd={upd} qKey={selQ} qData={qData}/>
     </div>

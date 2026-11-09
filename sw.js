@@ -4,7 +4,7 @@
 // - New SW activates immediately on install (skipWaiting) and forces open tabs
 //   to reload so the new version takes effect without "clear cache" dance.
 
-const CACHE = 'eos-xe-v178';
+const CACHE = 'eos-xe-v181';
 const SHELL = [
   './',
   './index.html',
