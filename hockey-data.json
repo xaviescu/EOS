@@ -1,8 +1,2029 @@
 {
- "updated": "2026-11-22T19:54:57.218Z",
- "divs": {},
- "errors": {
-  "DHA": "La web ha devuelto la versión beta (sin datos)",
-  "DHB": "La web ha devuelto la versión beta (sin datos)"
- }
+ "updated": "2026-11-22T19:59:19.215Z",
+ "divs": {
+  "DHA": {
+   "compId": "9356",
+   "matches": [
+    {
+     "jornada": 1,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": 3,
+     "as": 2,
+     "time": "15:00",
+     "date": "2026-09-19"
+    },
+    {
+     "jornada": 1,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "RS TENIS",
+     "hs": 1,
+     "as": 5,
+     "time": "16:00",
+     "date": "2026-09-19"
+    },
+    {
+     "jornada": 1,
+     "home": "JUNIOR FC",
+     "away": "CLUB EGARA",
+     "hs": 4,
+     "as": 1,
+     "time": "11:00",
+     "date": "2026-09-20"
+    },
+    {
+     "jornada": 1,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": 4,
+     "as": 1,
+     "time": "11:30",
+     "date": "2026-09-20"
+    },
+    {
+     "jornada": 1,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "RC POLO",
+     "hs": 0,
+     "as": 3,
+     "time": "12:00",
+     "date": "2026-09-20"
+    },
+    {
+     "jornada": 1,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "SANSE COMPLUTENSE",
+     "hs": 0,
+     "as": 2,
+     "time": "12:00",
+     "date": "2026-09-20"
+    },
+    {
+     "jornada": 2,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": 1,
+     "as": 2,
+     "time": "11:00",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 2,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "JUNIOR FC",
+     "hs": 0,
+     "as": 1,
+     "time": "12:00",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 2,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": 0,
+     "as": 2,
+     "time": "12:00",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 2,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 0,
+     "as": 4,
+     "time": "12:00",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 2,
+     "home": "RC POLO",
+     "away": "SANSE COMPLUTENSE",
+     "hs": 1,
+     "as": 1,
+     "time": "12:30",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 2,
+     "home": "RS TENIS",
+     "away": "CLUB EGARA",
+     "hs": 1,
+     "as": 1,
+     "time": "13:00",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 3,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "RC POLO",
+     "hs": 1,
+     "as": 5,
+     "time": "10:00",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 3,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "JUNIOR FC",
+     "hs": null,
+     "as": null,
+     "time": "10:30",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 3,
+     "home": "SANSE COMPLUTENSE",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 1,
+     "as": 2,
+     "time": "10:45",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 3,
+     "home": "CLUB EGARA",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 3,
+     "home": "RS TENIS",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": 2,
+     "as": 1,
+     "time": "12:00",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 3,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": 2,
+     "as": 3,
+     "time": "12:00",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 4,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "CLUB EGARA",
+     "hs": 0,
+     "as": 3,
+     "time": "16:00",
+     "date": "2026-10-10"
+    },
+    {
+     "jornada": 4,
+     "home": "JUNIOR FC",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": 3,
+     "as": 0,
+     "time": "16:45",
+     "date": "2026-10-10"
+    },
+    {
+     "jornada": 4,
+     "home": "SANSE COMPLUTENSE",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": 4,
+     "as": 1,
+     "time": "17:00",
+     "date": "2026-10-10"
+    },
+    {
+     "jornada": 4,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": 2,
+     "as": 0,
+     "time": "12:00",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 4,
+     "home": "RC POLO",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 0,
+     "as": 0,
+     "time": "12:00",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 4,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "RS TENIS",
+     "hs": 1,
+     "as": 0,
+     "time": "12:30",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 3,
+     "home": "CLUB EGARA",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": 2,
+     "as": 2,
+     "time": "14:00",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 5,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 0,
+     "as": 5,
+     "time": "15:00",
+     "date": "2026-10-17"
+    },
+    {
+     "jornada": 5,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "JUNIOR FC",
+     "hs": 1,
+     "as": 6,
+     "time": "10:00",
+     "date": "2026-10-18"
+    },
+    {
+     "jornada": 5,
+     "home": "CLUB EGARA",
+     "away": "SANSE COMPLUTENSE",
+     "hs": 2,
+     "as": 4,
+     "time": "10:30",
+     "date": "2026-10-18"
+    },
+    {
+     "jornada": 5,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "RC POLO",
+     "hs": 0,
+     "as": 1,
+     "time": "11:00",
+     "date": "2026-10-18"
+    },
+    {
+     "jornada": 5,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": 3,
+     "as": 0,
+     "time": "11:00",
+     "date": "2026-10-18"
+    },
+    {
+     "jornada": 5,
+     "home": "RS TENIS",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": 2,
+     "as": 1,
+     "time": "11:15",
+     "date": "2026-10-18"
+    },
+    {
+     "jornada": 6,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": 1,
+     "as": 0,
+     "time": "11:00",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 6,
+     "home": "CLUB EGARA",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": 5,
+     "as": 2,
+     "time": "11:30",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 6,
+     "home": "SANSE COMPLUTENSE",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": 10,
+     "as": 0,
+     "time": "13:00",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 6,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "RS TENIS",
+     "hs": 4,
+     "as": 2,
+     "time": "14:00",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 6,
+     "home": "JUNIOR FC",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": 5,
+     "as": 1,
+     "time": "14:30",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 6,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "RC POLO",
+     "hs": 3,
+     "as": 0,
+     "time": "15:00",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 7,
+     "home": "SANSE COMPLUTENSE",
+     "away": "RS TENIS",
+     "hs": 2,
+     "as": 0,
+     "time": "11:00",
+     "date": "2026-10-25"
+    },
+    {
+     "jornada": 7,
+     "home": "CLUB EGARA",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": 4,
+     "as": 0,
+     "time": "12:00",
+     "date": "2026-10-25"
+    },
+    {
+     "jornada": 7,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": 3,
+     "as": 0,
+     "time": "12:00",
+     "date": "2026-10-25"
+    },
+    {
+     "jornada": 7,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": 9,
+     "as": 1,
+     "time": "13:00",
+     "date": "2026-10-25"
+    },
+    {
+     "jornada": 7,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": 4,
+     "as": 0,
+     "time": "13:00",
+     "date": "2026-10-25"
+    },
+    {
+     "jornada": 7,
+     "home": "JUNIOR FC",
+     "away": "RC POLO",
+     "hs": 3,
+     "as": 2,
+     "time": "13:00",
+     "date": "2026-10-25"
+    },
+    {
+     "jornada": 3,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "JUNIOR FC",
+     "hs": 2,
+     "as": 2,
+     "time": "21:00",
+     "date": "2026-11-05"
+    },
+    {
+     "jornada": 8,
+     "home": "RC POLO",
+     "away": "CLUB EGARA",
+     "hs": 2,
+     "as": 0,
+     "time": "13:45",
+     "date": "2026-11-07"
+    },
+    {
+     "jornada": 8,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": 2,
+     "as": 0,
+     "time": "16:00",
+     "date": "2026-11-07"
+    },
+    {
+     "jornada": 8,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": 0,
+     "as": 1,
+     "time": "16:00",
+     "date": "2026-11-07"
+    },
+    {
+     "jornada": 8,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "RS TENIS",
+     "hs": 1,
+     "as": 1,
+     "time": "09:30",
+     "date": "2026-11-08"
+    },
+    {
+     "jornada": 8,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": 2,
+     "as": 0,
+     "time": "12:30",
+     "date": "2026-11-08"
+    },
+    {
+     "jornada": 8,
+     "home": "SANSE COMPLUTENSE",
+     "away": "JUNIOR FC",
+     "hs": 3,
+     "as": 1,
+     "time": "12:45",
+     "date": "2026-11-08"
+    },
+    {
+     "jornada": 9,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "RS TENIS",
+     "hs": 0,
+     "as": 1,
+     "time": "16:00",
+     "date": "2026-11-14"
+    },
+    {
+     "jornada": 9,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "CLUB EGARA",
+     "hs": 2,
+     "as": 1,
+     "time": "16:00",
+     "date": "2026-11-14"
+    },
+    {
+     "jornada": 9,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": 1,
+     "as": 0,
+     "time": "10:30",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 9,
+     "home": "RC POLO",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": 6,
+     "as": 0,
+     "time": "11:00",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 9,
+     "home": "SANSE COMPLUTENSE",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": 2,
+     "as": 4,
+     "time": "12:30",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 9,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "JUNIOR FC",
+     "hs": 2,
+     "as": 1,
+     "time": "16:00",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 10,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": 1,
+     "as": 0,
+     "time": "11:00",
+     "date": "2026-11-22"
+    },
+    {
+     "jornada": 10,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "SANSE COMPLUTENSE",
+     "hs": 0,
+     "as": 4,
+     "time": "11:00",
+     "date": "2026-11-22"
+    },
+    {
+     "jornada": 10,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": 2,
+     "as": 2,
+     "time": "12:00",
+     "date": "2026-11-22"
+    },
+    {
+     "jornada": 10,
+     "home": "JUNIOR FC",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": 2,
+     "as": 2,
+     "time": "12:00",
+     "date": "2026-11-22"
+    },
+    {
+     "jornada": 10,
+     "home": "CLUB EGARA",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 0,
+     "as": 1,
+     "time": "12:30",
+     "date": "2026-11-22"
+    },
+    {
+     "jornada": 10,
+     "home": "RS TENIS",
+     "away": "RC POLO",
+     "hs": 4,
+     "as": 6,
+     "time": "13:00",
+     "date": "2026-11-22"
+    },
+    {
+     "jornada": 11,
+     "home": "CLUB EGARA",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-11-29"
+    },
+    {
+     "jornada": 11,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "SANSE COMPLUTENSE",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-11-29"
+    },
+    {
+     "jornada": 11,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-11-29"
+    },
+    {
+     "jornada": 11,
+     "home": "RC POLO",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-11-29"
+    },
+    {
+     "jornada": 11,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-11-29"
+    },
+    {
+     "jornada": 11,
+     "home": "RS TENIS",
+     "away": "JUNIOR FC",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-11-29"
+    },
+    {
+     "jornada": 12,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "17:00",
+     "date": "2027-03-06"
+    },
+    {
+     "jornada": 12,
+     "home": "RS TENIS",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "17:00",
+     "date": "2027-03-06"
+    },
+    {
+     "jornada": 12,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": null,
+     "as": null,
+     "time": "10:00",
+     "date": "2027-03-07"
+    },
+    {
+     "jornada": 12,
+     "home": "SANSE COMPLUTENSE",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": null,
+     "as": null,
+     "time": "10:45",
+     "date": "2027-03-07"
+    },
+    {
+     "jornada": 12,
+     "home": "CLUB EGARA",
+     "away": "JUNIOR FC",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-03-07"
+    },
+    {
+     "jornada": 12,
+     "home": "RC POLO",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2027-03-07"
+    },
+    {
+     "jornada": 13,
+     "home": "JUNIOR FC",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "10:45",
+     "date": "2027-03-14"
+    },
+    {
+     "jornada": 13,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-03-14"
+    },
+    {
+     "jornada": 13,
+     "home": "CLUB EGARA",
+     "away": "RS TENIS",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-03-14"
+    },
+    {
+     "jornada": 13,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-03-14"
+    },
+    {
+     "jornada": 13,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": null,
+     "as": null,
+     "time": "12:30",
+     "date": "2027-03-14"
+    },
+    {
+     "jornada": 13,
+     "home": "SANSE COMPLUTENSE",
+     "away": "RC POLO",
+     "hs": null,
+     "as": null,
+     "time": "12:45",
+     "date": "2027-03-14"
+    },
+    {
+     "jornada": 14,
+     "home": "JUNIOR FC",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2027-03-20"
+    },
+    {
+     "jornada": 14,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "SANSE COMPLUTENSE",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2027-03-20"
+    },
+    {
+     "jornada": 14,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-03-21"
+    },
+    {
+     "jornada": 14,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "RS TENIS",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-03-21"
+    },
+    {
+     "jornada": 14,
+     "home": "RC POLO",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-03-21"
+    },
+    {
+     "jornada": 14,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-03-21"
+    },
+    {
+     "jornada": 15,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "SANSE COMPLUTENSE",
+     "hs": null,
+     "as": null,
+     "time": "16:00",
+     "date": "2027-04-03"
+    },
+    {
+     "jornada": 15,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": null,
+     "as": null,
+     "time": "10:30",
+     "date": "2027-04-04"
+    },
+    {
+     "jornada": 15,
+     "home": "RS TENIS",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-04-04"
+    },
+    {
+     "jornada": 15,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "JUNIOR FC",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-04-04"
+    },
+    {
+     "jornada": 15,
+     "home": "CLUB EGARA",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "12:30",
+     "date": "2027-04-04"
+    },
+    {
+     "jornada": 15,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "RC POLO",
+     "hs": null,
+     "as": null,
+     "time": "12:30",
+     "date": "2027-04-04"
+    },
+    {
+     "jornada": 16,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "17:15",
+     "date": "2027-04-10"
+    },
+    {
+     "jornada": 16,
+     "home": "RC POLO",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-04-11"
+    },
+    {
+     "jornada": 16,
+     "home": "JUNIOR FC",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-04-11"
+    },
+    {
+     "jornada": 16,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "RS TENIS",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-04-11"
+    },
+    {
+     "jornada": 16,
+     "home": "SANSE COMPLUTENSE",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "12:30",
+     "date": "2027-04-11"
+    },
+    {
+     "jornada": 16,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": null,
+     "as": null,
+     "time": "12:30",
+     "date": "2027-04-11"
+    },
+    {
+     "jornada": 17,
+     "home": "RC POLO",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "14:00",
+     "date": "2027-04-17"
+    },
+    {
+     "jornada": 17,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "JUNIOR FC",
+     "hs": null,
+     "as": null,
+     "time": "16:00",
+     "date": "2027-04-17"
+    },
+    {
+     "jornada": 17,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "10:30",
+     "date": "2027-04-18"
+    },
+    {
+     "jornada": 17,
+     "home": "RS TENIS",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-04-18"
+    },
+    {
+     "jornada": 17,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "SANSE COMPLUTENSE",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-04-18"
+    },
+    {
+     "jornada": 17,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-04-18"
+    },
+    {
+     "jornada": 18,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "10:30",
+     "date": "2027-05-02"
+    },
+    {
+     "jornada": 18,
+     "home": "RS TENIS",
+     "away": "SANSE COMPLUTENSE",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-05-02"
+    },
+    {
+     "jornada": 18,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-05-02"
+    },
+    {
+     "jornada": 18,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-05-02"
+    },
+    {
+     "jornada": 18,
+     "home": "RC POLO",
+     "away": "JUNIOR FC",
+     "hs": null,
+     "as": null,
+     "time": "12:30",
+     "date": "2027-05-02"
+    },
+    {
+     "jornada": 18,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": null,
+     "as": null,
+     "time": "13:00",
+     "date": "2027-05-02"
+    },
+    {
+     "jornada": 19,
+     "home": "RS TENIS",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-05-08"
+    },
+    {
+     "jornada": 19,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-05-08"
+    },
+    {
+     "jornada": 19,
+     "home": "CLUB EGARA",
+     "away": "RC POLO",
+     "hs": null,
+     "as": null,
+     "time": "13:00",
+     "date": "2027-05-08"
+    },
+    {
+     "jornada": 19,
+     "home": "JUNIOR FC",
+     "away": "SANSE COMPLUTENSE",
+     "hs": null,
+     "as": null,
+     "time": "13:00",
+     "date": "2027-05-08"
+    },
+    {
+     "jornada": 19,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2027-05-08"
+    },
+    {
+     "jornada": 19,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2027-05-08"
+    },
+    {
+     "jornada": 20,
+     "home": "RS TENIS",
+     "away": "Real Sociedad, S.A.D.",
+     "hs": null,
+     "as": null,
+     "time": "10:45",
+     "date": "2027-05-09"
+    },
+    {
+     "jornada": 20,
+     "home": "SARDINERO HOCKEY CLUB",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2027-05-09"
+    },
+    {
+     "jornada": 20,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "SANSE COMPLUTENSE",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-05-09"
+    },
+    {
+     "jornada": 20,
+     "home": "CLUB EGARA",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "13:00",
+     "date": "2027-05-09"
+    },
+    {
+     "jornada": 20,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "RC POLO",
+     "hs": null,
+     "as": null,
+     "time": "13:00",
+     "date": "2027-05-09"
+    },
+    {
+     "jornada": 20,
+     "home": "JUNIOR FC",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": null,
+     "as": null,
+     "time": "13:00",
+     "date": "2027-05-09"
+    },
+    {
+     "jornada": 21,
+     "home": "UNION DEPORTIVA TABURIENTE ",
+     "away": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "10:00",
+     "date": "2027-05-16"
+    },
+    {
+     "jornada": 21,
+     "home": "SANSE COMPLUTENSE",
+     "away": "CD TERRASSA HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": "10:45",
+     "date": "2027-05-16"
+    },
+    {
+     "jornada": 21,
+     "home": "VALENCIA CLUB DE HOCKEY",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-05-16"
+    },
+    {
+     "jornada": 21,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "JUNIOR FC",
+     "hs": null,
+     "as": null,
+     "time": "12:00",
+     "date": "2027-05-16"
+    },
+    {
+     "jornada": 21,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "12:30",
+     "date": "2027-05-16"
+    },
+    {
+     "jornada": 21,
+     "home": "RC POLO",
+     "away": "RS TENIS",
+     "hs": null,
+     "as": null,
+     "time": "13:00",
+     "date": "2027-05-16"
+    },
+    {
+     "jornada": 22,
+     "home": "ATLÈTIC TERRASSA HOCKEY CLUB",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": null,
+     "date": "2027-05-23"
+    },
+    {
+     "jornada": 22,
+     "home": "SANSE COMPLUTENSE",
+     "away": "UNION DEPORTIVA TABURIENTE ",
+     "hs": null,
+     "as": null,
+     "time": null,
+     "date": "2027-05-23"
+    },
+    {
+     "jornada": 22,
+     "home": "CD TERRASSA HOCKEY",
+     "away": "SARDINERO HOCKEY CLUB",
+     "hs": null,
+     "as": null,
+     "time": null,
+     "date": "2027-05-23"
+    },
+    {
+     "jornada": 22,
+     "home": "Real Sociedad, S.A.D.",
+     "away": "RC POLO",
+     "hs": null,
+     "as": null,
+     "time": null,
+     "date": "2027-05-23"
+    },
+    {
+     "jornada": 22,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "VALENCIA CLUB DE HOCKEY",
+     "hs": null,
+     "as": null,
+     "time": null,
+     "date": "2027-05-23"
+    },
+    {
+     "jornada": 22,
+     "home": "JUNIOR FC",
+     "away": "RS TENIS",
+     "hs": null,
+     "as": null,
+     "time": null,
+     "date": "2027-05-23"
+    }
+   ],
+   "standings": {
+    "rows": [
+     {
+      "pos": 1,
+      "mov": 0,
+      "team": "REAL CLUB DE CAMPO VILLA DE MADRID",
+      "form": "GGGGG",
+      "pt": 28,
+      "pj": 10,
+      "pg": 9,
+      "pe": 1,
+      "pp": 0,
+      "gf": 33,
+      "gc": 6,
+      "dif": 27
+     },
+     {
+      "pos": 2,
+      "mov": 0,
+      "team": "SANSE COMPLUTENSE",
+      "form": "GGGPG",
+      "pt": 22,
+      "pj": 10,
+      "pg": 7,
+      "pe": 1,
+      "pp": 2,
+      "gf": 33,
+      "gc": 11,
+      "dif": 22
+     },
+     {
+      "pos": 3,
+      "mov": 0,
+      "team": "JUNIOR FC",
+      "form": "GGPPE",
+      "pt": 20,
+      "pj": 10,
+      "pg": 6,
+      "pe": 2,
+      "pp": 2,
+      "gf": 28,
+      "gc": 14,
+      "dif": 14
+     },
+     {
+      "pos": 4,
+      "mov": 1,
+      "team": "RC POLO",
+      "form": "PPGGG",
+      "pt": 20,
+      "pj": 10,
+      "pg": 6,
+      "pe": 2,
+      "pp": 2,
+      "gf": 26,
+      "gc": 12,
+      "dif": 14
+     },
+     {
+      "pos": 5,
+      "mov": -1,
+      "team": "ATLÈTIC TERRASSA HOCKEY CLUB",
+      "form": "GGPGE",
+      "pt": 20,
+      "pj": 10,
+      "pg": 6,
+      "pe": 2,
+      "pp": 2,
+      "gf": 21,
+      "gc": 14,
+      "dif": 7
+     },
+     {
+      "pos": 6,
+      "mov": 0,
+      "team": "RS TENIS",
+      "form": "PPEGP",
+      "pt": 14,
+      "pj": 10,
+      "pg": 4,
+      "pe": 2,
+      "pp": 4,
+      "gf": 18,
+      "gc": 18,
+      "dif": 0
+     },
+     {
+      "pos": 7,
+      "mov": 0,
+      "team": "REAL SOCIEDAD, S.A.D.",
+      "form": "PPGPE",
+      "pt": 13,
+      "pj": 10,
+      "pg": 4,
+      "pe": 1,
+      "pp": 5,
+      "gf": 12,
+      "gc": 16,
+      "dif": -4
+     },
+     {
+      "pos": 8,
+      "mov": 0,
+      "team": "CLUB EGARA",
+      "form": "GGPPP",
+      "pt": 11,
+      "pj": 10,
+      "pg": 3,
+      "pe": 2,
+      "pp": 5,
+      "gf": 19,
+      "gc": 18,
+      "dif": 1
+     },
+     {
+      "pos": 9,
+      "mov": 0,
+      "team": "CD TERRASSA HOCKEY",
+      "form": "GGGPP",
+      "pt": 9,
+      "pj": 10,
+      "pg": 3,
+      "pe": 0,
+      "pp": 7,
+      "gf": 8,
+      "gc": 24,
+      "dif": -16
+     },
+     {
+      "pos": 10,
+      "mov": 0,
+      "team": "VALENCIA CLUB DE HOCKEY",
+      "form": "PPPGP",
+      "pt": 6,
+      "pj": 10,
+      "pg": 2,
+      "pe": 0,
+      "pp": 8,
+      "gf": 9,
+      "gc": 24,
+      "dif": -15
+     },
+     {
+      "pos": 11,
+      "mov": 0,
+      "team": "UNION DEPORTIVA TABURIENTE",
+      "form": "PPEGE",
+      "pt": 5,
+      "pj": 10,
+      "pg": 1,
+      "pe": 2,
+      "pp": 7,
+      "gf": 9,
+      "gc": 30,
+      "dif": -21
+     },
+     {
+      "pos": 12,
+      "mov": 0,
+      "team": "SARDINERO HOCKEY CLUB",
+      "form": "PPPPG",
+      "pt": 4,
+      "pj": 10,
+      "pg": 1,
+      "pe": 1,
+      "pp": 8,
+      "gf": 6,
+      "gc": 35,
+      "dif": -29
+     }
+    ],
+    "jornada": null,
+    "date": null,
+    "stage": "LIGA IBERDROLA - LIGA REGULAR - GRUPO ÚNICO"
+   }
+  },
+  "DHB": {
+   "compId": "9363",
+   "matches": [
+    {
+     "jornada": 1,
+     "home": "HOCQUET",
+     "away": "VALLES ESPORTIU",
+     "hs": 1,
+     "as": 3,
+     "time": "15:00",
+     "date": "2026-09-12"
+    },
+    {
+     "jornada": 1,
+     "home": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "away": "CLUB EGARA",
+     "hs": 0,
+     "as": 1,
+     "time": "16:00",
+     "date": "2026-09-12"
+    },
+    {
+     "jornada": 1,
+     "home": "CD GINER DE LOS RIOS",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 5,
+     "as": 0,
+     "time": "13:00",
+     "date": "2026-09-13"
+    },
+    {
+     "jornada": 1,
+     "home": "HC SANT CUGAT ",
+     "away": "REAL GRUPO DE CULTURA COVADONGA",
+     "hs": 2,
+     "as": 1,
+     "time": "15:30",
+     "date": "2026-09-13"
+    },
+    {
+     "jornada": 2,
+     "home": "HOCQUET",
+     "away": "CLUB EGARA",
+     "hs": 0,
+     "as": 4,
+     "time": "15:00",
+     "date": "2026-09-19"
+    },
+    {
+     "jornada": 2,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "HC SANT CUGAT ",
+     "hs": 0,
+     "as": 0,
+     "time": "15:15",
+     "date": "2026-09-19"
+    },
+    {
+     "jornada": 2,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "CD GINER DE LOS RIOS",
+     "hs": 1,
+     "as": 2,
+     "time": "10:30",
+     "date": "2026-09-20"
+    },
+    {
+     "jornada": 2,
+     "home": "VALLES ESPORTIU",
+     "away": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "hs": 2,
+     "as": 2,
+     "time": "13:00",
+     "date": "2026-09-20"
+    },
+    {
+     "jornada": 3,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "CLUB EGARA",
+     "hs": 1,
+     "as": 2,
+     "time": "15:00",
+     "date": "2026-09-26"
+    },
+    {
+     "jornada": 3,
+     "home": "HC SANT CUGAT ",
+     "away": "HOCQUET",
+     "hs": 2,
+     "as": 0,
+     "time": "16:00",
+     "date": "2026-09-26"
+    },
+    {
+     "jornada": 3,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "VALLES ESPORTIU",
+     "hs": 0,
+     "as": 3,
+     "time": "11:00",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 3,
+     "home": "CD GINER DE LOS RIOS",
+     "away": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "hs": 0,
+     "as": 0,
+     "time": "12:00",
+     "date": "2026-09-27"
+    },
+    {
+     "jornada": 4,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "VALLES ESPORTIU",
+     "hs": 1,
+     "as": 4,
+     "time": "15:30",
+     "date": "2026-10-03"
+    },
+    {
+     "jornada": 4,
+     "home": "HC SANT CUGAT ",
+     "away": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "hs": 2,
+     "as": 0,
+     "time": "17:00",
+     "date": "2026-10-03"
+    },
+    {
+     "jornada": 4,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "11:00",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 4,
+     "home": "CD GINER DE LOS RIOS",
+     "away": "HOCQUET",
+     "hs": 2,
+     "as": 2,
+     "time": "14:00",
+     "date": "2026-10-04"
+    },
+    {
+     "jornada": 5,
+     "home": "VALLES ESPORTIU",
+     "away": "HC SANT CUGAT ",
+     "hs": 1,
+     "as": 1,
+     "time": "15:00",
+     "date": "2026-10-10"
+    },
+    {
+     "jornada": 5,
+     "home": "HOCQUET",
+     "away": "REAL GRUPO DE CULTURA COVADONGA",
+     "hs": 2,
+     "as": 1,
+     "time": "15:00",
+     "date": "2026-10-10"
+    },
+    {
+     "jornada": 5,
+     "home": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 2,
+     "as": 0,
+     "time": "15:00",
+     "date": "2026-10-10"
+    },
+    {
+     "jornada": 5,
+     "home": "CLUB EGARA",
+     "away": "CD GINER DE LOS RIOS",
+     "hs": 3,
+     "as": 1,
+     "time": "17:00",
+     "date": "2026-10-10"
+    },
+    {
+     "jornada": 6,
+     "home": "VALLES ESPORTIU",
+     "away": "CD GINER DE LOS RIOS",
+     "hs": 1,
+     "as": 1,
+     "time": "10:30",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 6,
+     "home": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "away": "REAL GRUPO DE CULTURA COVADONGA",
+     "hs": 2,
+     "as": 0,
+     "time": "11:00",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 6,
+     "home": "CLUB EGARA",
+     "away": "HC SANT CUGAT ",
+     "hs": 0,
+     "as": 1,
+     "time": "12:00",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 6,
+     "home": "HOCQUET",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 1,
+     "as": 3,
+     "time": "12:00",
+     "date": "2026-10-11"
+    },
+    {
+     "jornada": 7,
+     "home": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "away": "HOCQUET",
+     "hs": 5,
+     "as": 1,
+     "time": "15:00",
+     "date": "2026-10-17"
+    },
+    {
+     "jornada": 7,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "REAL GRUPO DE CULTURA COVADONGA",
+     "hs": 2,
+     "as": 1,
+     "time": "15:30",
+     "date": "2026-10-17"
+    },
+    {
+     "jornada": 7,
+     "home": "HC SANT CUGAT ",
+     "away": "CD GINER DE LOS RIOS",
+     "hs": 2,
+     "as": 0,
+     "time": "17:00",
+     "date": "2026-10-17"
+    },
+    {
+     "jornada": 7,
+     "home": "CLUB EGARA",
+     "away": "VALLES ESPORTIU",
+     "hs": 1,
+     "as": 2,
+     "time": "17:00",
+     "date": "2026-10-17"
+    },
+    {
+     "jornada": 4,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "CLUB EGARA",
+     "hs": 3,
+     "as": 2,
+     "time": "18:30",
+     "date": "2026-10-19"
+    },
+    {
+     "jornada": 8,
+     "home": "VALLES ESPORTIU",
+     "away": "HOCQUET",
+     "hs": 2,
+     "as": 0,
+     "time": "15:00",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 8,
+     "home": "CLUB EGARA",
+     "away": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "hs": 2,
+     "as": 2,
+     "time": "17:00",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 8,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "CD GINER DE LOS RIOS",
+     "hs": 0,
+     "as": 1,
+     "time": "17:45",
+     "date": "2026-10-24"
+    },
+    {
+     "jornada": 8,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "HC SANT CUGAT ",
+     "hs": 0,
+     "as": 2,
+     "time": "13:30",
+     "date": "2026-10-25"
+    },
+    {
+     "jornada": 9,
+     "home": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "away": "VALLES ESPORTIU",
+     "hs": 3,
+     "as": 1,
+     "time": "14:45",
+     "date": "2026-11-07"
+    },
+    {
+     "jornada": 9,
+     "home": "CLUB EGARA",
+     "away": "HOCQUET",
+     "hs": 2,
+     "as": 2,
+     "time": "15:00",
+     "date": "2026-11-07"
+    },
+    {
+     "jornada": 9,
+     "home": "HC SANT CUGAT ",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 1,
+     "as": 1,
+     "time": "15:30",
+     "date": "2026-11-07"
+    },
+    {
+     "jornada": 9,
+     "home": "CD GINER DE LOS RIOS",
+     "away": "REAL GRUPO DE CULTURA COVADONGA",
+     "hs": 1,
+     "as": 3,
+     "time": "19:00",
+     "date": "2026-11-07"
+    },
+    {
+     "jornada": 10,
+     "home": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "away": "CD GINER DE LOS RIOS",
+     "hs": 1,
+     "as": 1,
+     "time": "15:00",
+     "date": "2026-11-14"
+    },
+    {
+     "jornada": 10,
+     "home": "VALLES ESPORTIU",
+     "away": "REAL GRUPO DE CULTURA COVADONGA",
+     "hs": 6,
+     "as": 2,
+     "time": "15:00",
+     "date": "2026-11-14"
+    },
+    {
+     "jornada": 10,
+     "home": "CLUB EGARA",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 1,
+     "as": 1,
+     "time": "15:30",
+     "date": "2026-11-14"
+    },
+    {
+     "jornada": 10,
+     "home": "HOCQUET",
+     "away": "HC SANT CUGAT ",
+     "hs": 0,
+     "as": 3,
+     "time": "17:00",
+     "date": "2026-11-14"
+    },
+    {
+     "jornada": 11,
+     "home": "VALLES ESPORTIU",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": 2,
+     "as": 0,
+     "time": "10:00",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 11,
+     "home": "CLUB EGARA",
+     "away": "REAL GRUPO DE CULTURA COVADONGA",
+     "hs": 2,
+     "as": 1,
+     "time": "11:00",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 11,
+     "home": "HOCQUET",
+     "away": "CD GINER DE LOS RIOS",
+     "hs": 1,
+     "as": 2,
+     "time": "12:00",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 11,
+     "home": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "away": "HC SANT CUGAT ",
+     "hs": 2,
+     "as": 0,
+     "time": "13:00",
+     "date": "2026-11-15"
+    },
+    {
+     "jornada": 12,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "hs": 0,
+     "as": 3,
+     "time": "15:30",
+     "date": "2026-11-21"
+    },
+    {
+     "jornada": 12,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "HOCQUET",
+     "hs": 1,
+     "as": 0,
+     "time": "16:00",
+     "date": "2026-11-21"
+    },
+    {
+     "jornada": 12,
+     "home": "CD GINER DE LOS RIOS",
+     "away": "CLUB EGARA",
+     "hs": 3,
+     "as": 3,
+     "time": "16:30",
+     "date": "2026-11-21"
+    },
+    {
+     "jornada": 12,
+     "home": "HC SANT CUGAT ",
+     "away": "VALLES ESPORTIU",
+     "hs": 4,
+     "as": 0,
+     "time": "17:00",
+     "date": "2026-11-21"
+    },
+    {
+     "jornada": 13,
+     "home": "CD GINER DE LOS RIOS",
+     "away": "VALLES ESPORTIU",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2026-11-28"
+    },
+    {
+     "jornada": 13,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2026-11-28"
+    },
+    {
+     "jornada": 13,
+     "home": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "away": "HOCQUET",
+     "hs": null,
+     "as": null,
+     "time": "15:30",
+     "date": "2026-11-28"
+    },
+    {
+     "jornada": 13,
+     "home": "HC SANT CUGAT ",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "17:00",
+     "date": "2026-11-28"
+    },
+    {
+     "jornada": 14,
+     "home": "CD GINER DE LOS RIOS",
+     "away": "HC SANT CUGAT ",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2026-12-12"
+    },
+    {
+     "jornada": 14,
+     "home": "REAL GRUPO DE CULTURA COVADONGA",
+     "away": "REAL CLUB DE CAMPO VILLA DE MADRID",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2026-12-12"
+    },
+    {
+     "jornada": 14,
+     "home": "VALLES ESPORTIU",
+     "away": "CLUB EGARA",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2026-12-12"
+    },
+    {
+     "jornada": 14,
+     "home": "HOCQUET",
+     "away": "CLUB HOCKEY MADRID-LAS ROZAS",
+     "hs": null,
+     "as": null,
+     "time": "15:00",
+     "date": "2026-12-12"
+    }
+   ],
+   "standings": {
+    "rows": [
+     {
+      "pos": 1,
+      "mov": 1,
+      "team": "HC SANT CUGAT",
+      "form": "GEGPG",
+      "pt": 27,
+      "pj": 12,
+      "pg": 8,
+      "pe": 3,
+      "pp": 1,
+      "gf": 20,
+      "gc": 5,
+      "dif": 15
+     },
+     {
+      "pos": 2,
+      "mov": -1,
+      "team": "VALLES ESPORTIU",
+      "form": "GPGGP",
+      "pt": 24,
+      "pj": 12,
+      "pg": 7,
+      "pe": 3,
+      "pp": 2,
+      "gf": 27,
+      "gc": 16,
+      "dif": 11
+     },
+     {
+      "pos": 3,
+      "mov": 0,
+      "team": "CLUB HOCKEY MADRID-LAS ROZAS",
+      "form": "EGEGG",
+      "pt": 22,
+      "pj": 12,
+      "pg": 6,
+      "pe": 4,
+      "pp": 2,
+      "gf": 22,
+      "gc": 10,
+      "dif": 12
+     },
+     {
+      "pos": 4,
+      "mov": 0,
+      "team": "CLUB EGARA",
+      "form": "EEEGE",
+      "pt": 19,
+      "pj": 12,
+      "pg": 5,
+      "pe": 4,
+      "pp": 3,
+      "gf": 23,
+      "gc": 17,
+      "dif": 6
+     },
+     {
+      "pos": 5,
+      "mov": 0,
+      "team": "CD GINER DE LOS RIOS",
+      "form": "GPEGE",
+      "pt": 17,
+      "pj": 12,
+      "pg": 4,
+      "pe": 5,
+      "pp": 3,
+      "gf": 19,
+      "gc": 17,
+      "dif": 2
+     },
+     {
+      "pos": 6,
+      "mov": 1,
+      "team": "REAL GRUPO DE CULTURA COVADONGA",
+      "form": "PGPPG",
+      "pt": 9,
+      "pj": 12,
+      "pg": 3,
+      "pe": 0,
+      "pp": 9,
+      "gf": 14,
+      "gc": 26,
+      "dif": -12
+     },
+     {
+      "pos": 7,
+      "mov": -1,
+      "team": "REAL CLUB DE CAMPO VILLA DE MADRID",
+      "form": "PEEPP",
+      "pt": 9,
+      "pj": 12,
+      "pg": 2,
+      "pe": 3,
+      "pp": 7,
+      "gf": 9,
+      "gc": 23,
+      "dif": -14
+     },
+     {
+      "pos": 8,
+      "mov": 0,
+      "team": "HOCQUET",
+      "form": "PEPPP",
+      "pt": 5,
+      "pj": 12,
+      "pg": 1,
+      "pe": 2,
+      "pp": 9,
+      "gf": 10,
+      "gc": 30,
+      "dif": -20
+     }
+    ],
+    "jornada": null,
+    "date": null,
+    "stage": "DIVISIÓN DE HONOR B FEMENINA - PRIMERA FASE - 2"
+   }
+  }
+ },
+ "errors": {}
 }
