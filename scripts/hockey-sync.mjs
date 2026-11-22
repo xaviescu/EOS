@@ -6,22 +6,42 @@ const HOST = 'resultadoshockey.isquad.es';
 const OUT = 'hockey-data.json';
 // Para cambiar de competición/temporada, edita estas URLs (si no llevan "id=", se busca el id vigente en la página).
 const SOURCES = [
-  { div: 'DHA', url: 'https://resultadoshockey.isquad.es/competicion.php?id_superficie=1&seleccion=0&id_categoria=8&id_temp=2627&id_ambito=0&id_territorial=9999' },
+  { div: 'DHA', url: 'https://resultadoshockey.isquad.es/calendario.php?seleccion=0&id=9356&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0' },
   { div: 'DHB', url: 'https://resultadoshockey.isquad.es/calendario.php?seleccion=0&id=9363&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0' },
 ];
 
+// La web sirve páginas "clásicas" (con los datos en el HTML) o una app "beta" (sin datos en el HTML) según el cliente.
+// Se prueban varios identificadores hasta recibir la clásica.
+const UAS = [
+  'Mozilla/5.0 (compatible; EOS-XE-hockey-sync)',
+  'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+  'curl/8.5.0',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+];
+const isBeta = html => /<title>[^<]*BETA/i.test(html) || /\/maqueta\//.test(html.slice(0, 3000));
+
 async function getHtml(url) {
-  const r = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-    },
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const buf = await r.arrayBuffer();
-  return new TextDecoder('utf-8').decode(buf);
+  let lastErr = null;
+  for (const ua of UAS) {
+    try {
+      const r = await fetch(url, {
+        headers: {
+          'User-Agent': ua,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        },
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!r.ok) { lastErr = new Error('HTTP ' + r.status); console.log(`  [${ua.slice(0, 28)}] HTTP ${r.status}`); continue; }
+      const buf = await r.arrayBuffer();
+      const html = new TextDecoder('utf-8').decode(buf);
+      const t = (html.match(/<title>([^<]*)<\/title>/i) || [])[1] || '?';
+      console.log(`  [${ua.slice(0, 28)}] ${r.url.replace(/^https?:\/\/[^/]+/, '').slice(0, 70)} -> "${t.trim().slice(0, 50)}" (${html.length} bytes)`);
+      if (isBeta(html)) { lastErr = new Error('La web ha devuelto la versión beta (sin datos)'); continue; }
+      return html;
+    } catch (e) { lastErr = e; console.log(`  [${ua.slice(0, 28)}] ${String((e && e.message) || e)}`); }
+  }
+  throw lastErr || new Error('Sin respuesta');
 }
 
 function decodeEntities(s) {
@@ -92,6 +112,12 @@ async function resolveCompId(rawUrl) {
   const direct = u.searchParams.get('id');
   if (direct && /^\d+$/.test(direct)) return direct;
   const html = await getHtml(u.toString());
+  const cats = {};
+  for (const m of html.matchAll(/<a[^>]*href="[^"]*id_categoria=(\d+)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    const t = decodeEntities(m[2].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+    if (t) cats[m[1]] = t;
+  }
+  if (Object.keys(cats).length) console.log('  categorías:', JSON.stringify(cats));
   const mm = html.match(/calendario\.php\?[^"']*?\bid=(\d+)/);
   if (!mm) throw new Error('No se encontró el id de la competición');
   return mm[1];
