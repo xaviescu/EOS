@@ -125,6 +125,72 @@ async function resolveCompId(rawUrl) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// --- API JSON de la web BETA (json/beta.php): es lo que ve la web desde los servidores de GitHub ---
+let _sess = null;
+async function betaSession() {
+  if (_sess) return _sess;
+  const r = await fetch(`https://${HOST}/maqueta/`, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EOS)', 'Accept-Language': 'es-ES,es;q=0.9' } });
+  if (!r.ok) throw new Error('beta HTTP ' + r.status);
+  const html = await r.text();
+  const tm = html.match(/<meta[^>]*name="client-token"[^>]*content="([^"]*)"/i) || html.match(/<meta[^>]*content="([^"]*)"[^>]*name="client-token"/i);
+  const cookies = (r.headers.getSetCookie ? r.headers.getSetCookie() : []).map(c => c.split(';')[0]).join('; ');
+  _sess = { token: tm ? tm[1] : '', cookies };
+  return _sess;
+}
+async function betaApi(datos) {
+  const s = await betaSession();
+  const r = await fetch(`https://${HOST}/maqueta/json/beta.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Client-Token': s.token, 'Cookie': s.cookies, 'User-Agent': 'Mozilla/5.0 (compatible; EOS)', 'Accept-Language': 'es-ES,es;q=0.9' },
+    body: new URLSearchParams(datos),
+  });
+  if (!r.ok) throw new Error('API HTTP ' + r.status);
+  return r.json();
+}
+function matchesFromApi(j) {
+  return (j.partidos || []).map(p => {
+    const [d, t] = String(p.fecha || '').split(' ');
+    const hhmm = (t || '').slice(0, 5);
+    return {
+      jornada: p.j == null ? null : +p.j,
+      home: p.l && p.l.n, away: p.v && p.v.n,
+      hs: p.gl == null ? null : +p.gl, as: p.gv == null ? null : +p.gv,
+      time: (!hhmm || hhmm === '00:00') ? null : hhmm,
+      date: d,
+      _fase: p.fase || '',
+    };
+  }).filter(m => m.home && m.away && m.date).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+}
+// Clasificación calculada a partir de los resultados (3-1-0) de la fase en curso: respaldo si la página clásica no está disponible.
+function standingsFromMatches(ms) {
+  const played = ms.filter(m => m.hs != null && m.as != null);
+  if (!played.length) return { rows: [], jornada: null, date: null, stage: null };
+  const last = played[played.length - 1];
+  const fase = last._fase;
+  const T = {};
+  const get = n => T[n] || (T[n] = { team: n, pt: 0, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, hist: [] });
+  for (const m of played.filter(x => x._fase === fase)) {
+    const a = get(m.home), b = get(m.away);
+    a.pj++; b.pj++; a.gf += m.hs; a.gc += m.as; b.gf += m.as; b.gc += m.hs;
+    if (m.hs > m.as) { a.pg++; a.pt += 3; b.pp++; a.hist.push('G'); b.hist.push('P'); }
+    else if (m.hs < m.as) { b.pg++; b.pt += 3; a.pp++; a.hist.push('P'); b.hist.push('G'); }
+    else { a.pe++; b.pe++; a.pt++; b.pt++; a.hist.push('E'); b.hist.push('E'); }
+  }
+  const rows = Object.values(T).map(t => ({ ...t, dif: t.gf - t.gc }))
+    .sort((x, y) => y.pt - x.pt || y.dif - x.dif || y.gf - x.gf || x.team.localeCompare(y.team))
+    .map((t, i) => ({ pos: i + 1, mov: 0, team: t.team, form: t.hist.slice(-5).join(''), pt: t.pt, pj: t.pj, pg: t.pg, pe: t.pe, pp: t.pp, gf: t.gf, gc: t.gc, dif: t.dif }));
+  return { rows, jornada: last.jornada, date: last.date, stage: fase || null };
+}
+async function classicStandings(compId) {
+  // Cookie «versión clásica» (y ?clasica=1) para que la web no redirija a la beta.
+  const url = `https://${HOST}/clasificacion.php?seleccion=0&id=${compId}&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0&clasica=1`;
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36', 'Cookie': 'resultados_version=clasica-sesion', 'Accept-Language': 'es-ES,es;q=0.9' }, redirect: 'follow' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const html = new TextDecoder('utf-8').decode(await r.arrayBuffer());
+  if (/Resultados ESHOCKEY · BETA/.test(html)) throw new Error('beta');
+  return parseStandings(html);
+}
+
 async function main() {
   let prev = { divs: {}, errors: {} };
   try { prev = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) { /* primera vez */ }
@@ -132,17 +198,18 @@ async function main() {
   let ok = 0;
   for (const s of SOURCES) {
     try {
-      const compId = await resolveCompId(s.url);
-      await sleep(1000);
-      const cal = await getHtml(`https://${HOST}/calendario.php?seleccion=0&id=${compId}&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0`);
-      await sleep(1000);
-      const cla = await getHtml(`https://${HOST}/clasificacion.php?seleccion=0&id=${compId}&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0`);
-      const matches = parseCalendar(cal);
-      const standings = parseStandings(cla);
-      if (!matches.length && !standings.rows.length) throw new Error('La página no contiene datos (¿ha cambiado el formato?)');
+      const compId = new URL(s.url).searchParams.get('id');
+      if (!compId || !/^\d+$/.test(compId)) throw new Error('Falta el id de la competición en SOURCES');
+      const api = await betaApi({ tipo: 'torneo', id: compId });
+      const all = matchesFromApi(api);
+      if (!all.length) throw new Error('La API no devolvió partidos');
+      let standings, via = 'clásica';
+      try { standings = await classicStandings(compId); if (!standings.rows.length) throw new Error('vacía'); }
+      catch (e) { standings = standingsFromMatches(all); via = 'calculada (' + ((e && e.message) || e) + ')'; }
+      const matches = all.map(({ _fase, ...m }) => m);
       next.divs[s.div] = { compId, matches, standings };
       ok++;
-      console.log(`${s.div}: ${matches.length} partidos, ${standings.rows.length} filas de clasificación`);
+      console.log(`${s.div}: ${matches.length} partidos, ${standings.rows.length} filas de clasificación [${via}]`);
     } catch (e) {
       next.errors[s.div] = String((e && e.message) || e);
       console.error(`${s.div}: ${next.errors[s.div]}`);
