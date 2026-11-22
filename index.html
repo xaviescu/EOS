@@ -4909,7 +4909,17 @@ function HockeyMatches({data, upd, client}) {
                                 hs:w.hs, as:w.as, goals:null}});
         });
       });
-      setPreview({items, errors:errs, unmatched});
+      if (items.length) {
+        mutate(arr => {
+          items.forEach(i => {
+            if (i.kind === 'new') arr.push({id:'w' + uid(), ...i.newMatch});
+            else { const m = arr.find(x => x.id === i.matchId); if (m) Object.assign(m, i.patch); }
+          });
+        });
+      }
+      if (!errs.length) upd(d => { d.hockeyLastSync = new Date().toISOString(); });
+      try { await hockeyRefreshExtras(client, data, upd); } catch (e) { /* las otras pestañas se reintentan en su propio botón */ }
+      setPreview({items, errors:errs, unmatched, applied:true});
     } catch (e) {
       setPreview({items:[], errors:[{error:String((e && e.message) || e)}], unmatched:0});
     }
@@ -5027,11 +5037,14 @@ function HockeyMatches({data, upd, client}) {
           {preview.items.length === 0 && preview.errors.length === 0 && (
             <div style={{fontSize:13, color:'var(--text)'}}>Todo al día: no hay cambios nuevos.</div>
           )}
+          {preview.applied && preview.items.length > 0 && (
+            <div style={{fontSize:12, color:'var(--muted)', marginBottom:4}}>Actualizado: {preview.items.length} cambio{preview.items.length === 1 ? '' : 's'} aplicado{preview.items.length === 1 ? '' : 's'}.</div>
+          )}
           {preview.items.map((it, i) => (
             <label key={it.key} style={{display:'flex', gap:10, alignItems:'flex-start', padding:'7px 0',
-                                         borderBottom: i === preview.items.length - 1 ? 'none' : '1px solid var(--surface-alt)', cursor:'pointer'}}>
-              <input type="checkbox" checked={it.selected} style={{marginTop:3, accentColor:'var(--brand)'}}
-                onChange={() => setPreview(p => ({...p, items: p.items.map(x => x.key === it.key ? {...x, selected: !x.selected} : x)}))}/>
+                                         borderBottom: i === preview.items.length - 1 ? 'none' : '1px solid var(--surface-alt)', cursor:'default'}}>
+              {!preview.applied && <input type="checkbox" checked={it.selected} style={{marginTop:3, accentColor:'var(--brand)'}}
+                onChange={() => setPreview(p => ({...p, items: p.items.map(x => x.key === it.key ? {...x, selected: !x.selected} : x)}))}/>}
               <div>
                 <div style={{fontSize:13, fontWeight:600, color:'var(--text)'}}>{it.label}</div>
                 {it.lines.map((ln, j) => <div key={j} style={{fontSize:12, color:'var(--muted)'}}>{ln}</div>)}
@@ -5044,10 +5057,10 @@ function HockeyMatches({data, upd, client}) {
             </div>
           )}
           <div style={{display:'flex', gap:7, marginTop:10}}>
-            {preview.items.length > 0 && (
+            {preview.items.length > 0 && !preview.applied && (
               <Btn onClick={applyPreview}>Aplicar ({preview.items.filter(i => i.selected).length})</Btn>
             )}
-            <Btn v="sec" onClick={() => setPreview(null)}>{preview.items.length > 0 ? 'Cancelar' : 'Cerrar'}</Btn>
+            <Btn v="sec" onClick={() => setPreview(null)}>{preview.items.length > 0 && !preview.applied ? 'Cancelar' : 'Cerrar'}</Btn>
           </div>
         </div>
       )}
@@ -5129,6 +5142,30 @@ const HOCKEY_STAND_DEFAULT = {
   DHA: 'https://resultadoshockey.isquad.es/clasificacion.php?seleccion=0&id=9356&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0',
   DHB: 'https://resultadoshockey.isquad.es/clasificacion.php?seleccion=0&id=9363&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0'
 };
+// Actualiza de una vez clasificaciones y resultados de ambas ligas (lo usan los tres botones «Actualizar»)
+async function hockeyRefreshExtras(client, data, upd) {
+  const srcs = data.hockeySources || HOCKEY_SOURCES_DEFAULT;
+  const sSrcs = data.hockeyStandSources || HOCKEY_STAND_DEFAULT;
+  const divs = ['DHA', 'DHB'];
+  const [lg, st] = await Promise.all([
+    hockeyInvoke(client, {sources: divs.filter(dv => srcs[dv]).map(dv => ({div:dv, url:srcs[dv]}))}),
+    hockeyInvoke(client, {kind:'standings', sources: divs.filter(dv => sSrcs[dv]).map(dv => ({div:dv, url:sSrcs[dv]}))}),
+  ]);
+  const now = new Date().toISOString();
+  upd(d => {
+    ((lg.data && lg.data.results) || []).forEach(r => {
+      if (!r.matches || !r.matches.length) return;
+      if (!d.hockeyLeague) d.hockeyLeague = {};
+      d.hockeyLeague[r.div] = {fetched: now, matches: r.matches.map(w => ({j:w.jornada || 0, date:w.date, time:w.time || '', home:w.home, away:w.away,
+        hs:w.hs == null ? null : w.hs, as:w.as == null ? null : w.as}))};
+    });
+    ((st.data && st.data.results) || []).forEach(r => {
+      if (!r.rows || !r.rows.length) return;
+      if (!d.hockeyStandings) d.hockeyStandings = {};
+      d.hockeyStandings[r.div] = {rows:r.rows, jornada:r.jornada, date:r.date, stage:r.stage, fetched: now};
+    });
+  });
+}
 const hkTeamName = s => hkTitle(s).replace(/\b(De|Del|La|Las|Los)\b/g, w => w.toLowerCase())
   .replace(/S\.a\.d\./i, 'S.A.D.');
 
@@ -5157,6 +5194,7 @@ function HockeyStandings({data, upd, client, div}) {
         if (!d.hockeyStandings) d.hockeyStandings = {};
         d.hockeyStandings[div] = {rows:r.rows, jornada:r.jornada, date:r.date, stage:r.stage, fetched:new Date().toISOString()};
       });
+      try { await hockeyRefreshExtras(client, data, upd); } catch (e) { /* ignore */ }
     } catch (e) { setErr(String((e && e.message) || e)); }
     setLoading(false);
   };
@@ -5259,6 +5297,7 @@ function HockeyLeague({data, upd, client, div}) {
         if (!d.hockeyLeague) d.hockeyLeague = {};
         d.hockeyLeague[div] = {matches:arr, fetched:new Date().toISOString()};
       });
+      try { await hockeyRefreshExtras(client, data, upd); } catch (e) { /* ignore */ }
     } catch (e) { setErr(String((e && e.message) || e)); }
     setLoading(false);
   };
