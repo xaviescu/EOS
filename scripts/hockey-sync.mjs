@@ -148,7 +148,17 @@ async function betaApi(datos) {
   return r.json();
 }
 function matchesFromApi(j) {
-  return (j.partidos || []).map(p => {
+  // Partidos aplazados: la federación mantiene la fecha original (sin resultado) además de la nueva.
+  // Si hay dos entradas de la misma jornada y mismos equipos, se queda la que tiene resultado (o la más tardía).
+  const seen = {};
+  const raw = j.partidos || [];
+  raw.forEach(p => {
+    const k = p.j + '|' + (p.l && p.l.id) + '|' + (p.v && p.v.id);
+    const cur = seen[k];
+    const better = !cur || (cur.gl == null && p.gl != null) || ((cur.gl == null) === (p.gl == null) && String(p.fecha) > String(cur.fecha));
+    if (better) seen[k] = p;
+  });
+  return raw.filter(p => seen[p.j + '|' + (p.l && p.l.id) + '|' + (p.v && p.v.id)] === p).map(p => {
     const [d, t] = String(p.fecha || '').split(' ');
     const hhmm = (t || '').slice(0, 5);
     return {
