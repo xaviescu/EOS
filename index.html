@@ -4897,7 +4897,14 @@ function HockeyMatches({data, upd, client}) {
           }
           if (lines.length) items.push({key:'e' + m.id, kind:'edit', matchId:m.id, label:dv + ' · ' + m.home + ' – ' + m.away, lines, patch, selected:true});
         });
-        cur.forEach((m, mi) => { if (!usedM[mi]) unmatched++; });
+        cur.forEach((m, mi) => {
+          if (usedM[mi]) return;
+          // Partido aplazado: entrada antigua sin resultado cuyo rival ya está emparejado con otra fecha → se elimina
+          const dup = m.hs == null && m.as == null && cur.some((o, oi) => usedM[oi] && o.id !== m.id &&
+            isOurHome(o) === isOurHome(m) && hkSimilar(isOurHome(o) ? o.away : o.home, isOurHome(m) ? m.away : m.home));
+          if (dup) items.push({key:'d' + m.id, kind:'del', matchId:m.id, label:'', lines:[], selected:true});
+          else unmatched++;
+        });
         web.forEach((w, wi) => {
           if (usedW[wi]) return;
           const our = HOCKEY_OUR[dv];
@@ -4913,13 +4920,15 @@ function HockeyMatches({data, upd, client}) {
         mutate(arr => {
           items.forEach(i => {
             if (i.kind === 'new') arr.push({id:'w' + uid(), ...i.newMatch});
+            else if (i.kind === 'del') { const k = arr.findIndex(x => x.id === i.matchId); if (k >= 0) arr.splice(k, 1); }
             else { const m = arr.find(x => x.id === i.matchId); if (m) Object.assign(m, i.patch); }
           });
         });
       }
       if (!errs.length) upd(d => { d.hockeyLastSync = new Date().toISOString(); });
       try { await hockeyRefreshExtras(client, data, upd); } catch (e) { /* las otras pestañas se reintentan en su propio botón */ }
-      setPreview({items, errors:errs, unmatched, applied:true});
+      // Se aplica solo; el cuadro únicamente aparece si hubo errores
+      setPreview(errs.length ? {items:[], errors:errs, unmatched:0} : null);
     } catch (e) {
       setPreview({items:[], errors:[{error:String((e && e.message) || e)}], unmatched:0});
     }
