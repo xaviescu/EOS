@@ -4,7 +4,7 @@
 // - New SW activates immediately on install (skipWaiting) and forces open tabs
 //   to reload so the new version takes effect without "clear cache" dance.
 
-const CACHE = 'eos-xe-v188';
+const CACHE = 'eos-xe-v193';
 const SHELL = [
   './',
   './index.html',
@@ -46,6 +46,8 @@ self.addEventListener('fetch', e => {
   // ONLY handle same-origin requests. External CDNs (Supabase, cdnjs, jsdelivr)
   // go directly to network so stale scripts never get cached.
   if (url.origin !== self.location.origin) return;
+  // Datos de hockey (los actualiza GitHub Actions): siempre a la red, nunca de caché
+  if (url.pathname.endsWith('/hockey-data.json')) return;
 
   // Network-first for HTML so updates always roll out immediately
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {

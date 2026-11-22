@@ -487,9 +487,22 @@ const nextMondayStr = wn => {
 const getCurQ = () => YEAR + '-Q' + Math.ceil(getCurWn() / 13);
 const getCurWn = () =>
   Math.min(52, Math.max(1, Math.floor((Date.now() - FIRST_MON.getTime()) / 864e5 / 7) + 1));
-const wKey = wn => YEAR + '-' + wn;
+// Clave de semana; las semanas 53+ / 0- caen en el año siguiente / anterior (p. ej. la semana 53 de 2026 = 2027-1).
+const wKey = wn => wn > 52 ? (YEAR + 1) + '-' + (wn - 52) : (wn < 1 ? (YEAR - 1) + '-' + (wn + 52) : YEAR + '-' + wn);
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const todayYear = () => yearOfDateStr(todayStr());
+// 'Focus Next Week' escrito la semana anterior (la semana 1 mira la 52 del año anterior)
+const prevWeekRecord = (data, wn) => {
+  const y = wn > 1 ? YEAR : YEAR - 1;
+  const pw = wn > 1 ? wn - 1 : 52;
+  let rec = '';
+  Object.keys(data.quarters || {}).forEach(qk => {
+    if (qk.indexOf(y + '-') !== 0) return;
+    const w = (data.quarters[qk].weeks || {})[pw];
+    if (w && w.improvements) rec = w.improvements;
+  });
+  return rec;
+};
 const fmtDMY = ds => {
   if (!ds) return '';
   const p = ds.split('-');
@@ -1889,7 +1902,7 @@ function CalendarWidget({selWn, data, upd, goToDay, compact, focusDayIdx}) {
   );
 }
 
-function StdWeekCalendar({data, upd, fieldKey, copyTag}) {
+function StdWeekCalendar({data, upd, fieldKey, copyTag, addTick}) {
   // fieldKey: which data[] array stores this standard week's events (lets
   // several independent standard-week calendars coexist — e.g. one per person).
   // copyTag: tags events copied into a real week with their source, so
@@ -1899,6 +1912,8 @@ function StdWeekCalendar({data, upd, fieldKey, copyTag}) {
   copyTag = copyTag || 'main';
   const [form, setForm] = useState(null);
   const [copyOpen, setCopyOpen] = useState(false);
+  const tick0 = useRef(addTick);
+  useEffect(() => { if (addTick !== tick0.current) setForm({day:0, h:8, m:0, duration:1, title:'', notes:''}); }, [addTick]);
   const [copyQ, setCopyQ] = useState(getCurQ());
   const [copyWn, setCopyWn] = useState(getCurWn());
   const events = data[fieldKey] || [];
@@ -1928,12 +1943,6 @@ function StdWeekCalendar({data, upd, fieldKey, copyTag}) {
   };
   return (
     <div>
-      <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-        <Btn onClick={() => setForm({day:0, h:8, m:0, duration:1, title:'', notes:''})}
-          style={{fontSize:13}}>+ Event</Btn>
-        <Btn v="sec" onClick={() => setCopyOpen(o => !o)}
-          style={{fontSize:13}}>Copy to Week</Btn>
-      </div>
       {copyOpen && (
         <InlineForm marginTop={0}>
           <div style={{fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8}}>
@@ -4718,7 +4727,27 @@ const HOCKEY_MATCHES = [
   {id:'DHA22', div:'DHA', date:'2027-05-23', time:'12:00', home:'Atlètic Terrassa HC', away:'Club Egara', hs:null, as:null},
 ];
 
-// ---- Sincronización con la web de la federación (vía Edge Function hockey-sync) ----
+// ---- Datos de la federación: los deja en hockey-data.json la acción de GitHub «Hockey sync» (la web bloquea a Supabase) ----
+// Devuelve el mismo formato que devolvía la antigua Edge Function: {data:{results, errors}, error}.
+async function hockeyInvoke(client, body) {
+  try {
+    const r = await fetch('hockey-data.json?t=' + Date.now(), {cache: 'no-store'});
+    if (!r.ok) {
+      return {data: null, error: new Error(r.status === 404
+        ? 'Aún no hay datos: lanza la acción «Hockey sync» en GitHub (pestaña Actions).'
+        : 'No se pudo leer hockey-data.json (HTTP ' + r.status + ')')};
+    }
+    const j = await r.json();
+    const results = [], errors = [];
+    (body.sources || []).forEach(s => {
+      const e = j.divs && j.divs[s.div];
+      if (!e) { errors.push({div: s.div, url: s.url, error: (j.errors && j.errors[s.div]) || 'Sin datos de ' + s.div}); return; }
+      if (body.kind === 'standings') results.push({div: s.div, url: s.url, compId: e.compId, ...(e.standings || {rows: []})});
+      else results.push({div: s.div, url: s.url, compId: e.compId, matches: e.matches || []});
+    });
+    return {data: {results, errors}, error: null};
+  } catch (e) { return {data: null, error: e}; }
+}
 const HOCKEY_SOURCES_DEFAULT = {
   DHA: 'https://resultadoshockey.isquad.es/competicion.php?id_superficie=1&seleccion=0&id_categoria=8&id_temp=2627&id_ambito=0&id_territorial=9999',
   DHB: 'https://resultadoshockey.isquad.es/calendario.php?seleccion=0&id=9363&id_ambito=0&id_territorial=9999&id_superficie=1&iframe=0'
@@ -4836,7 +4865,7 @@ function HockeyMatches({data, upd, client}) {
     setSyncing(true); setPreview(null);
     try {
       const body = {sources: ['DHA', 'DHB'].filter(dv => sources[dv]).map(dv => ({div:dv, url:sources[dv]}))};
-      const {data: res, error} = await client.functions.invoke('hockey-sync', {body});
+      const {data: res, error} = await hockeyInvoke(client, body);
       if (error) throw error;
       const items = [], errs = (res && res.errors) || [];
       let unmatched = 0;
@@ -5119,7 +5148,7 @@ function HockeyStandings({data, upd, client, div}) {
     if (!client || loading || !srcs[div]) return;
     setLoading(true); setErr('');
     try {
-      const {data: res, error} = await client.functions.invoke('hockey-sync', {body:{kind:'standings', sources:[{div, url:srcs[div]}]}});
+      const {data: res, error} = await hockeyInvoke(client, {kind:'standings', sources:[{div, url:srcs[div]}]});
       if (error) throw error;
       const r = res && res.results && res.results[0];
       const e0 = res && res.errors && res.errors[0];
@@ -5219,7 +5248,7 @@ function HockeyLeague({data, upd, client, div}) {
     if (!client || loading || !sources[div]) return;
     setLoading(true); setErr('');
     try {
-      const {data: res, error} = await client.functions.invoke('hockey-sync', {body:{sources:[{div, url:sources[div]}]}});
+      const {data: res, error} = await hockeyInvoke(client, {sources:[{div, url:sources[div]}]});
       if (error) throw error;
       const r = res && res.results && res.results[0];
       const e0 = res && res.errors && res.errors[0];
@@ -5672,6 +5701,7 @@ function FootballTab({client}) {
 function ProcessesTab({data, upd}) {
   const [exp, setExp] = useState(null);
   const [procTab, setProcTab] = useState('stdweek');
+  const [addTick, setAddTick] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const ps = data.processes || [];
   const moveProc = (i, dir) => upd(d => {
@@ -5682,7 +5712,7 @@ function ProcessesTab({data, upd}) {
   return (
     <div>
       <PageTitle icon="procesos">Processes</PageTitle>
-      <div className="tabbar">
+      <div className="tabbar" style={{alignItems:'center'}}>
         <button className={'tab-underline' + (procTab === 'stdweek' ? ' active' : '')}
           onClick={() => setProcTab('stdweek')}>Std Week</button>
         <button className={'tab-underline' + (procTab === 'neus' ? ' active' : '')}
@@ -5693,12 +5723,15 @@ function ProcessesTab({data, upd}) {
           onClick={() => setProcTab('claudia')}>Clàudia</button>
         <button className={'tab-underline' + (procTab === 'processes' ? ' active' : '')}
           onClick={() => setProcTab('processes')}>Processes</button>
+        <Btn style={{fontSize:13, marginLeft:'auto', marginBottom:4}}
+          onClick={() => {
+            if (procTab === 'processes') upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); });
+            else setAddTick(t => t + 1);
+          }}>{procTab === 'processes' ? '+ Process' : '+ Event'}</Btn>
       </div>
       {procTab === 'processes' && (
         <div>
           <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center'}}>
-            <Btn onClick={() => upd(d => { d.processes.push({id: uid(), name:'', steps:'', documented:false}); })}
-              style={{fontSize:13}}>+ Process</Btn>
             <Btn v={editMode ? 'pri' : 'sec'} onClick={() => setEditMode(e => !e)} style={{fontSize:13}}>
               {editMode ? 'Done' : 'Edit'}
             </Btn>
@@ -5755,16 +5788,16 @@ function ProcessesTab({data, upd}) {
         </div>
       )}
       {procTab === 'stdweek' && (
-        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEvents" copyTag="main"/>
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEvents" copyTag="main" addTick={addTick}/>
       )}
       {procTab === 'neus' && (
-        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsNeus" copyTag="neus"/>
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsNeus" copyTag="neus" addTick={addTick}/>
       )}
       {procTab === 'julia' && (
-        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsJulia" copyTag="julia"/>
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsJulia" copyTag="julia" addTick={addTick}/>
       )}
       {procTab === 'claudia' && (
-        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsClaudia" copyTag="claudia"/>
+        <StdWeekCalendar data={data} upd={upd} fieldKey="stdWeeklyEventsClaudia" copyTag="claudia" addTick={addTick}/>
       )}
     </div>
   );
@@ -5779,7 +5812,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
   const wr = qData.weeklyRocks || {};
   const rocks = getQuarterRocks(data, curQ);
   const today = todayStr();
-  const [dispWn, setDispWn] = useState(() => getCurWn());
+  const [dispWn, setDispWn] = useState(() => dateToWn(selDay));
   const [showCal, setShowCal] = useState(false);
   // Remembered per-card view toggles (persisted in localStorage)
   const [scorecardView, setScorecardView] = useState(() => {
@@ -5809,6 +5842,16 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
     d.quarters[curQ].scorecard[mi].dayData[selDay] = cur === st ? null : st;
   });
   const handleDayClick = ds => { setSelDay(ds); setDispWn(dateToWn(ds)); setShowCal(false); };
+  // Cambio de semana con flechas; al pasar de la 52 a la 1 (y al revés) se cambia de año moviendo el día seleccionado.
+  const goWeek = dir => {
+    if (dir > 0) {
+      if (dispWn >= 52) { if (YEAR < YEAR_MAX) setSelDay(dayStr(53, dayOfWeek)); }
+      else setDispWn(w => w + 1);
+    } else {
+      if (dispWn <= 1) { if (YEAR > YEAR_MIN) setSelDay(dayStr(0, dayOfWeek)); }
+      else setDispWn(w => w - 1);
+    }
+  };
   const scorecard = qData.scorecard || [];
   const isMobile = useIsMobile();
   const [editMode, setEditMode] = useState(false);
@@ -5885,7 +5928,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                   padding: isMobile ? '0 10px' : '0 14px', display:'flex',
                   alignItems:'center', justifyContent:'center', fontFamily:'inherit'}}>Today</button>
         <div style={{display:'flex', gap:4, alignItems:'center'}}>
-          <button onClick={() => setDispWn(w => Math.max(1, w - 1))}
+          <button onClick={() => goWeek(-1)}
             style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
                     fontSize:13, color:'var(--text-2)', padding:0, display:'flex',
@@ -5898,7 +5941,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
                     color: showCal ? 'white' : 'var(--text)',
                     padding:'0 14px', display:'flex',
                     alignItems:'center', justifyContent:'center'}}>Calendar</button>
-          <button onClick={() => setDispWn(w => Math.min(52, w + 1))}
+          <button onClick={() => goWeek(1)}
             style={{height:32, width:32, boxSizing:'border-box', borderRadius:'var(--r-sm)',
                     border:'1px solid var(--border-strong)', background:'var(--surface)', cursor:'pointer',
                     fontSize:13, color:'var(--text-2)', padding:0, display:'flex',
@@ -5938,11 +5981,7 @@ function DailyTab({data, upd, selDay, setSelDay, goToDay}) {
       </div>
       {/* Focus This Week — read-only, from prev week's L10 Conclude "Focus Next Week" */}
       {(() => {
-        let prevImprovements = '';
-        Object.keys(data.quarters || {}).forEach(qk => {
-          const w = (data.quarters[qk].weeks || {})[dispWn - 1];
-          if (w && w.improvements) prevImprovements = w.improvements;
-        });
+        const prevImprovements = prevWeekRecord(data, dispWn);
         return (
           <div className="card-hover" style={S.card}>
             <H3 style={{marginBottom:8}}>Focus This Week</H3>
@@ -6520,11 +6559,7 @@ function WeekL10({data, upd, qKey, weekNum, embedded}) {
               {seg.k === 'conclude' && (() => {
                 // Read prev week's improvements (from any quarter) — shown READ-ONLY
                 // as "Focus This Week" at the top.
-                let prevImprovements = '';
-                Object.keys(data.quarters || {}).forEach(qk => {
-                  const w = (data.quarters[qk].weeks || {})[weekNum - 1];
-                  if (w && w.improvements) prevImprovements = w.improvements;
-                });
+                const prevImprovements = prevWeekRecord(data, weekNum);
                 const qFields = [
                   {k:'headlines', label:'Headlines', ph:'What stands out this week?'},
                   {k:'gratitude', label:'Gratitude', ph:'What or who are you especially grateful for this week?'},
