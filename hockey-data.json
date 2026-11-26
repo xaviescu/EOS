@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-26T01:44:39.749Z",
+ "updated": "2026-11-26T21:22:34.301Z",
  "divs": {
   "DHA": {
    "compId": "9356",
@@ -1998,5 +1998,8 @@
    }
   }
  },
- "errors": {}
+ "errors": {
+  "DHA": "fetch failed",
+  "DHB": "fetch failed"
+ }
 }
